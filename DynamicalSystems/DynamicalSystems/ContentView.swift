@@ -9,11 +9,21 @@
 import SwiftUI
 
 infix operator |>: ForwardApplication
+infix operator =>: LensApplyInput
+infix operator ||>: ForwardPairApplication
 infix operator >>>: ForwardComposition
 infix operator <=>: LensForwardComposition
-infix operator >=<: LensProduct
+infix operator ⊗: LensProduct
 
 precedencegroup ForwardApplication {
+  associativity: left
+}
+
+precedencegroup LensApplyInput {
+  associativity: left
+}
+
+precedencegroup ForwardPairApplication {
   associativity: left
 }
 
@@ -35,6 +45,16 @@ func |> <A, B>(a: A, f: (A) -> B) -> B {
   return f(a)
 }
 
+func ||> <A, B, C>(ab: Pair<A, B>, f: (A, B) -> C) -> C {
+  return f(ab.fst, ab.snd)
+}
+
+func => <A, C, D>(lens: Lens<A, A, C, D>, c: C) -> ((A) -> D) {
+  return { a in
+    lens.up(Pair(a, c)) |> lens.down
+  }
+}
+
 func >>> <A, B, C>(
   f: @escaping (A) -> B, g: @escaping (B) -> C) -> ((A) -> C
   ) {
@@ -54,8 +74,8 @@ struct Pair<A, B> {
 
 // Lens (A / B) <-> (C / D)
 struct Lens<A, B, C, D> {
-  let down: (B) -> D
-  let up: (Pair<B, C>) -> A
+  let down: (B) -> D         // downstream function, left to right
+  let up: (Pair<B, C>) -> A  // upstream function, right to left
 }
 
 // Lens composition
@@ -77,7 +97,7 @@ func <=> <Am, Ap, Bm, Bp, Cm, Cp>(
 }
 
 // Lens cartesian/monoidal product
-func >=< <Am, Ap, Bm, Bp, Cm, Cp, Dm, Dp>(
+func ⊗ <Am, Ap, Bm, Bp, Cm, Cp, Dm, Dp>(
   _ fab: Lens<Am, Ap, Bm, Bp>,
   _ gcd: Lens<Cm, Cp, Dm, Dp>
 ) -> Lens<Pair<Am, Cm>, Pair<Ap, Cp>, Pair<Bm, Dm>, Pair<Bp, Dp>> {
@@ -118,7 +138,7 @@ enum Meridiem: String {
       return .am
     }
   }
-  static func tick(hour: Hour, merid: Meridiem) -> Meridiem {
+  static func tick(merid: Meridiem, hour: Hour) -> Meridiem {
     switch hour {
     case .eleven:
       return merid.toggle()
@@ -132,17 +152,34 @@ enum Meridiem: String {
 let clock = Lens<Hour, Hour, Void, Hour>(down: { $0 }, up: {hv in Hour.tick(hv.fst) })
 
 // Meridiem lens
-let meridiem = Lens<Meridiem, Meridiem, Hour, Meridiem>(down: { $0 }, up: { Meridiem.tick(hour: $0.snd, merid: $0.fst)})
+let meridiem = Lens<Meridiem, Meridiem, Hour, Meridiem>(down: { $0 }, up: { $0 ||> Meridiem.tick})
 
-// Clock-meridiem pair
+// meridiem-clock free product
+let meridiem_clock_free = meridiem ⊗ clock
 
-// ClockWithMeridiem lens
+// meridiem-clock coupling
+let meridiem_clock_coupling = Lens<Pair<Hour, Void>, Pair<Meridiem, Hour>, Void, Pair<Meridiem, Hour>>(
+  down: { $0 },
+  up: { mh_v in
+    Pair<Hour, Void>(mh_v.fst.snd, ())
+  }
+)
+
+let meridiem_clock = meridiem_clock_free <=> meridiem_clock_coupling
 
 struct ContentView: View {
+  @State private var time = Pair<Meridiem, Hour>(.am, .twelve)
+  
   var body: some View {
     VStack {
-      Button("Tick") { }
-        .buttonStyle(.borderedProminent)
+      HStack {
+        Text(time.snd.rawValue.description)
+        Text(time.fst.rawValue.description)
+      }
+      Button("Tick") {
+        time = (time |> (meridiem_clock => ()))
+      }
+      .buttonStyle(.borderedProminent)
     }
   }
 }
