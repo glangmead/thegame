@@ -17,14 +17,17 @@ infix operator ⊗: LensProduct
 
 precedencegroup ForwardApplication {
   associativity: left
+  higherThan: AssignmentPrecedence
 }
 
 precedencegroup LensApplyInput {
   associativity: left
+  higherThan: AssignmentPrecedence
 }
 
 precedencegroup ForwardPairApplication {
   associativity: left
+  higherThan: AssignmentPrecedence
 }
 
 precedencegroup ForwardComposition {
@@ -39,19 +42,21 @@ precedencegroup LensForwardComposition {
 
 precedencegroup LensProduct {
   associativity: left
+  higherThan: AssignmentPrecedence
 }
 
 func |> <A, B>(a: A, f: (A) -> B) -> B {
   return f(a)
 }
 
-func ||> <A, B, C>(ab: Pair<A, B>, f: (A, B) -> C) -> C {
-  return f(ab.fst, ab.snd)
+func ||> <A, B, C>(ab: (A, B), f: (A, B) -> C) -> C {
+  return f(ab.0, ab.1)
 }
 
+// Apply a lens of the form AACD to an input value c:C to get out a function A -> D
 func => <A, C, D>(lens: Lens<A, A, C, D>, c: C) -> ((A) -> D) {
   return { a in
-    lens.up(Pair(a, c)) |> lens.down
+    lens.up((a, c)) |> lens.down
   }
 }
 
@@ -63,20 +68,22 @@ func >>> <A, B, C>(
   }
 }
 
-struct Pair<A, B> {
-  let fst: A
-  let snd: B
-  init(_ fst: A, _ snd: B) {
-    self.fst = fst
-    self.snd = snd
-  }
-}
+//struct Pair<A, B> {
+//  let fst: A
+//  let snd: B
+//  init(_ fst: A, _ snd: B) {
+//    self.fst = fst
+//    self.snd = snd
+//  }
+//}
 
 // Lens (A / B) <-> (C / D)
 struct Lens<A, B, C, D> {
   let down: (B) -> D         // downstream function, left to right
-  let up: (Pair<B, C>) -> A  // upstream function, right to left
+  let up: ((B, C)) -> A  // upstream function, right to left
 }
+
+typealias StateLens<A, C, D> = Lens<A, A, C, D>
 
 // Lens composition
 func <=> <Am, Ap, Bm, Bp, Cm, Cp>(
@@ -86,11 +93,11 @@ func <=> <Am, Ap, Bm, Bp, Cm, Cp>(
   return Lens<Am, Ap, Cm, Cp> (
     down: f.down >>> g.down,
     up: { ap_cm in
-      let ap = ap_cm.fst
-      let cm = ap_cm.snd
-      let bp_cm = Pair<Bp, Cm>(f.down(ap), cm)
+      let ap = ap_cm.0
+      let cm = ap_cm.1
+      let bp_cm = (f.down(ap), cm)
       let bm = g.up(bp_cm)
-      let ap_bm = Pair<Ap, Bm>(ap, bm)
+      let ap_bm = (ap, bm)
       return f.up(ap_bm)
     }
   )
@@ -100,15 +107,15 @@ func <=> <Am, Ap, Bm, Bp, Cm, Cp>(
 func ⊗ <Am, Ap, Bm, Bp, Cm, Cp, Dm, Dp>(
   _ fab: Lens<Am, Ap, Bm, Bp>,
   _ gcd: Lens<Cm, Cp, Dm, Dp>
-) -> Lens<Pair<Am, Cm>, Pair<Ap, Cp>, Pair<Bm, Dm>, Pair<Bp, Dp>> {
-  return Lens<Pair<Am, Cm>, Pair<Ap, Cp>, Pair<Bm, Dm>, Pair<Bp, Dp>> (
+) -> Lens<(Am, Cm), (Ap, Cp), (Bm, Dm), (Bp, Dp)> {
+  return Lens<(Am, Cm), (Ap, Cp), (Bm, Dm), (Bp, Dp)> (
     down: { ap_cp in
-      return Pair<Bp, Dp>(fab.down(ap_cp.fst), gcd.down(ap_cp.snd))
+      return (fab.down(ap_cp.0), gcd.down(ap_cp.1))
     },
     up: { apcp_bmdm in
-      return Pair<Am, Cm>(
-        fab.up(Pair<Ap, Bm>(apcp_bmdm.fst.fst, apcp_bmdm.snd.fst)),
-        gcd.up(Pair<Cp, Dm>(apcp_bmdm.fst.snd, apcp_bmdm.snd.snd))
+      return (
+        fab.up((apcp_bmdm.0.0, apcp_bmdm.1.0)),
+        gcd.up((apcp_bmdm.0.1, apcp_bmdm.1.1))
       )
     }
   )
@@ -149,41 +156,60 @@ enum Meridiem: String {
 }
 
 // Clock lens: clock state is just the Hour enum, no need to wrap in a Clock struct
-let clock = Lens<Hour, Hour, Void, Hour>(down: { $0 }, up: {hv in Hour.tick(hv.fst) })
+let clock = StateLens<Hour, Void, Hour>(down: { $0 }, up: {hv in Hour.tick(hv.0) })
 
 // Meridiem lens
-let meridiem = Lens<Meridiem, Meridiem, Hour, Meridiem>(down: { $0 }, up: { $0 ||> Meridiem.tick})
+let meridiem = StateLens<Meridiem, Hour, Meridiem>(down: { $0 }, up: { $0 ||> Meridiem.tick})
 
 // meridiem-clock free product
 let meridiem_clock_free = meridiem ⊗ clock
 
 // meridiem-clock coupling
-let meridiem_clock_coupling = Lens<Pair<Hour, Void>, Pair<Meridiem, Hour>, Void, Pair<Meridiem, Hour>>(
+// TODO: could this be generic, with the types chosen later by the ev_C functor from DJM's book (Example 1.3.3.17)?
+let meridiem_clock_coupling = Lens<
+  (Hour, Void),
+  (Meridiem, Hour),
+  Void,
+  (Meridiem, Hour)
+>(
   down: { $0 },
   up: { mh_v in
-    Pair<Hour, Void>(mh_v.fst.snd, ())
+    (mh_v.0.1, ())
   }
 )
 
 let meridiem_clock = meridiem_clock_free <=> meridiem_clock_coupling
 
-struct ContentView: View {
-  @State private var time = Pair<Meridiem, Hour>(.am, .twelve)
+struct TicTacToeView: View {
+  var body: some View {
+    VStack {
+      Text("Hi")
+      Text("There")
+    }
+  }
+}
+
+struct MeridiemClockView: View {
+  @State private var time: (Meridiem, Hour) = (.am, .eleven)
   
   var body: some View {
     VStack {
       HStack {
-        Text(time.snd.rawValue.description)
-        Text(time.fst.rawValue.description)
+        Text(time.1.rawValue.description)
+        Text(time.0.rawValue.description)
       }
       Button("Tick") {
-        time = (time |> (meridiem_clock => ()))
+        time = time |> (meridiem_clock => ())
       }
       .buttonStyle(.borderedProminent)
     }
   }
 }
 
-#Preview {
-  ContentView()
+#Preview("Meridiem Clock") {
+  MeridiemClockView()
+}
+
+#Preview("Tic Tac Toe") {
+  TicTacToeView()
 }

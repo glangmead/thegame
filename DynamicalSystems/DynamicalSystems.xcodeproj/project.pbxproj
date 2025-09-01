@@ -30,9 +30,9 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		9B3138742E63462B00D3AE6D /* DynamicalSystems */ = {
+		9B3138742E63462B00D3AE6D /* Sources */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = DynamicalSystems;
+			path = Sources;
 			sourceTree = "<group>";
 		};
 		9B3138822E63462C00D3AE6D /* DynamicalSystemsTests */ = {
@@ -75,7 +75,7 @@
 		9B3138692E63462B00D3AE6D = {
 			isa = PBXGroup;
 			children = (
-				9B3138742E63462B00D3AE6D /* DynamicalSystems */,
+				9B3138742E63462B00D3AE6D /* Sources */,
 				9B3138822E63462C00D3AE6D /* DynamicalSystemsTests */,
 				9B31388C2E63462C00D3AE6D /* DynamicalSystemsUITests */,
 				9B3138732E63462B00D3AE6D /* Products */,
@@ -108,7 +108,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				9B3138742E63462B00D3AE6D /* DynamicalSystems */,
+				9B3138742E63462B00D3AE6D /* Sources */,
 			);
 			name = DynamicalSystems;
 			packageProductDependencies = (
