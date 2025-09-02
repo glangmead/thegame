@@ -121,6 +121,63 @@ func ⊗ <Am, Ap, Bm, Bp, Cm, Cp, Dm, Dp>(
   )
 }
 
+// Tic Tac Toe
+enum TTTPlayer {
+  case x, o
+}
+
+enum TTTMark: Character, Identifiable {
+  case none = "⬜️"
+  case x = "x"
+  case o = "o"
+  var id: Self { self }
+}
+
+struct TTTState {
+  var board: [[TTTMark]] = [[.none, .none, .none],[.none, .none, .none],[.none, .none, .none]]
+  var lastMark: TTTMark = .none // the player who put the most recent mark shown on the board
+  
+  var winner: TTTPlayer? {
+    if lastMark == .none { return nil }
+    return nil // TODO: look for three in a row of lastMark
+  }
+}
+
+struct TicTacToeView: View {
+  @State private var state = TTTState()
+  var body: some View {
+    VStack {
+      HStack {
+        ForEach(state.board[0]) {mark in
+          spaceView(mark)
+        }
+      }
+      HStack {
+        ForEach(state.board[1]) {mark in
+          spaceView(mark)
+        }
+      }
+      HStack {
+        ForEach(state.board[2]) {mark in
+          spaceView(mark)
+        }
+      }
+    }
+  }
+  
+  @ViewBuilder func spaceView(_ mark: TTTMark) -> some View {
+    switch mark {
+    case .none:
+      Button("–") { }
+      .font(.largeTitle)
+    default:
+      Text("\(mark.rawValue) ").font(.largeTitle)
+    }
+  }
+  
+}
+
+
 // Clock example from DJM's book
 
 enum Hour: Int {
@@ -179,15 +236,6 @@ let meridiem_clock_coupling = Lens<
 )
 
 let meridiem_clock = meridiem_clock_free <=> meridiem_clock_coupling
-
-struct TicTacToeView: View {
-  var body: some View {
-    VStack {
-      Text("Hi")
-      Text("There")
-    }
-  }
-}
 
 struct MeridiemClockView: View {
   @State private var time: (Meridiem, Hour) = (.am, .eleven)
