@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		9BB9EBD22E9431ED00163BC3 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB9EBD12E9431ED00163BC3 /* ComposableArchitecture */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		9B3138802E63462C00D3AE6D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		9B3138722E63462B00D3AE6D /* DynamicalSystems.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DynamicalSystems.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9B31387F2E63462C00D3AE6D /* DynamicalSystemsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DynamicalSystemsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9B3138892E63462C00D3AE6D /* DynamicalSystemsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DynamicalSystemsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9BB9EBEB2E95AF9700163BC3 /* REPL.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = REPL.playground; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +57,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9BB9EBD22E9431ED00163BC3 /* ComposableArchitecture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,9 +81,11 @@
 		9B3138692E63462B00D3AE6D = {
 			isa = PBXGroup;
 			children = (
+				9BB9EBEB2E95AF9700163BC3 /* REPL.playground */,
 				9B3138742E63462B00D3AE6D /* Sources */,
 				9B3138822E63462C00D3AE6D /* DynamicalSystemsTests */,
 				9B31388C2E63462C00D3AE6D /* DynamicalSystemsUITests */,
+				9BB9EBD02E9431ED00163BC3 /* Frameworks */,
 				9B3138732E63462B00D3AE6D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +98,13 @@
 				9B3138892E63462C00D3AE6D /* DynamicalSystemsUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		9BB9EBD02E9431ED00163BC3 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,6 +127,7 @@
 			);
 			name = DynamicalSystems;
 			packageProductDependencies = (
+				9BB9EBD12E9431ED00163BC3 /* ComposableArchitecture */,
 			);
 			productName = DynamicalSystems;
 			productReference = 9B3138722E63462B00D3AE6D /* DynamicalSystems.app */;
@@ -572,6 +588,14 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9BB9EBD12E9431ED00163BC3 /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B31389C2E63463900D3AE6D /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9B31386A2E63462B00D3AE6D /* Project object */;
 }
