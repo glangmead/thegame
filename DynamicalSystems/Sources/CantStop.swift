@@ -462,6 +462,9 @@ struct CantStop: LookaheadReducer {
       case .progressColumns:
         state.advanceWhite(in: state.assignedDicePair)
         state.assignedDicePair = Column.none
+        if Die.allCases.map({ state.dice($0) }).allSatisfy({ $0 == DSix.none }) {
+          state.phase = .notRolled
+        }
         return .none
       case let .sequence(actions):
         return Effect<Action>.concatenate(
@@ -473,7 +476,7 @@ struct CantStop: LookaheadReducer {
 
   static func twod6_total(_ dice: Pair<DSix>) -> Column {
     let col = Column(rawValue: dice.fst.rawValue + dice.snd.rawValue) ?? .none
-    print("\(dice.fst.name)/\(dice.fst.rawValue) + \(dice.snd.name)/\(dice.snd.rawValue) = \(col.name)")
+    //print("\(dice.fst.name)/\(dice.fst.rawValue) + \(dice.snd.name)/\(dice.snd.rawValue) = \(col.name)")
     return col
   }
 }
@@ -486,7 +489,8 @@ struct CantStopView: View {
       ForEach(Column.allCases, id: \.self) { col in
         if col != .none {
           ForEach(store.state.boardReport[col]!, id: \.self) { piece in
-            Text("\(col.rawValue): \(piece.rawValue)")
+            let row = store.state.position(piece).row
+            Text("\(col.name).\(row): \(piece.name)")
           }
         }
       }
