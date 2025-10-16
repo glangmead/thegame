@@ -14,26 +14,7 @@ protocol LookaheadReducer<State, Action>: Reducer {
   func allowedActions(state: State) -> [Action]
 }
 
-// A State may often be decomposed into a collection of variables, and a choice of value for each.
-// By "variable" we mean an entire type, like "enum Piece". There may be multiple pieces, so multiple copies of "enum Piece."
-// This is a map f from Fin n to Enum, the classifying space of enums.
-// Over Enum is a type family Enum_* of values each can take on.
-// The pi type of this family f is the set/type S of states.
-
-// The type A of actions would then be some sparse set of new values for some of the variables. Maybe we can assume that we can always decompose them into a new value for *one* variable.
-
-// This makes the lens S x A -> S very transparent: it's to patch S with A's choice of value!
-
-// The set of possible actions is a map S -> PA (power set of A). This would start off as the sigma type of f, i.e. choose one variable and a value for it. But then we'd cut that down. We might eliminate the trivial ones that don't differ from S. And some might be illegal.
-
-// Legality could maybe then be viewed as a function \pit f x \sit f -> Bool, i.e. given a state S (a term of \pit) and a candidate new value (a term of \sit), is it legal.
-
-// Let's be skeptical of this model. What game mechanics don't obviously fit?
-// - player turn
-// - turn phase
-// - having a bunch of cards with rules on them
-
-enum Column: Int, CaseIterable, Equatable {
+enum Column: Int, CaseIterable, Equatable, Hashable {
   case none = 0
   case two = 2, three, four, five, six, seven, eight, nine, ten, eleven, twelve
   
@@ -47,7 +28,7 @@ let colHeights: [Column: Int] = [
   .eight: 11, .nine:  9, .ten:  7, .eleven: 5, .twelve: 3,
 ]
 
-enum Piece: Int, CaseIterable, Equatable {
+enum Piece: Int, CaseIterable, Equatable, Hashable {
   case none    = 0
   case white1  = 1,  white2, white3
   case red     = 10
@@ -63,7 +44,7 @@ enum Piece: Int, CaseIterable, Equatable {
   }
 }
 
-enum DSix: Int, CaseIterable, Equatable {
+enum DSix: Int, CaseIterable, Equatable, Hashable {
   case none = 0, one = 1, two, three, four, five, six
   
   static func random() -> DSix {
@@ -74,7 +55,7 @@ enum DSix: Int, CaseIterable, Equatable {
   }
 }
 
-enum Die: Int, CaseIterable, Equatable {
+enum Die: Int, CaseIterable, Equatable, Hashable {
   case die1 = 1, die2, die3, die4
   var name: String {
     String(describing: self)
@@ -106,20 +87,20 @@ struct DieValue: Hashable, Equatable {
   }
 }
 
-let board: Board = [
-  Column.two:    [Int](repeating: 0, count: colHeights[Column.two]!),
-  Column.three:  [Int](repeating: 0, count: colHeights[Column.three]!),
-  Column.four:   [Int](repeating: 0, count: colHeights[Column.four]!),
-  Column.five:   [Int](repeating: 0, count: colHeights[Column.five]!),
-  Column.six:    [Int](repeating: 0, count: colHeights[Column.six]!),
-  Column.seven:  [Int](repeating: 0, count: colHeights[Column.seven]!),
-  Column.eight:  [Int](repeating: 0, count: colHeights[Column.eight]!),
-  Column.nine:   [Int](repeating: 0, count: colHeights[Column.nine]!),
-  Column.ten:    [Int](repeating: 0, count: colHeights[Column.ten]!),
-  Column.eleven: [Int](repeating: 0, count: colHeights[Column.eleven]!),
-  Column.twelve: [Int](repeating: 0, count: colHeights[Column.twelve]!)
-]
-
+//let board: Board = [
+//  Column.two:    [Int](repeating: 0, count: colHeights[Column.two]!),
+//  Column.three:  [Int](repeating: 0, count: colHeights[Column.three]!),
+//  Column.four:   [Int](repeating: 0, count: colHeights[Column.four]!),
+//  Column.five:   [Int](repeating: 0, count: colHeights[Column.five]!),
+//  Column.six:    [Int](repeating: 0, count: colHeights[Column.six]!),
+//  Column.seven:  [Int](repeating: 0, count: colHeights[Column.seven]!),
+//  Column.eight:  [Int](repeating: 0, count: colHeights[Column.eight]!),
+//  Column.nine:   [Int](repeating: 0, count: colHeights[Column.nine]!),
+//  Column.ten:    [Int](repeating: 0, count: colHeights[Column.ten]!),
+//  Column.eleven: [Int](repeating: 0, count: colHeights[Column.eleven]!),
+//  Column.twelve: [Int](repeating: 0, count: colHeights[Column.twelve]!)
+//]
+//
 enum PlayerAmongTwo: Int, Hashable, Equatable {
   case player1 = 10
   case player2 = 30
@@ -247,64 +228,11 @@ func pairs<T>(of list: Array<T>) -> [Pair<T>] {
   return pairs
 }
 
-// the rules are captured by a set of ConditionalActions
-
 @Reducer
 struct CantStop: LookaheadReducer {
-  typealias StatePredicate = (State) -> Bool // maybe one day a Predicate type
-  
-  struct ConditionalAction {
-    let condition: StatePredicate
-    let actions: (State) -> [Action]
-  }
-  
-  typealias Rule = ConditionalAction
-  
-  var rules: [Rule] = [
-    Rule(condition: { $0.phase == .notRolled }, actions: { _ in [.rollDice] }),
-    Rule(condition: { $0.phase == .notRolled }, actions: { _ in [.pass] }),
-    // TODO: is the next rule a composition of smaller rules?
-    Rule(
-      condition: { $0.phase == .rolled },
-      actions: { state in
-        // all pairs of rolled dice. dice with value .none have been assigned already
-        let dicePairings: [Pair<Die>] = pairs(of: Die.allCases.filter { die in state.dice(die) != DSix.none})
-        return dicePairings.compactMap { pairing in
-          let col = twod6_total(pairing.map {state.dice($0)})
-          let whiteCols = [Piece.white1, .white2, .white3].map { state.position($0).col }
-          if whiteCols.contains(col) || whiteCols.contains(.none) {
-            return Action.sequence([.assignDicePair(pairing), .progressColumns])
-          }
-          return nil
-        }
-      }
-    ),
-//    Rule(
-//      condition: { $0.phase == .rolled },
-//      actions: { state in
-//        ASSIGN.actions(state).flatMap { a1 in
-//          var nextState = state
-//          CantStop.reduce(state: &nextState, action: a1)
-//          let pairs = ASSIGN.actions(nextState).map { a2 in
-//            CantStop.Action.sequence([a1, a2])
-//          }
-//          return pairs
-//        }
-//      }
-//    )
-  ]
-
-  func allowedActions(state: State) -> [Action] {
-    rules.flatMap { rule in
-      if rule.condition(state) {
-        return rule.actions(state)
-      } else {
-        return [Action]()
-      }
-    }
-  }
-  
   // the pi type of the family, i.e. a type of sections of the family
+  // I could go farther here, having slots on the board for the assignment of dice, and even slots on the board for a dice roll, where the die becomes just a featureless token occupying a "Four" space.
+  // Similarly the player and phase could be marked with tokens.
   @ObservableState
   struct State {
     var position: (Piece) -> BoardSpot = { _ in BoardSpot(col: .none, row: 0)}
@@ -377,6 +305,8 @@ struct CantStop: LookaheadReducer {
       }
     }
   }
+ 
+  typealias StatePredicate = (State) -> Bool // maybe one day a Predicate type
   
   // the sigma type of the type family: pairs of (component, value)
   // The state will supply some context, such as who is performing the action
@@ -386,6 +316,9 @@ struct CantStop: LookaheadReducer {
     case advancePlayer
     
     // actions that are not updates of a component
+    // But these could in fact be treated as such updates
+    // The PhaseMarker is a piece, taking values in Phase.
+    // There coudld be assignment boxes where two dice are placed.
     case pass
     case rollDice
     case assignDicePair(Pair<Die>)
@@ -405,6 +338,61 @@ struct CantStop: LookaheadReducer {
           .joined(separator: ", ")
       default:
         return String(describing: self)
+      }
+    }
+  }
+  
+  struct ConditionalAction {
+    let condition: StatePredicate
+    let actions: (State) -> [Action]
+  }
+  
+  // the rules are captured by a set of ConditionalActions
+  typealias Rule = ConditionalAction
+  
+  // Rule: State -> (Bool, [Action])
+  // not a good name. the reducer is also rules
+  // (State, Action) -> State
+  var rules: [Rule] = [
+    Rule(condition: { $0.phase == .notRolled }, actions: { _ in [.rollDice] }),
+    Rule(condition: { $0.phase == .notRolled }, actions: { _ in [.pass] }),
+    // TODO: is the next rule a composition of smaller rules?
+    Rule(
+      condition: { $0.phase == .rolled },
+      actions: { state in
+        // all pairs of rolled dice. dice with value .none have been assigned already
+        let dicePairings: [Pair<Die>] = pairs(of: Die.allCases.filter { die in state.dice(die) != DSix.none})
+        return dicePairings.compactMap { pairing in
+          let col = twod6_total(pairing.map {state.dice($0)})
+          let whiteCols = [Piece.white1, .white2, .white3].map { state.position($0).col }
+          if whiteCols.contains(col) || whiteCols.contains(.none) {
+            return Action.sequence([.assignDicePair(pairing), .progressColumns])
+          }
+          return nil
+        }
+      }
+    ),
+    //    Rule(
+    //      condition: { $0.phase == .rolled },
+    //      actions: { state in
+    //        ASSIGN.actions(state).flatMap { a1 in
+    //          var nextState = state
+    //          CantStop.reduce(state: &nextState, action: a1)
+    //          let pairs = ASSIGN.actions(nextState).map { a2 in
+    //            CantStop.Action.sequence([a1, a2])
+    //          }
+    //          return pairs
+    //        }
+    //      }
+    //    )
+  ]
+  
+  func allowedActions(state: State) -> [Action] {
+    rules.flatMap { rule in
+      if rule.condition(state) {
+        return rule.actions(state)
+      } else {
+        return [Action]()
       }
     }
   }
