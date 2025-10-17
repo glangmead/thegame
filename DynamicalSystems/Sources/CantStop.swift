@@ -10,7 +10,7 @@ import SwiftUI
 
 protocol LookaheadReducer<State, Action>: Reducer {
   associatedtype Rule
-  var rules: [Rule] { get set }
+  static func rules() -> [Rule]
   func allowedActions(state: State) -> [Action]
 }
 
@@ -42,14 +42,35 @@ enum Piece: Int, CaseIterable, Equatable, Hashable {
   var name: String {
     String(describing: self)
   }
+  static func whiteSet() -> Set<Piece> {
+    Set([.white1, .white2, .white3])
+  }
+  
+  static func redSet() -> Set<Piece> {
+    Set([.red2, .red3, .red4, .red5, .red6, .red7, .red8, .red9, .red10, .red11, .red12])
+  }
+  
+  static func greenSet() -> Set<Piece> {
+    Set([.green2, .green3, .green4, .green5, .green6, .green7, .green8, .green9, .green10, .green11, .green12])
+  }
+  
+  static func blueSet() -> Set<Piece> {
+    Set([.blue2, .blue3, .blue4, .blue5, .blue6, .blue7, .blue8, .blue9, .blue10, .blue11, .blue12])
+  }
+  
+  static func yellowSet() -> Set<Piece> {
+    Set([.yellow2, .yellow3, .yellow4, .yellow5, .yellow6, .yellow7, .yellow8, .yellow9, .yellow10, .yellow11, .yellow12])
+  }
+  
 }
 
 enum DSix: Int, CaseIterable, Equatable, Hashable {
   case none = 0, one = 1, two, three, four, five, six
   
   static func random() -> DSix {
-    return DSix.allCases.filter { $0 != .none}.randomElement()!
+    return DSix.four
   }
+  
   var name: String {
     String(describing: self)
   }
@@ -206,17 +227,6 @@ enum Component: Hashable, Equatable {
   }
 }
 
-// patch a function from an equatable domain with an exception x ↦ y
-func override<A: Equatable, B>(base: @escaping (A) -> B, exception: (a: A, b: B)) -> (A) -> B {
-  return { domainPoint in
-    if domainPoint == exception.0 {
-      return exception.1
-    }
-    return base(domainPoint)
-  }
-}
-
-
 func pairs<T>(of list: Array<T>) -> [Pair<T>] {
   var pairs = [Pair<T>]()
   let len = list.count
@@ -234,19 +244,29 @@ struct CantStop: LookaheadReducer {
   // I could go farther here, having slots on the board for the assignment of dice, and even slots on the board for a dice roll, where the die becomes just a featureless token occupying a "Four" space.
   // Similarly the player and phase could be marked with tokens.
   @ObservableState
-  struct State {
-    var position: (Piece) -> BoardSpot = { _ in BoardSpot(col: .none, row: 0)}
-    var dice: (Die) -> DSix = { _ in DSix.none }
+  struct State: Equatable {
+    var position: [Piece: BoardSpot] = [:]
+    var dice: [Die: DSix] = [:]
     var assignedDicePair = Column.none
     var player = Player.twop(.player1)
     var phase = Phase.notRolled
     
     init() {
-      position =         { _ in return BoardSpot(col: .none, row: 0)}
-      dice =             { _ in return DSix.none }
+      for piece in Piece.allCases {
+        position[piece] = BoardSpot(col: .none, row: 0)
+      }
+      for die in Die.allCases {
+        dice[die] = DSix.none
+      }
       assignedDicePair = Column.none
-      player =           Player.twop(PlayerAmongTwo.player1)
-      phase =            Phase.notRolled
+      player = Player.twop(PlayerAmongTwo.player1)
+      phase = Phase.notRolled
+    }
+    
+    func piecesAt(_ spot: BoardSpot) -> [Piece] {
+      return Piece.allCases.filter {
+        position[$0] == spot
+      }
     }
     
     var boardReport: [Column: [Piece]] {
@@ -255,7 +275,7 @@ struct CantStop: LookaheadReducer {
         report[col] = []
       }
       for piece in Piece.allCases {
-        report[self.position(piece).col]!.append(piece)
+        report[self.position[piece]!.col]!.append(piece)
       }
       return report
     }
@@ -263,22 +283,19 @@ struct CantStop: LookaheadReducer {
     var diceReport: [Die: DSix] {
       var report: [Die: DSix] = [:]
       for die in Die.allCases {
-        report[die] = dice(die)
+        report[die] = dice[die]!
       }
       return report
     }
     
     mutating func advanceWhite(in col: Column) {
       let whites = [Piece.white1, .white2, .white3]
-      var white = whites.first(where: {position($0).col == col} )
+      var white = whites.first(where: {position[$0]?.col == col} )
       if white == nil {
-        white = whites.first(where: {position($0).col == .none})
+        white = whites.first(where: {position[$0]?.col == Column.none})
       }
-      let row = position(white!).row
-      position = override(
-        base: position,
-        exception: (white!, BoardSpot(col: col, row: row + 1))
-      )
+      let row = position[white!]?.row
+      position[white!] = BoardSpot(col: col, row: row! + 1)
     }
     
     mutating func savePlace() {
@@ -293,20 +310,47 @@ struct CantStop: LookaheadReducer {
       }
       [Piece.white1, .white2, .white3].forEach { white in
         // move a colored piece to that spot
-        position = override(base: position, exception: (
-          Piece(rawValue: (playerInt + position(white).col.rawValue))!,
-          BoardSpot(col: position(white).col, row: position(white).row)
-        ))
+        position[Piece(rawValue: (playerInt + position[white]!.col.rawValue))!] = BoardSpot(col: position[white]!.col, row: position[white]!.row)
         // move the white piece off the board
-        position = override(base: position, exception: (
-          white,
-          BoardSpot(col: .none, row: 0)
-        ))
+        position[white] = BoardSpot(col: .none, row: 0)
       }
     }
   }
- 
+  
   typealias StatePredicate = (State) -> Bool // maybe one day a Predicate type
+  
+  enum Situation: Hashable, Equatable {
+    case whiteAtTop(Column)
+    case claimed(Column)
+    case diceBusted
+    case won(Player)
+  }
+  
+  var situationSpecs: (Situation) -> StatePredicate = { situation in
+    switch situation {
+    case .whiteAtTop(let col):
+      return { state in
+        colHeights.contains(where: { (col, row) in
+          !Set(state.piecesAt(BoardSpot(col: col, row: row))).isDisjoint(with: Piece.whiteSet())
+        })
+      }
+    case .claimed(let col):
+      return { state in
+        let coloredPieces = Piece.redSet().union(Piece.greenSet()).union(Piece.blueSet()).union(Piece.yellowSet())
+        return colHeights.contains(where: { (col, row) in
+          !Set(state.piecesAt(BoardSpot(col: col, row: row))).isDisjoint(with: coloredPieces)
+        })
+      }
+    case .diceBusted:
+      return { state in
+        return false // TODO: implement
+      }
+    case .won(let player):
+      return { state in
+        return false // TODO: implement
+      }
+    }
+  }
   
   // the sigma type of the type family: pairs of (component, value)
   // The state will supply some context, such as who is performing the action
@@ -345,6 +389,25 @@ struct CantStop: LookaheadReducer {
   struct ConditionalAction {
     let condition: StatePredicate
     let actions: (State) -> [Action]
+    
+    func append(_ second: ConditionalAction) -> ConditionalAction {
+      return ConditionalAction(
+        condition: self.condition, // to enter into this sequence, you just need the first condition to be met
+        actions: { state in
+          self.actions(state).flatMap { a1 in
+            var nextState = state
+            let _ = reduce(state: &nextState, action: a1)
+            if second.condition(nextState) {
+              return second.actions(nextState).map { a2 in
+                return Action.sequence([a1, a2])
+              }
+            } else {
+              return [a1]
+            }
+          }
+        }
+      )
+    }
   }
   
   // the rules are captured by a set of ConditionalActions
@@ -353,42 +416,29 @@ struct CantStop: LookaheadReducer {
   // Rule: State -> (Bool, [Action])
   // not a good name. the reducer is also rules
   // (State, Action) -> State
-  var rules: [Rule] = [
-    Rule(condition: { $0.phase == .notRolled }, actions: { _ in [.rollDice] }),
-    Rule(condition: { $0.phase == .notRolled }, actions: { _ in [.pass] }),
+  static func rules() -> [Rule] {
+    let rule1 = Rule(condition: { $0.phase == .notRolled }, actions: { _ in [.rollDice, .pass] })
     // TODO: is the next rule a composition of smaller rules?
-    Rule(
+    let rule2 = Rule(
       condition: { $0.phase == .rolled },
       actions: { state in
         // all pairs of rolled dice. dice with value .none have been assigned already
-        let dicePairings: [Pair<Die>] = pairs(of: Die.allCases.filter { die in state.dice(die) != DSix.none})
+        let dicePairings: [Pair<Die>] = pairs(of: Die.allCases.filter { die in state.dice[die] != DSix.none})
         return dicePairings.compactMap { pairing in
-          let col = twod6_total(pairing.map {state.dice($0)})
-          let whiteCols = [Piece.white1, .white2, .white3].map { state.position($0).col }
+          let col = twod6_total(pairing.map {state.dice[$0]!})
+          let whiteCols = [Piece.white1, .white2, .white3].map { state.position[$0]!.col }
           if whiteCols.contains(col) || whiteCols.contains(.none) {
             return Action.sequence([.assignDicePair(pairing), .progressColumns])
           }
           return nil
         }
       }
-    ),
-    //    Rule(
-    //      condition: { $0.phase == .rolled },
-    //      actions: { state in
-    //        ASSIGN.actions(state).flatMap { a1 in
-    //          var nextState = state
-    //          CantStop.reduce(state: &nextState, action: a1)
-    //          let pairs = ASSIGN.actions(nextState).map { a2 in
-    //            CantStop.Action.sequence([a1, a2])
-    //          }
-    //          return pairs
-    //        }
-    //      }
-    //    )
-  ]
+    )
+    return [rule1, rule2.append(rule2)]
+  }
   
   func allowedActions(state: State) -> [Action] {
-    rules.flatMap { rule in
+    CantStop.rules().flatMap { rule in
       if rule.condition(state) {
         return rule.actions(state)
       } else {
@@ -397,71 +447,55 @@ struct CantStop: LookaheadReducer {
     }
   }
   
-  struct ActionView: View {
-    let action: Action
-    var body: some View {
-      Text(action.name)
+  static func reduce(state: inout State, action: Action) -> Effect<Action> {
+    switch action {
+    case let .movePieceTo(ppos):
+      state.position[ppos.piece] = ppos.position
+      return .none
+    case .advancePlayer:
+      state.player = state.player.nextPlayer()
+      state.phase = .notRolled
+      return .none
+    case .pass:
+      state.savePlace()
+      state.player = state.player.nextPlayer()
+      state.phase = .notRolled
+      return .none
+    case .rollDice:
+      state.dice[.die1] = DSix.random()
+      state.dice[.die2] = DSix.random()
+      state.dice[.die3] = DSix.random()
+      state.dice[.die4] = DSix.random()
+      state.phase = .rolled
+      return .none
+    case let .assignDicePair(pairing):
+      // copy the resulting column to the assignedDicePair component
+      state.assignedDicePair = CantStop.twod6_total(pairing.map { state.dice[$0]! })
+      // erase/consume the values of these two dice
+      for die in [pairing.fst, pairing.snd] {
+        state.dice[die] = DSix.none
+      }
+      return .none
+    case .progressColumns:
+      state.advanceWhite(in: state.assignedDicePair)
+      state.assignedDicePair = Column.none
+      if Die.allCases.map({ state.dice[$0] }).allSatisfy({ $0 == DSix.none }) {
+        state.phase = .notRolled
+      }
+      return .none
+    case let .sequence(actions):
+      return Effect<Action>.concatenate(
+        actions.map { .send($0) }
+      )
     }
   }
   
   var body: some Reducer<State, Action> {
-    Reduce { state, action in
-      switch action {
-      case let .movePieceTo(ppos):
-        state.position = override(base: state.position, exception: (ppos.piece, ppos.position))
-        return .none
-      case .advancePlayer:
-        state.player = state.player.nextPlayer()
-        state.phase = .notRolled
-        return .none
-      case .pass:
-        state.savePlace()
-        state.player = state.player.nextPlayer()
-        state.phase = .notRolled
-        return .none
-      case .rollDice:
-        let roll = [DSix.random(), DSix.random(), DSix.random(), DSix.random()]
-        state.dice = { die in
-          switch die {
-          
-          case .die1:
-            return roll[0]
-          case .die2:
-            return roll[1]
-          case .die3:
-            return roll[2]
-          case .die4:
-            return roll[3]
-          }
-        }
-        state.phase = .rolled
-        return .none
-      case let .assignDicePair(pairing):
-        // copy the resulting column to the assignedDicePair component
-        state.assignedDicePair = CantStop.twod6_total(pairing.map { state.dice($0) })
-        // erase/consume the values of these two dice
-        for die in [pairing.fst, pairing.snd] {
-          state.dice = override(
-            base: state.dice,
-            exception: (die, DSix.none)
-          )
-        }
-        return .none
-      case .progressColumns:
-        state.advanceWhite(in: state.assignedDicePair)
-        state.assignedDicePair = Column.none
-        if Die.allCases.map({ state.dice($0) }).allSatisfy({ $0 == DSix.none }) {
-          state.phase = .notRolled
-        }
-        return .none
-      case let .sequence(actions):
-        return Effect<Action>.concatenate(
-          actions.map { .send($0) }
-        )
-      }
+    Reduce { st, act in
+      return CantStop.reduce(state: &st, action: act)
     }
   }
-
+  
   static func twod6_total(_ dice: Pair<DSix>) -> Column {
     let col = Column(rawValue: dice.fst.rawValue + dice.snd.rawValue) ?? .none
     //print("\(dice.fst.name)/\(dice.fst.rawValue) + \(dice.snd.name)/\(dice.snd.rawValue) = \(col.name)")
@@ -477,7 +511,7 @@ struct CantStopView: View {
       ForEach(Column.allCases, id: \.self) { col in
         if col != .none {
           ForEach(store.state.boardReport[col]!, id: \.self) { piece in
-            let row = store.state.position(piece).row
+            let row = store.state.position[piece]!.row
             Text("\(col.name).\(row): \(piece.name)")
           }
         }
