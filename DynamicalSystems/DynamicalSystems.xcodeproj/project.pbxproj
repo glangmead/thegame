@@ -39,7 +39,9 @@
 		9B8CDCD22EA2BC5D00BE059C /* Exceptions for "Sources" folder in "DynamicalSystemsTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				CantStop.swift,
+				CantStop/CantStopView.swift,
+				CantStop/Components.swift,
+				CantStop/Engine.swift,
 				Lens.swift,
 				Pair.swift,
 			);
@@ -99,11 +101,11 @@
 			isa = PBXGroup;
 			children = (
 				9BB9EBEB2E95AF9700163BC3 /* REPL.playground */,
-				9B3138742E63462B00D3AE6D /* Sources */,
 				9B3138822E63462C00D3AE6D /* DynamicalSystemsTests */,
 				9B31388C2E63462C00D3AE6D /* DynamicalSystemsUITests */,
 				9BB9EBD02E9431ED00163BC3 /* Frameworks */,
 				9B3138732E63462B00D3AE6D /* Products */,
+				9B3138742E63462B00D3AE6D /* Sources */,
 			);
 			sourceTree = "<group>";
 		};

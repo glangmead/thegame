@@ -24,3 +24,14 @@ extension Pair {
   }
 }
 
+func pairs<T>(of list: Array<T>) -> [Pair<T>] {
+  var pairs = [Pair<T>]()
+  let len = list.count
+  for left in 0..<len {
+    for right in left+1..<len {
+      pairs.append(Pair<T>(fst: list[left], snd: list[right]))
+    }
+  }
+  return pairs
+}
+
