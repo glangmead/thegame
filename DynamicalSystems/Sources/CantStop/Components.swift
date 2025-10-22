@@ -94,6 +94,10 @@ enum Piece: CaseIterable, Equatable, Hashable {
     }
   }
   
+  static var whitePieces: [Piece] {
+    return [Piece.white(.white1), Piece.white(.white2), Piece.white(.white3)]
+  }
+  
   static var allCases: [Piece] {
     return [Piece.none]
     + WhitePiece.allCases.map { Piece.white($0) }
@@ -232,6 +236,38 @@ enum Player: Hashable, Equatable {
         return .fourp(.player4)
       case .player4:
         return .fourp(.player1)
+      }
+    }
+  }
+
+  var name: String {
+    switch self {
+    case .twop(let p):
+      switch p {
+      case .player1:
+        return "Player 1 of 2"
+      case .player2:
+        return "Player 2 of 2"
+      }
+    case .threep(let p):
+      switch p {
+      case .player1:
+        return "Player 1 of 3"
+      case .player2:
+        return "Player 2 of 3"
+      case .player3:
+        return "Player 3 of 3"
+      }
+    case .fourp(let p):
+      switch p {
+      case .player1:
+        return "Player 1 of 4"
+      case .player2:
+        return "Player 2 of 4"
+      case .player3:
+        return "Player 3 of 4"
+      case .player4:
+        return "Player 4 of 4"
       }
     }
   }

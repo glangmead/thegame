@@ -12,24 +12,31 @@ struct CantStopView: View {
   let store: StoreOf<CantStop>
   
   var body: some View {
-    Form {
-      ForEach(Column.allCases, id: \.self) { col in
-        if col != .none {
-          ForEach(store.state.boardReport[col]!, id: \.self) { piece in
-            let row = store.state.position[piece]!.row
-            Text("\(col.name).\(row): \(piece.name)")
+    NavigationStack {
+      Button("Recheck rules") {
+        let _ = CantStop.allowedActions(state: store.state)
+      }
+      Text("\(CantStop.allowedActions(state: store.state).count) actions available")
+      Form {
+        ForEach(Column.allCases, id: \.self) { col in
+          if col != .none {
+            ForEach(store.state.boardReport[col]!, id: \.self) { piece in
+              let row = store.state.position[piece]!.row
+              Text("\(col.name).\(row): \(piece.name)")
+            }
+          }
+        }
+        ForEach(Die.allCases, id: \.self) { die in
+          let dieState = store.state.diceReport[die]!
+          Text("\(die.name): \(dieState.name)")
+        }
+        ForEach(CantStop.allowedActions(state: store.state), id: \.self) { action in
+          Button("\(action.name)") {
+            store.send(action)
           }
         }
       }
-      ForEach(Die.allCases, id: \.self) { die in
-        let dieState = store.state.diceReport[die]!
-        Text("\(die.name): \(dieState.name)")
-      }
-      ForEach(CantStop.allowedActions(state: store.state), id: \.self) { action in
-        Button("\(action.name)") {
-          store.send(action)
-        }
-      }
+      .navigationTitle(store.state.player.name)
     }
   }
 }

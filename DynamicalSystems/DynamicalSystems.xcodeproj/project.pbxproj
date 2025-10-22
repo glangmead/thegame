@@ -42,6 +42,7 @@
 				CantStop/CantStopView.swift,
 				CantStop/Components.swift,
 				CantStop/Engine.swift,
+				CantStop/State.swift,
 				Lens.swift,
 				Pair.swift,
 			);
