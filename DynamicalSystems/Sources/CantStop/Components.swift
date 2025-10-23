@@ -7,20 +7,8 @@
 
 import Foundation
 
-enum Column: Int, CaseIterable, Equatable, Hashable, RawComparable {
-  case none = 0
-  case two = 2, three, four, five, six, seven, eight, nine, ten, eleven, twelve
-  
-  var name: String {
-    String(describing: self)
-  }
-}
-
-let colHeights: [Column: Int] = [
-  .two:   3,  .three: 5, .four: 7, .five:   9, .six:    11, .seven: 13,
-  .eight: 11, .nine:  9, .ten:  7, .eleven: 5, .twelve: 3,
-]
-
+/// Components and players
+///
 enum WhitePiece: Int, CaseIterable, Hashable {
   case white1  = 1,  white2, white3
 }
@@ -49,58 +37,14 @@ enum Piece: CaseIterable, Equatable, Hashable {
   case p3(Player3Piece)
   case p4(Player4Piece)
   
-  func isWhite() -> Bool {
-    switch self {
-    case .white(_):
-      return true
-    default:
-      return false
-    }
-  }
-  
-  func isPlayer1() -> Bool {
-    switch self {
-    case .p1(_):
-      return true
-    default:
-      return false
-    }
-  }
-  
-  func isPlayer2() -> Bool {
-    switch self {
-    case .p2(_):
-      return true
-    default:
-      return false
-    }
-  }
-  
-  func isPlayer3() -> Bool {
-    switch self {
-    case .p3(_):
-      return true
-    default:
-      return false
-    }
-  }
-  
-  func isPlayer4() -> Bool {
-    switch self {
-    case .p4(_):
-      return true
-    default:
-      return false
-    }
-  }
-  
+  // all the associated values of a particular case
   static var whitePieces: [Piece] {
     return [Piece.white(.white1), Piece.white(.white2), Piece.white(.white3)]
   }
   
   static var allCases: [Piece] {
     return [Piece.none]
-    + WhitePiece.allCases.map { Piece.white($0) }
+    +   WhitePiece.allCases.map { Piece.white($0) }
     + Player1Piece.allCases.map { Piece.p1($0) }
     + Player2Piece.allCases.map { Piece.p2($0) }
     + Player3Piece.allCases.map { Piece.p3($0) }
@@ -108,9 +52,45 @@ enum Piece: CaseIterable, Equatable, Hashable {
   }
   
   var name: String {
+    switch self {
+    case .white(let w):
+      String(describing: w)
+    case .p1(_):
+      "P1"
+    case .p2(_):
+      "P2"
+    case .p3(_):
+      "P3"
+    case .p4(_):
+      "P4"
+    default:
+      String(describing: self)
+    }
+  }
+}
+
+enum Die: Int, CaseIterable, Equatable, Hashable, RawComparable {
+  case die1 = 1, die2, die3, die4
+  var name: String {
     String(describing: self)
   }
 }
+
+/// Board positions/spaces/values (including values of singletons such as "the phase")
+///
+enum Column: Int, CaseIterable, Equatable, Hashable, RawComparable {
+  case none = 0
+  case two = 2, three, four, five, six, seven, eight, nine, ten, eleven, twelve
+  
+  var name: String {
+    String(describing: self)
+  }
+}
+
+let colHeights: [Column: Int] = [
+  .two:   3,  .three: 5, .four: 7, .five:   9, .six:    11, .seven: 13,
+  .eight: 11, .nine:  9, .ten:  7, .eleven: 5, .twelve: 3,
+]
 
 enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable {
   case none = 0, one = 1, two, three, four, five, six
@@ -119,13 +99,6 @@ enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable {
     return DSix.allCases.filter { $0 != .none}.randomElement()!
   }
   
-  var name: String {
-    String(describing: self)
-  }
-}
-
-enum Die: Int, CaseIterable, Equatable, Hashable, RawComparable {
-  case die1 = 1, die2, die3, die4
   var name: String {
     String(describing: self)
   }
@@ -239,7 +212,7 @@ enum Player: Hashable, Equatable {
       }
     }
   }
-
+  
   var name: String {
     switch self {
     case .twop(let p):
@@ -281,14 +254,4 @@ enum Phase: Hashable, Equatable {
   }
 }
 
-// the base space of game components
-enum Component: Hashable, Equatable {
-  case piece(Piece)
-  case die(Die)
-  case player
-  case phase
-  var name: String {
-    return String(describing: self)
-  }
-}
 

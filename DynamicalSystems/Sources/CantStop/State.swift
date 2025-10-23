@@ -152,6 +152,10 @@ extension CantStop {
         position[savingPiece] = whitePos
         // move the white piece off the board
         position[white] = Position(col: .none, row: 0)
+        
+        for die in Die.allCases {
+          dice[die] = DSix.none
+        }
       }
     }
   }
