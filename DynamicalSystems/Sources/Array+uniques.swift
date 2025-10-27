@@ -19,3 +19,9 @@ extension Array {
   }
 }
 
+extension Array where Element: Hashable {
+  func intersection(_ other: Array) -> Set<Element> {
+    return Set(self).intersection(Set(other))
+  }
+}
+

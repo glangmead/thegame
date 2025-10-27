@@ -20,22 +20,15 @@ struct CantStop: LookaheadReducer {
   
   // the sigma type of the type family: pairs of (component, value)
   // The state will supply some context, such as who is performing the action
-  enum Action: Hashable, Equatable {
-    // the state of one piece
+  enum Action: Hashable, Equatable, Sendable {
     case movePieceTo(PiecePosition)
     case advancePlayer
-    
-    // actions that are not updates of a component
-    // But these could in fact be treated as such updates
-    // The PhaseMarker is a piece, taking values in Phase.
-    // There coudld be assignment boxes where two dice are placed.
     case pass
     case bust
     case rollDice
-    case exitMovement
+    case setPhase(Phase)
     case assignDicePair(Pair<Die>)
     case progressColumn(Column)
-    
     // recursive: ordered list of actions
     case sequence([Action])
     
@@ -60,44 +53,42 @@ struct CantStop: LookaheadReducer {
   struct ConditionalAction {
     let condition: StatePredicate
     let actions: (State) -> [Action]
-    
-    func append(_ second: ConditionalAction) -> ConditionalAction {
-      return ConditionalAction(
-        condition: self.condition, // to enter into this sequence, you just need the first condition to be met
-        actions: pipe(
-          { state in
-            self.actions(state).flatMap { a1 in
-              // advance the state by a1 to see if we can append any a2 to it
-              var stateAfterA1 = state
-              let _ = reduce(state: &stateAfterA1, action: a1)
-
-              if second.condition(stateAfterA1) {
-                let secondActions = second.actions(stateAfterA1)
-                if secondActions.isEmpty {
-                  return [a1]
-                } else {
-                  return secondActions.map { a2 in
-                    if a2 != a1 {
-                      return Action.sequence([a1, a2])
-                    } else {
-                      return a1
-                    }
-                  }
-                }
-                
-              } else {
-                return [a1]
-              }
-            }
-          },
-          Set.init,
-          Array.init
-        )
-      )
-    }
   }
   
-  // the rules are captured by a set of ConditionalActions
+  static func append(_ first: ConditionalAction, _ second: ConditionalAction) -> ConditionalAction {
+    return ConditionalAction(
+      condition: first.condition, // to enter into this sequence, you just need the first condition to be met
+      actions: pipe(
+        { state in
+          first.actions(state).flatMap { a1 in
+            // advance the state by a1 to see if we can append any a2 to it
+            var stateAfterA1 = state
+            let _ = reduce(state: &stateAfterA1, action: a1)
+
+            if second.condition(stateAfterA1) {
+              let secondActions = second.actions(stateAfterA1)
+              if secondActions.isEmpty {
+                return [a1]
+              } else {
+                return secondActions.map { a2 in
+                  if a2 != a1 {
+                    return Action.sequence([a1, a2])
+                  } else {
+                    return a1
+                  }
+                }
+              }
+            } else {
+              return [a1]
+            }
+          }
+        },
+        Set.init, Array.init
+      )
+    )
+  }
+  
+  // the rules are captured by a set of ConditionalActions: if the game looks like this, you can do that
   typealias Rule = ConditionalAction
   
   // Rule: State -> (Bool, [Action])
@@ -110,7 +101,9 @@ struct CantStop: LookaheadReducer {
     )
 
     let moveRule = Rule(
-      condition: { $0.phase == .rolled },
+      condition: { state in
+        state.phase == .rolled
+      },
       actions: { state in
         // all pairs of rolled dice. dice with value .none have been assigned already
         let dicePairings: [Pair<Die>] = pairs(of: Die.allCases.filter { die in state.dice[die] != DSix.none})
@@ -137,12 +130,17 @@ struct CantStop: LookaheadReducer {
         if (numAssignedDice == 4) {
           return [Action.bust]
         } else {
-          return [Action.exitMovement]
+          return [Action.setPhase(Phase.notRolled)]
         }
       }
     )
     
-    return [passRule, bustRule, moveRule.append(moveRule)]
+    let winRule = Rule(
+      condition: { $0.win() },
+      actions: { _ in [] }
+    )
+    
+    return [passRule, bustRule, append(moveRule, moveRule), winRule]
   }
     
   static func allowedActions(state: State) -> [Action] {
@@ -179,17 +177,16 @@ struct CantStop: LookaheadReducer {
     switch action {
     case let .movePieceTo(ppos):
       state.position[ppos.piece] = ppos.position
+    case .setPhase(let phase):
+      state.phase = phase
     case .advancePlayer:
-      state.player = state.player.nextPlayer()
-      state.phase = .notRolled
+      state.advancePlayer()
     case .pass:
       state.savePlace()
-      state.player = state.player.nextPlayer()
-      state.phase = .notRolled
+      state.advancePlayer()
     case .bust:
       state.clearWhite()
-      state.player = state.player.nextPlayer()
-      state.phase = .notRolled
+      state.advancePlayer()
     case .rollDice:
       state.dice[.die1] = DSix.random()
       state.dice[.die2] = DSix.random()
@@ -204,10 +201,16 @@ struct CantStop: LookaheadReducer {
         state.dice[die] = DSix.none
       }
     case let .progressColumn(col):
-      state.advanceWhite(in: col)
+      let newPos = Position(
+        col: col,
+        row: state.farthestAlong(for: state.player, in: col) + 1
+      )
+      if let white = Piece.whitePieces.first(where: {state.position[$0]?.col == col}) {
+        state.position[white] = newPos
+      } else if let spareWhite = Piece.whitePieces.first(where: {state.position[$0]?.col == Column.none}) {
+        state.position[spareWhite] = newPos
+      }
       state.assignedDicePair = Column.none
-    case .exitMovement:
-      state.phase = .notRolled
     case let .sequence(actions):
       for action in actions {
         reduce(state: &state, action: action)

@@ -9,60 +9,62 @@ import Foundation
 
 /// Components and players
 ///
+enum Player: Hashable, Equatable, CaseIterable, Cyclic {
+  case player1, player2, player3, player4
+  
+  var name: String {
+    switch self {
+    case .player1:
+      return "Player 1"
+    case .player2:
+      return "Player 2"
+    case .player3:
+      return "Player 3"
+    case .player4:
+      return "Player 4"
+    }
+  }
+  
+  func next() -> Player {
+    switch self {
+    case .player1:
+      return .player2
+    case .player2:
+      return .player3
+    case .player3:
+      return .player4
+    case .player4:
+      return .player1
+    }
+  }
+}
+
 enum WhitePiece: Int, CaseIterable, Hashable {
   case white1  = 1,  white2, white3
-}
-
-enum Player1Piece: Int, CaseIterable, Hashable {
-  case p1p02 = 2, p1p03, p1p04, p1p05, p1p06, p1p07, p1p08, p1p09, p1p10, p1p11, p1p12
-}
-
-enum Player2Piece: Int, CaseIterable, Hashable {
-  case p2p02 = 2, p2p03, p2p04, p2p05, p2p06, p2p07, p2p08, p2p09, p1p10, p2p11, p2p12
-}
-
-enum Player3Piece: Int, CaseIterable, Hashable {
-  case p3p02 = 2, p3p03, p3p04, p3p05, p3p06, p3p07, p3p08, p3p09, p3p10, p3p11, p3p12
-}
-
-enum Player4Piece: Int, CaseIterable, Hashable {
-  case p4p02 = 2, p4p03, p4p04, p4p05, p4p06, p4p07, p4p08, p4p09, p4p10, p4p11, p4p12
 }
 
 enum Piece: CaseIterable, Equatable, Hashable {
   case none
   case white(WhitePiece)
-  case p1(Player1Piece)
-  case p2(Player2Piece)
-  case p3(Player3Piece)
-  case p4(Player4Piece)
+  case placeholder(Player, Column)
   
   // all the associated values of a particular case
-  static var whitePieces: [Piece] {
-    return [Piece.white(.white1), Piece.white(.white2), Piece.white(.white3)]
+  static var whitePieces: [Piece] { WhitePiece.allCases.map{ Piece.white($0) } }
+  
+  static func placeholders(for player: Player) -> [Piece] {
+    return Column.allCases.map { return .placeholder(player, $0) }
   }
   
   static var allCases: [Piece] {
     return [Piece.none]
-    +   WhitePiece.allCases.map { Piece.white($0) }
-    + Player1Piece.allCases.map { Piece.p1($0) }
-    + Player2Piece.allCases.map { Piece.p2($0) }
-    + Player3Piece.allCases.map { Piece.p3($0) }
-    + Player4Piece.allCases.map { Piece.p4($0) }
+    + WhitePiece.allCases.map { Piece.white($0) }
+    + Player.allCases.flatMap { placeholders(for: $0) }
   }
   
   var name: String {
     switch self {
     case .white(let w):
       String(describing: w)
-    case .p1(_):
-      "P1"
-    case .p2(_):
-      "P2"
-    case .p3(_):
-      "P3"
-    case .p4(_):
-      "P4"
     default:
       String(describing: self)
     }
@@ -112,6 +114,8 @@ struct Position: Hashable, Equatable {
   }
 }
 
+let columnTops: [Position] = Column.allCases.map { col in Position(col: col, row: colHeights[col] ?? 0) }
+
 struct PiecePosition: Hashable, Equatable {
   var piece: Piece
   var position: Position
@@ -128,130 +132,23 @@ struct DieValue: Hashable, Equatable {
   }
 }
 
-enum PlayerAmongTwo: Int, Hashable, Equatable {
-  case player1 = 10
-  case player2 = 30
-  var name: String {
-    switch self {
-    case .player1:
-      return "P1"
-    case .player2:
-      return "P2"
-    }
-  }
-}
-
-enum PlayerAmongThree: Int, Hashable, Equatable {
-  case player1 = 10
-  case player2 = 30
-  case player3 = 50
-  var name: String {
-    switch self {
-    case .player1:
-      return "P1"
-    case .player2:
-      return "P2"
-    case .player3:
-      return "P3"
-    }
-  }
-}
-
-enum PlayerAmongFour: Int, Hashable, Equatable {
-  case player1 = 10
-  case player2 = 30
-  case player3 = 50
-  case player4 = 70
-  var name: String {
-    switch self {
-    case .player1:
-      return "P1"
-    case .player2:
-      return "P2"
-    case .player3:
-      return "P3"
-    case .player4:
-      return "P4"
-    }
-  }
-}
-
-enum Player: Hashable, Equatable {
-  case twop(PlayerAmongTwo)
-  case threep(PlayerAmongThree)
-  case fourp(PlayerAmongFour)
-  
-  func nextPlayer() -> Player {
-    switch self {
-    case let .twop(p):
-      switch p {
-      case .player1:
-        return .twop(.player2)
-      case .player2:
-        return .twop(.player1)
-      }
-    case let .threep(p):
-      switch p {
-      case .player1:
-        return .threep(.player2)
-      case .player2:
-        return .threep(.player3)
-      case .player3:
-        return .threep(.player1)
-      }
-    case let .fourp(p):
-      switch p {
-      case .player1:
-        return .fourp(.player2)
-      case .player2:
-        return .fourp(.player3)
-      case .player3:
-        return .fourp(.player4)
-      case .player4:
-        return .fourp(.player1)
-      }
-    }
-  }
-  
-  var name: String {
-    switch self {
-    case .twop(let p):
-      switch p {
-      case .player1:
-        return "Player 1 of 2"
-      case .player2:
-        return "Player 2 of 2"
-      }
-    case .threep(let p):
-      switch p {
-      case .player1:
-        return "Player 1 of 3"
-      case .player2:
-        return "Player 2 of 3"
-      case .player3:
-        return "Player 3 of 3"
-      }
-    case .fourp(let p):
-      switch p {
-      case .player1:
-        return "Player 1 of 4"
-      case .player2:
-        return "Player 2 of 4"
-      case .player3:
-        return "Player 3 of 4"
-      case .player4:
-        return "Player 4 of 4"
-      }
-    }
-  }
-}
-
-enum Phase: Hashable, Equatable {
+enum Phase: Hashable, Equatable, Cyclic {
   case notRolled
   case rolled
   var name: String {
     return String(describing: self)
   }
+  func next() -> Phase {
+    switch self {
+    case .notRolled:
+      return .rolled
+    case .rolled:
+      return .notRolled
+    }
+  }
 }
 
+protocol Cyclic {
+  func next() -> Self
+}
 

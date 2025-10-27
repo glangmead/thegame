@@ -22,7 +22,9 @@ struct CantStopView: View {
           if col != .none {
             ForEach(store.state.boardReport[col]!, id: \.self) { piece in
               let row = store.state.position[piece]!.row
-              Text("\(col.name).\(row): \(piece.name)")
+              if row > 0 {
+                Text("\(col.name).\(row): \(piece.name)")
+              }
             }
           }
         }
