@@ -21,12 +21,10 @@ struct CantStop: LookaheadReducer {
   // the sigma type of the type family: pairs of (component, value)
   // The state will supply some context, such as who is performing the action
   enum Action: Hashable, Equatable, Sendable {
-    case movePieceTo(PiecePosition)
-    case advancePlayer
     case pass
     case bust
+    case claimVictory
     case rollDice
-    case setPhase(Phase)
     case assignDicePair(Pair<Die>)
     case progressColumn(Column)
     // recursive: ordered list of actions
@@ -34,8 +32,6 @@ struct CantStop: LookaheadReducer {
     
     var name: String {
       switch self {
-      case .movePieceTo(let ppos):
-        return "\(ppos.name)"
       case .assignDicePair(let pair):
         return "\(pair.fst.name)/\(pair.snd.name)"
       case .sequence(let actions):
@@ -96,21 +92,25 @@ struct CantStop: LookaheadReducer {
   // (State, Action) -> State
   static func rules() -> [Rule] {
     let passRule = Rule(
-      condition: { $0.phase == .notRolled },
-      actions: { _ in [.rollDice, .pass] }
-    )
-
-    let moveRule = Rule(
-      condition: { state in
-        state.phase == .rolled
-      },
+      condition: { $0.usableDice().isEmpty },
       actions: { state in
-        // all pairs of rolled dice. dice with value .none have been assigned already
-        let dicePairings: [Pair<Die>] = pairs(of: Die.allCases.filter { die in state.dice[die] != DSix.none})
+        if state.winAchieved() {
+          [.claimVictory]
+        } else {
+          [.rollDice, .pass]
+        }
+      }
+    )
+    
+    let moveRule = Rule(
+      condition: { $0.usableDice().isNonEmpty },
+      actions: { state in
+        let dicePairings: [Pair<Die>] = pairs(of: state.usableDice())
+        
         return dicePairings.compactMap { pairing in
           let col = twod6_total(pairing.map {state.dice[$0]!})
-          let whiteCols = Piece.whitePieces.map { state.position[$0]!.col }
-          if whiteCols.contains(col) || whiteCols.contains(Column.none) {
+          if !state.colIsWon(col) &&
+              (state.whiteIn(col: col) != nil || state.whiteIn(col: .none) != nil) {
             return Action.sequence([.assignDicePair(pairing), .progressColumn(col)])
           }
           return nil
@@ -118,39 +118,43 @@ struct CantStop: LookaheadReducer {
       }
     )
     
-    let bustRule = Rule(
+    let onePairOnlyRule = Rule(
       condition: { state in
-        let didRoll = state.phase == .rolled
-        let moveActions = moveRule.actions(state)
-        let actionsEmpty = moveActions.isEmpty
-        return didRoll && actionsEmpty
+        moveRule.actions(state).isEmpty &&
+        state.usableDice().count == 2
       },
       actions: { state in
-        let numAssignedDice = Die.allCases.filter({state.dice[$0]! != DSix.none}).count
-        if (numAssignedDice == 4) {
-          return [Action.bust]
+        if state.winAchieved() {
+          [.claimVictory]
         } else {
-          return [Action.setPhase(Phase.notRolled)]
+          [.rollDice, .pass]
         }
       }
     )
     
-    let winRule = Rule(
-      condition: { $0.win() },
-      actions: { _ in [] }
+    let bustRule = Rule(
+      condition: { state in
+        moveRule.actions(state).isEmpty &&
+        state.usableDice().count == 4
+      },
+      actions: { _ in [Action.bust] }
     )
-    
-    return [passRule, bustRule, append(moveRule, moveRule), winRule]
+
+    return [passRule, bustRule, onePairOnlyRule, append(moveRule, moveRule)]
   }
     
   static func allowedActions(state: State) -> [Action] {
-    CantStop.rules().flatMap { rule in
+    if state.ended {
+      return []
+    }
+    let actions = rules().flatMap { rule in
       if rule.condition(state) {
-        return removeSameState(state: state, actions: rule.actions(state))
+        return rule.actions(state)
       } else {
         return [Action]()
       }
     }
+    return removeSameState(state: state, actions: actions)
   }
   
   static func yieldsSameState(state: State, lhs: Action, rhs: Action) -> Bool {
@@ -175,24 +179,20 @@ struct CantStop: LookaheadReducer {
   
   static func reduce(state: inout State, action: Action) {
     switch action {
-    case let .movePieceTo(ppos):
-      state.position[ppos.piece] = ppos.position
-    case .setPhase(let phase):
-      state.phase = phase
-    case .advancePlayer:
-      state.advancePlayer()
+    case .claimVictory:
+      state.ended = true
     case .pass:
       state.savePlace()
       state.advancePlayer()
+      state.clearDice()
     case .bust:
       state.clearWhite()
       state.advancePlayer()
+      state.clearDice()
     case .rollDice:
-      state.dice[.die1] = DSix.random()
-      state.dice[.die2] = DSix.random()
-      state.dice[.die3] = DSix.random()
-      state.dice[.die4] = DSix.random()
-      state.phase = .rolled
+      for die in Die.allCases {
+        state.dice[die] = DSix.random()
+      }
     case let .assignDicePair(pairing):
       // copy the resulting column to the assignedDicePair component
       state.assignedDicePair = CantStop.twod6_total(pairing.map { state.dice[$0]! })
@@ -201,14 +201,11 @@ struct CantStop: LookaheadReducer {
         state.dice[die] = DSix.none
       }
     case let .progressColumn(col):
-      let newPos = Position(
-        col: col,
-        row: state.farthestAlong(for: state.player, in: col) + 1
-      )
-      if let white = Piece.whitePieces.first(where: {state.position[$0]?.col == col}) {
-        state.position[white] = newPos
-      } else if let spareWhite = Piece.whitePieces.first(where: {state.position[$0]?.col == Column.none}) {
-        state.position[spareWhite] = newPos
+      let newRow = min(colHeights()[col]!, state.farthestAlong(in: col) + 1)
+      if let white = state.whiteIn(col: col) {
+        state.position[white]!.row = newRow
+      } else if let spareWhite = state.whiteIn(col: .none) {
+        state.position[spareWhite]! = Position(col: col, row: newRow)
       }
       state.assignedDicePair = Column.none
     case let .sequence(actions):

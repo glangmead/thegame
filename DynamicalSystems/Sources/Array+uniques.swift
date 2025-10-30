@@ -25,3 +25,15 @@ extension Array where Element: Hashable {
   }
 }
 
+extension Array {
+  func anySatisfy(_ predicate: (Self.Element) -> Bool) -> Bool {
+    return contains(where: predicate)
+  }
+}
+
+extension Array {
+  var isNonEmpty: Bool {
+    !isEmpty
+  }
+}
+

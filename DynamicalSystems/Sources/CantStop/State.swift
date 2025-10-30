@@ -8,57 +8,23 @@
 import ComposableArchitecture
 
 extension CantStop {
-  // the pi type of the family, i.e. a type of sections of the family
-  // I could go farther here, having slots on the board for the assignment of dice, and even slots on the board for a dice roll, where the die becomes just a featureless token occupying a "Four" space.
-  // Similarly the player and phase could be marked with tokens.
+  typealias StatePredicate = (State) -> Bool // maybe one day a Predicate type
+  
+  // The pi type of the family, i.e. a type of sections of the family.
+  // In that light, members like player: Player are maps from the unit type to Player.
   @ObservableState
   struct State: Equatable, Sendable {
-    var position = [Piece: Position]() // TODO: use extension Dictionary { subscript(force key: Key) -> Value {} } like in https://stackoverflow.com/questions/59793783/force-swift-dictionary-to-return-a-non-optional-or-assert
+    // TODO: force-query w/ extension Dictionary { subscript(force key: Key) -> Value {} } like in https://stackoverflow.com/questions/59793783/force-swift-dictionary-to-return-a-non-optional-or-assert
+    var position = [Piece: Position]()
     var dice = [Die: DSix]()
     var assignedDicePair: Column
     var player: Player
     var players: [Player] // which players are playing
-    var phase: Phase
-    
-    var whitePositions: Set<Position> {
-      Set(WhitePiece.allCases.map { position[Piece.white($0)]! })
-    }
-    
-    func placeholderPositions(for thePlayer: Player) -> Set<Position> {
-      Set(Piece.placeholders(for: thePlayer).map { position[$0]! })
-    }
-    
-    var piecesAtTop: Set<Piece> {
-      Set(columnTops.flatMap { piecesAt($0) })
-    }
-    
-    mutating func advancePlayer() {
-      player = player.next()
-      // advance until we get to the next player actually playing in this game
-      while !players.contains(player) {
-        player = player.next()
-      }
-      phase = .notRolled
-    }
-    
-    static func ==(lhs: State, rhs: State) -> Bool {
-      return
-        lhs.dice                                 ==  rhs.dice &&
-        lhs.assignedDicePair                     ==  rhs.assignedDicePair &&
-        lhs.player                               ==  rhs.player &&
-        lhs.players                              ==  rhs.players &&
-        lhs.phase                                ==  rhs.phase &&
-        lhs.whitePositions                       ==  rhs.whitePositions &&
-        lhs.placeholderPositions(for: .player1)  ==  rhs.placeholderPositions(for: .player1) &&
-        lhs.placeholderPositions(for: .player2)  ==  rhs.placeholderPositions(for: .player2) &&
-        lhs.placeholderPositions(for: .player3)  ==  rhs.placeholderPositions(for: .player3) &&
-        lhs.placeholderPositions(for: .player4)  ==  rhs.placeholderPositions(for: .player4)
-    }
+    var ended = false
     
     init() {
       assignedDicePair = Column.none
       player = Player.player1
-      phase = Phase.notRolled
       players = [.player1, .player2]
       for piece in Piece.allCases {
         switch piece {
@@ -73,28 +39,73 @@ extension CantStop {
       }
     }
     
-    func win() -> Bool {
-      let piecesAtTop = piecesAtTop
-      let p1wins = piecesAtTop.intersection(Piece.placeholders(for: .player1)).count >= 3
-      let p2wins = piecesAtTop.intersection(Piece.placeholders(for: .player2)).count >= 3
-      let p3wins = piecesAtTop.intersection(Piece.placeholders(for: .player3)).count >= 3
-      let p4wins = piecesAtTop.intersection(Piece.placeholders(for: .player4)).count >= 3
-      return p1wins || p2wins || p3wins || p4wins
+    static func ==(lhs: State, rhs: State) -> Bool {
+      return
+        lhs.ended                                ==  rhs.ended &&
+        lhs.player                               ==  rhs.player &&
+        lhs.players                              ==  rhs.players &&
+        lhs.whitePositions                       ==  rhs.whitePositions &&
+        lhs.placeholderPositions(for: .player1)  ==  rhs.placeholderPositions(for: .player1) &&
+        lhs.placeholderPositions(for: .player2)  ==  rhs.placeholderPositions(for: .player2) &&
+        lhs.placeholderPositions(for: .player3)  ==  rhs.placeholderPositions(for: .player3) &&
+        lhs.placeholderPositions(for: .player4)  ==  rhs.placeholderPositions(for: .player4)
+    }
+
+    // MARK: - semantic queries
+    
+    var whitePositions: Set<Position> {
+      Set(WhitePiece.allCases.map { position[Piece.white($0)]! })
     }
     
-    func textDescription() -> String {
-      let dr = diceReport
-      //      let br = boardReport
-      var result = "Dice: "
-      for die in Die.allCases {
-        result += "\(die.name)=\(dr[die]!.name) "
+    func whiteIn(col: Column) -> Piece? {
+      Piece.whitePieces.first(where: {position[$0]?.col == col} )
+    }
+    
+    func placeholderPositions(for thePlayer: Player) -> Set<Position> {
+      Set(Piece.placeholders(for: thePlayer).map { position[$0]! })
+    }
+    
+    /// The player's high-water mark in a column
+    func farthestAlong(in col: Column) -> Int {
+      var whiteHeight = 0
+      if let white = Piece.whitePieces.first(where: {position[$0]?.col == col}) {
+        whiteHeight = position[white]?.row ?? 0
       }
-      return result
+      let placeholderHeight = position[Piece.placeholder(player, col)]?.row ?? 0
+      return max(placeholderHeight, whiteHeight)
     }
     
-    func piecesAt(_ spot: Position) -> [Piece] {
-      return Piece.allCases.filter {
-        position[$0] == spot
+    func usableDice() -> [Die] {
+      Die.allCases.filter { die in dice[die] != DSix.none}
+    }
+    
+    func colIsWon(_ col: Column) -> Bool {
+      return col != Column.none &&
+        piecesAt([Position(col: col, row: colHeights()[col]!)]).anySatisfy({ piece in
+          switch piece {
+          case .placeholder:
+            return true
+          default:
+            return false
+          }
+        }
+        )
+    }
+    
+    func wonCols() -> [Column] {
+      Column.allCases.filter({ colIsWon($0)})
+    }
+    
+    func winAchieved() -> Bool {
+      let piecesAtTop = Set(piecesAt(columnTops()))
+      return piecesAtTop.intersection(Piece.placeholders(for: player) + Piece.whitePieces).count >= 3
+    }
+    
+    func piecesAt(_ spots: [Position]) -> [Piece] {
+      return spots.flatMap { spot in
+        Piece.allCases.filter {
+          position[$0] == spot
+        }
       }
     }
     
@@ -117,42 +128,33 @@ extension CantStop {
       return report
     }
 
-    // semantic positions
-    func farthestAlong(for thePlayer: Player, in col: Column) -> Int {
-      var whiteHeight = 0
-      if let white = Piece.whitePieces.first(where: {position[$0]?.col == col}) {
-        whiteHeight = position[white]?.row ?? 0
+    // MARK: - mutating
+    
+    mutating func advancePlayer() {
+      player = player.next()
+      // advance until we get to the next player actually playing in this game
+      while !players.contains(player) {
+        player = player.next()
       }
-      let placeholderHeight = position[Piece.placeholder(thePlayer, col)]?.row ?? 0
-      return max(placeholderHeight, whiteHeight)
     }
-        
-    // composite action?
+    
     mutating func clearWhite() {
       for white in Piece.whitePieces {
         position[white] = Position(col: .none, row: 0)
       }
     }
     
-    // composite action?
-    mutating func savePlace() {
-      for white in Piece.whitePieces {
-        guard let whitePos = position[white] else { continue }
-        guard whitePos.col != Column.none else { continue }
-        
-        let savingPiece: Piece = Piece.placeholder(player, whitePos.col)
-        // move a colored piece to that spot
-        position[savingPiece] = whitePos
-        // move the white piece off the board
-        position[white] = Position(col: .none, row: 0)
-        
-        for die in Die.allCases {
-          dice[die] = DSix.none
-        }
+    mutating func clearDice() {
+      for die in Die.allCases {
+        dice[die] = DSix.none
       }
     }
+    
+    mutating func savePlace() {
+      for col in Column.allCases {
+        position[Piece.placeholder(player, col)] = Position(col: col, row: farthestAlong(in: col))
+      }
+      clearWhite()
+    }
   }
-  
-  typealias StatePredicate = (State) -> Bool // maybe one day a Predicate type
-  
 }

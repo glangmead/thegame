@@ -17,18 +17,20 @@ struct CantStopView: View {
         let _ = CantStop.allowedActions(state: store.state)
       }
       Text("\(CantStop.allowedActions(state: store.state).count) actions available")
+      
       Form {
-        ForEach(Column.allCases, id: \.self) { col in
+        ForEach(CantStop.Column.allCases, id: \.self) { col in
           if col != .none {
             ForEach(store.state.boardReport[col]!, id: \.self) { piece in
               let row = store.state.position[piece]!.row
               if row > 0 {
                 Text("\(col.name).\(row): \(piece.name)")
+                  .fontWeight(row == CantStop.colHeights()[col]! ? .bold : .regular)
               }
             }
           }
         }
-        ForEach(Die.allCases, id: \.self) { die in
+        ForEach(CantStop.Die.allCases, id: \.self) { die in
           let dieState = store.state.diceReport[die]!
           Text("\(die.name): \(dieState.name)")
         }
