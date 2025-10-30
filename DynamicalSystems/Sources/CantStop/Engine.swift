@@ -9,12 +9,6 @@ import ComposableArchitecture
 import Overture
 import SwiftUI
 
-protocol LookaheadReducer<State, Action>: Reducer {
-  associatedtype Rule
-  static func rules() -> [Rule]
-  static func allowedActions(state: State) -> [Action]
-}
-
 @Reducer
 struct CantStop: LookaheadReducer {
   

@@ -7,7 +7,7 @@
 
 import Foundation
 
-extension CantStop {
+extension CantStop: GameComponents {
   
   /// Components and players
   ///
