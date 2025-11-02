@@ -9,11 +9,11 @@ import ComposableArchitecture
 import Foundation
 
 protocol GameComponents {
-  associatedtype Player
   associatedtype Phase
-  associatedtype Piece
-  associatedtype Position
+  associatedtype Piece: Hashable
   associatedtype PiecePosition
+  associatedtype Player
+  associatedtype Position
 }
 
 protocol StatePredicates {
@@ -24,6 +24,7 @@ protocol GameState: GameComponents, Equatable {
   var player: Player { get set }
   var players: [Player] { get set }
   var ended: Bool { get set }
+  var position: [Piece: Position] { get set }
 }
 
 protocol LookaheadReducer<State, Action>: Reducer {

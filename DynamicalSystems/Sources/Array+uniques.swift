@@ -8,7 +8,7 @@
 import Foundation
 
 extension Array {
-  static func uniques<T: Equatable>(_ input: Array<T>) -> Array<T> {
+  public static func uniques<T: Equatable>(_ input: Array<T>) -> Array<T> {
     var result = Array<T>()
     for val in input {
       if !result.contains(val) {
@@ -20,19 +20,19 @@ extension Array {
 }
 
 extension Array where Element: Hashable {
-  func intersection(_ other: Array) -> Set<Element> {
+  public func intersection(_ other: Array) -> Set<Element> {
     return Set(self).intersection(Set(other))
   }
 }
 
 extension Array {
-  func anySatisfy(_ predicate: (Self.Element) -> Bool) -> Bool {
+  public func anySatisfy(_ predicate: (Self.Element) -> Bool) -> Bool {
     return contains(where: predicate)
   }
 }
 
 extension Array {
-  var isNonEmpty: Bool {
+  public var isNonEmpty: Bool {
     !isEmpty
   }
 }

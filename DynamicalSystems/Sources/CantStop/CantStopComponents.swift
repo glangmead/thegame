@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Gen
 
 extension CantStop: GameComponents {
   
@@ -106,8 +107,8 @@ extension CantStop: GameComponents {
   enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable {
     case none = 0, one = 1, two, three, four, five, six
     
-    static func random() -> DSix {
-      return DSix.allCases.filter { $0 != .none}.randomElement()!
+    static func allFaces() -> [DSix] {
+      DSix.allCases.filter { $0 != .none}
     }
     
     var name: String {

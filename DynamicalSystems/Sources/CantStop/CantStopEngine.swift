@@ -19,6 +19,7 @@ struct CantStop: LookaheadReducer {
     case bust
     case claimVictory
     case rollDice
+    case forceRoll([DSix])
     case assignDicePair(Pair<Die>)
     case progressColumn(Column)
     // recursive: ordered list of actions
@@ -151,18 +152,18 @@ struct CantStop: LookaheadReducer {
     return removeSameState(state: state, actions: actions)
   }
   
-  static func yieldsSameState(state: State, lhs: Action, rhs: Action) -> Bool {
+  static func yieldsEquivState(state: State, lhs: Action, rhs: Action) -> Bool {
     var stateAfterLHS = state
     reduce(state: &stateAfterLHS, action: lhs)
     var stateAfterRHS = state
     reduce(state: &stateAfterRHS, action: rhs)
-    return stateAfterLHS == stateAfterRHS
+    return State.equiv(lhs: stateAfterLHS, rhs: stateAfterRHS)
   }
 
   static func removeSameState(state: State, actions: [Action]) -> [Action] {
     var result = [Action]()
     for action in actions {
-      if result.contains(where: { yieldsSameState(state: state, lhs: $0, rhs: action) }) {
+      if result.contains(where: { yieldsEquivState(state: state, lhs: $0, rhs: action) }) {
         continue
       } else {
         result.append(action)
@@ -185,8 +186,13 @@ struct CantStop: LookaheadReducer {
       state.clearDice()
     case .rollDice:
       for die in Die.allCases {
-        state.dice[die] = DSix.random()
+        state.dice[die] = DSix.allFaces().randomElement()
       }
+    case .forceRoll(let ds):
+      state.dice[Die.die1] = ds[0]
+      state.dice[Die.die2] = ds[1]
+      state.dice[Die.die3] = ds[2]
+      state.dice[Die.die4] = ds[3]
     case let .assignDicePair(pairing):
       // copy the resulting column to the assignedDicePair component
       state.assignedDicePair = CantStop.twod6_total(pairing.map { state.dice[$0]! })

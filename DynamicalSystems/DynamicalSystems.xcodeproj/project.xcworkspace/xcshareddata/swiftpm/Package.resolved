@@ -1,5 +1,5 @@
 {
-  "originHash" : "82f38d86432ca9dbd1793fb6e56f2019ac4d354710c59d90301f313be03a3738",
+  "originHash" : "41b7b1553faaa211f962ec9aab846b9ab789eb331bcd81f153c17f0d8eb89512",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -71,6 +71,15 @@
       "state" : {
         "revision" : "a501eebe552fd23691c560adf474fca2169ad8aa",
         "version" : "1.9.4"
+      }
+    },
+    {
+      "identity" : "swift-gen",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pointfreeco/swift-gen",
+      "state" : {
+        "revision" : "f2e186a188cb7a4dfb0e122ede34b147e6c0ce17",
+        "version" : "0.5.0"
       }
     },
     {

@@ -45,7 +45,7 @@ extension CantStop: StatePredicates {
       }
     }
     
-    static func ==(lhs: State, rhs: State) -> Bool {
+    static func equiv(lhs: State, rhs: State) -> Bool {
       return
         lhs.ended                                ==  rhs.ended &&
         lhs.player                               ==  rhs.player &&

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9B1F01492EB8055B00C5110F /* Gen in Frameworks */ = {isa = PBXBuildFile; productRef = 9B1F01482EB8055B00C5110F /* Gen */; };
 		9B8CDCE12EA6BCA200BE059C /* Overture in Frameworks */ = {isa = PBXBuildFile; productRef = 9B8CDCE02EA6BCA200BE059C /* Overture */; };
 		9BB9EBD22E9431ED00163BC3 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB9EBD12E9431ED00163BC3 /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
@@ -39,12 +40,14 @@
 		9B8CDCD22EA2BC5D00BE059C /* Exceptions for "Sources" folder in "DynamicalSystemsTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				CantStop/CantStopComponents.swift,
+				CantStop/CantStopEngine.swift,
+				CantStop/CantStopState.swift,
 				CantStop/CantStopView.swift,
-				CantStop/Components.swift,
-				CantStop/Engine.swift,
-				CantStop/State.swift,
+				Game.swift,
 				Lens.swift,
 				Pair.swift,
+				RawComparable.swift,
 			);
 			target = 9B31387E2E63462C00D3AE6D /* DynamicalSystemsTests */;
 		};
@@ -76,6 +79,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9B1F01492EB8055B00C5110F /* Gen in Frameworks */,
 				9B8CDCE12EA6BCA200BE059C /* Overture in Frameworks */,
 				9BB9EBD22E9431ED00163BC3 /* ComposableArchitecture in Frameworks */,
 			);
@@ -149,6 +153,7 @@
 			packageProductDependencies = (
 				9BB9EBD12E9431ED00163BC3 /* ComposableArchitecture */,
 				9B8CDCE02EA6BCA200BE059C /* Overture */,
+				9B1F01482EB8055B00C5110F /* Gen */,
 			);
 			productName = DynamicalSystems;
 			productReference = 9B3138722E63462B00D3AE6D /* DynamicalSystems.app */;
@@ -235,6 +240,7 @@
 			packageReferences = (
 				9B31389C2E63463900D3AE6D /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 				9B8CDCDF2EA6BCA200BE059C /* XCRemoteSwiftPackageReference "swift-overture" */,
+				9B1F01472EB8055B00C5110F /* XCRemoteSwiftPackageReference "swift-gen" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9B3138732E63462B00D3AE6D /* Products */;
@@ -601,6 +607,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		9B1F01472EB8055B00C5110F /* XCRemoteSwiftPackageReference "swift-gen" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-gen";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.5.0;
+			};
+		};
 		9B31389C2E63463900D3AE6D /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
@@ -620,6 +634,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		9B1F01482EB8055B00C5110F /* Gen */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B1F01472EB8055B00C5110F /* XCRemoteSwiftPackageReference "swift-gen" */;
+			productName = Gen;
+		};
 		9B8CDCE02EA6BCA200BE059C /* Overture */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 9B8CDCDF2EA6BCA200BE059C /* XCRemoteSwiftPackageReference "swift-overture" */;
