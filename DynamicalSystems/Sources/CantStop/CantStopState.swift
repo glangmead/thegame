@@ -81,7 +81,7 @@ extension CantStop: StatePredicates {
       return max(placeholderHeight, whiteHeight)
     }
     
-    func usableDice() -> [Die] {
+    func rolledDice() -> [Die] {
       Die.allCases.filter { die in dice[die] != DSix.none}
     }
     

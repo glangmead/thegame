@@ -41,69 +41,91 @@ struct CantStop: LookaheadReducer {
     }
   }
   
-  struct ConditionalAction {
+  /// A Rule is a conditional action
+  struct Rule {
     let condition: StatePredicate
     let actions: (State) -> [Action]
   }
-  
-  static func append(_ first: ConditionalAction, _ second: ConditionalAction) -> ConditionalAction {
-    return ConditionalAction(
-      condition: first.condition, // to enter into this sequence, you just need the first condition to be met
-      actions: pipe(
-        { state in
-          first.actions(state).flatMap { a1 in
-            // advance the state by a1 to see if we can append any a2 to it
-            var stateAfterA1 = state
-            let _ = reduce(state: &stateAfterA1, action: a1)
 
-            if second.condition(stateAfterA1) {
-              let secondActions = second.actions(stateAfterA1)
-              if secondActions.isEmpty {
-                return [a1]
-              } else {
-                return secondActions.map { a2 in
-                  if a2 != a1 {
-                    return Action.sequence([a1, a2])
-                  } else {
-                    return a1
-                  }
+  // here we are appending the actions of `first` with all the actions of `second` such that
+  // - the conditions of `second` are true
+  // - there are actions coming from `second`
+  // edge cases:
+  // - `second` no longer applies after an action of `first`
+  // - `second` emits no rules after an action of `first`
+  // - we want to use .sequence only for two or more actions
+  static func append(_ first: Rule, _ second: Rule) -> Rule {
+    return Rule(
+      condition: first.condition, // to enter into this sequence, you just need the first condition to be met
+      actions: { state in
+        first.actions(state).flatMap { a1 in
+          // advance the state by a1 to see if we can append any a2 to it
+          var stateAfterA1 = state
+          let _ = reduce(state: &stateAfterA1, action: a1)
+
+          if second.condition(stateAfterA1) {
+            let secondActions = second.actions(stateAfterA1)
+            if secondActions.isEmpty {
+              return [a1]
+            } else {
+              return secondActions.map { a2 in
+                if a2 != a1 {
+                  return Action.sequence([a1, a2])
+                } else {
+                  return a1
                 }
               }
-            } else {
-              return [a1]
             }
+          } else {
+            return [a1]
           }
-        },
-        Set.init, Array.init
-      )
-    )
-  }
-  
-  // the rules are captured by a set of ConditionalActions: if the game looks like this, you can do that
-  typealias Rule = ConditionalAction
-  
-  // Rule: State -> (Bool, [Action])
-  // not a good name. the reducer is also rules
-  // (State, Action) -> State
-  static func rules() -> [Rule] {
-    let passRule = Rule(
-      condition: { $0.usableDice().isEmpty },
-      actions: { state in
-        if state.winAchieved() {
-          [.claimVictory]
-        } else {
-          [.rollDice, .pass]
         }
       }
     )
-    
+  }
+  
+  /// The idea is to have all the logic of the game inside these Rule objects.
+  /// The actions, reducer, and state are meant to be brainless.
+  /// Granted, there is nonzero logic emergent from the subtypes of the pieces and their fibers.
+  ///
+  /// (State) -> Bool -> [Action] is secretly [State] -> [Action] hence State -> [Action]?
+  /// Some of this typing is just so as to group and organize State -> [Action] semantically.
+  /// State semantic helpers:
+  ///   - equiv
+  ///   - whitePositions
+  ///   - whiteIn
+  ///   - farthestAlong
+  ///   - rolledDice
+  ///   - colIsWon
+  ///   - wonCols
+  ///   - winAchieved
+  ///   - piecesAt (though this is quite generic)
+  ///
+  /// The rules are using these.
+  ///
+  static func rules() -> [Rule] {
+    // in words: you can turn two rolled dice into a column advance (.assignDicePair)
+    // you can advance an existing white piece in that column (.progressColumn)
+    // you can place and advance an unused white piece in that column (.progressColumn)
+    // you can't advance in a column if it's claimed <- &&= a condition?
+    // implicit: you can't advance in a column if you don't satisfy the white piece conditions
+    //
+    // Are the semantics of the rules to take the union? Must be, right? That's what is being generated.
+    // Then I could repeat the condition and have more actions.
+    // I can just keep going with conditions and actions, and take the union.
+    // I want to support being able to say "but you can't do X if Y". That requires cutting down on actions.
+    //   - or enlarging the conditions later?
+    //   - doing rule1 && condition2 which adds a condition to rule1?
     let moveRule = Rule(
-      condition: { $0.usableDice().isNonEmpty },
+      condition: { state in
+        state.rolledDice().isNonEmpty
+      },
       actions: { state in
-        let dicePairings: [Pair<Die>] = pairs(of: state.usableDice())
+        let dicePairings: [Pair<Die>] = pairs(of: state.rolledDice())
         
         return dicePairings.compactMap { pairing in
           let col = twod6_total(pairing.map {state.dice[$0]!})
+          // possible factorization: whiteThatCanMoveIn(col:)
           if !state.colIsWon(col) &&
               (state.whiteIn(col: col) != nil || state.whiteIn(col: .none) != nil) {
             return Action.sequence([.assignDicePair(pairing), .progressColumn(col)])
@@ -113,29 +135,33 @@ struct CantStop: LookaheadReducer {
       }
     )
     
-    let onePairOnlyRule = Rule(
+    let passRule = Rule(
       condition: { state in
-        moveRule.actions(state).isEmpty &&
-        state.usableDice().count == 2
+        !state.winAchieved() &&
+        state.rolledDice().count < 4 &&
+        moveRule.actions(state).isEmpty
       },
-      actions: { state in
-        if state.winAchieved() {
-          [.claimVictory]
-        } else {
-          [.rollDice, .pass]
-        }
-      }
+      actions: { _ in [.rollDice, .pass] }
     )
     
-    let bustRule = Rule(
+    let victoryRule = Rule(
       condition: { state in
-        moveRule.actions(state).isEmpty &&
-        state.usableDice().count == 4
+        state.winAchieved() &&
+        state.rolledDice().count < 4 &&
+        moveRule.actions(state).isEmpty
       },
-      actions: { _ in [Action.bust] }
+      actions: { _ in [.claimVictory] }
     )
 
-    return [passRule, bustRule, onePairOnlyRule, append(moveRule, moveRule)]
+    let bustRule = Rule(
+      condition: { state in
+        state.rolledDice().count == 4 &&
+        moveRule.actions(state).isEmpty
+      },
+      actions: { _ in [.bust] }
+    )
+
+    return [victoryRule, passRule, bustRule, append(moveRule, moveRule)]
   }
     
   static func allowedActions(state: State) -> [Action] {
