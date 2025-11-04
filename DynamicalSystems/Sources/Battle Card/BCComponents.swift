@@ -8,6 +8,40 @@
 import Foundation
 
 extension BattleCard: GameComponents {
+  
+  /// The manual should perhaps be directly translatable, i.e. easier for a person to digitize.
+  /// Setup:
+  /// There are four named locations in a track: E, G, N, A. Also, E-1=B (Belgium)
+  /// Each location has a space for an ally, a german, a control, and 30 corps
+  ///   - immobile positions AE, AG, AN, AA; GE, GG, GN, GA; CE:G, CG:G, CN:G, CA:G
+  ///   - mobile pieces All101, All82, All1, All30
+  /// Allies (All101, All82, All1) and german (GE, GG, GN, GA) have D6 strength
+  /// Germans: GE:2, GG:2, GN:1, GA:2
+  /// Allies: All101:6->E, All82:6->G, All1:5->A, 30C->B
+  /// There is a D6 turn count, starting at 1
+  /// Advancing to turn 7 = LOSE game
+  /// There is a boolean for Clear/Fog which starts with Fog
+  /// Airdrop:
+  /// for each (All101, All82, All1), roll and adjust strength
+  /// Battle:
+  /// for each ally (which can shrink), in any order (actions commute):
+  ///   - choose attack or defend
+  ///   - roll
+  ///   - update strengths per table
+  ///   - ally strength to 0 means LOSE game. german strength clamped at 1.
+  ///   - update control
+  /// German reinforcements:
+  /// for GE, GG, GN, GA add 1 to strength
+  /// but for GN, only add if CA:G (control of Arnhem is german)
+  /// Allied advance:
+  /// advance a unit to the next city
+  /// only advance 30C if the next city has allied control
+  /// advancing 30C to A WINS game
+  /// only advance an army in the same city as 30C
+  /// when army1 advances into army2, add army1's strength to army2 and dissolve army1
+  /// Allied reinforcements:
+  /// if d6 leq turn number and if fog, increase strength of All1, set to clear
+  
   enum Player: Equatable, Hashable {
     case solo
   }
