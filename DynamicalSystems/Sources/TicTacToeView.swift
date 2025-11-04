@@ -118,55 +118,55 @@ let tttPossibleLegalLens = Lens<[TTTAction], TTTState, Void, Void>(
   }
 )
 
-struct TicTacToeView: View {
-  @State private var userGameSize: Int = 3
-  @State private var gameState = TTTState(3)
-  var body: some View {
-    let gameSizeRange = 0..<gameState.boardSize
-    VStack {
-      Spacer()
-      Text("Turn: \(gameState.lastMark.inverted)")
-        .font(.largeTitle)
-      Spacer()
-      ForEach(gameSizeRange, id: \.self) { rowNum in
-        HStack {
-          ForEach(gameSizeRange, id: \.self) { colNum in
-            spaceView(rowNum, colNum)
-          }
-        }
-      }
-      Spacer()
-      if gameState.terminal {
-        Text("\(gameState.winner!) wins!")
-          .font(.largeTitle)
-        Stepper("Board size \(userGameSize)", value: $userGameSize, in: 1...10)
-        Button("Play again") {gameState = TTTState(userGameSize)}.buttonStyle(.borderedProminent).font(.largeTitle)
-      }
-      Spacer()
-      Spacer()
-    }
-  }
-  
-  @ViewBuilder func spaceView(_ row: Int, _ col: Int) -> some View {
-    let mark = gameState.board[row][col]
-    switch mark {
-    case .none:
-      Button("\(mark.rawValue) ") {
-        if !gameState.terminal {
-          let tttAction = TTTAction.placeMark(row, col, gameState.lastMark == .x ? .o : .x)
-          if let newState = tttLens.up((gameState, tttAction)) {
-            self.gameState = newState
-          }
-        }
-      }
-      .font(.largeTitle)
-    default:
-      Text("\(mark.rawValue) ").font(.largeTitle)
-    }
-  }
-  
-}
-
-#Preview("Tic Tac Toe") {
-  TicTacToeView()
-}
+//struct TicTacToeView: View {
+//  @State private var userGameSize: Int = 3
+//  @State private var gameState = TTTState(3)
+//  var body: some View {
+//    let gameSizeRange = 0..<gameState.boardSize
+//    VStack {
+//      Spacer()
+//      Text("Turn: \(gameState.lastMark.inverted)")
+//        .font(.largeTitle)
+//      Spacer()
+//      ForEach(gameSizeRange, id: \.self) { rowNum in
+//        HStack {
+//          ForEach(gameSizeRange, id: \.self) { colNum in
+//            spaceView(rowNum, colNum)
+//          }
+//        }
+//      }
+//      Spacer()
+//      if gameState.terminal {
+//        Text("\(gameState.winner!) wins!")
+//          .font(.largeTitle)
+//        Stepper("Board size \(userGameSize)", value: $userGameSize, in: 1...10)
+//        Button("Play again") {gameState = TTTState(userGameSize)}.buttonStyle(.borderedProminent).font(.largeTitle)
+//      }
+//      Spacer()
+//      Spacer()
+//    }
+//  }
+//  
+//  @ViewBuilder func spaceView(_ row: Int, _ col: Int) -> some View {
+//    let mark = gameState.board[row][col]
+//    switch mark {
+//    case .none:
+//      Button("\(mark.rawValue) ") {
+//        if !gameState.terminal {
+//          let tttAction = TTTAction.placeMark(row, col, gameState.lastMark == .x ? .o : .x)
+//          if let newState = tttLens.up((gameState, tttAction)) {
+//            self.gameState = newState
+//          }
+//        }
+//      }
+//      .font(.largeTitle)
+//    default:
+//      Text("\(mark.rawValue) ").font(.largeTitle)
+//    }
+//  }
+//  
+//}
+//
+//#Preview("Tic Tac Toe") {
+//  TicTacToeView()
+//}

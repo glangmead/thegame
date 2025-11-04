@@ -30,9 +30,11 @@ struct CantStopTests {
     let store = TestStore(initialState: CantStop.State()) {
       CantStop()
     }
+    
     await store.send(.pass) {
       $0.player = CantStop.Player.player2
     }
+    
     await store.send(.forceRoll([.four, .four, .four, .four])) {
       $0.dice[.die1] = .four
       $0.dice[.die2] = .four
@@ -54,9 +56,54 @@ struct CantStopTests {
       $0.dice[.die4] = CantStop.DSix.none
       $0.assignedDicePair = .eight
     }
+    
     await store.send(.progressColumn(.eight)) {
       $0.assignedDicePair = CantStop.Column.none
       $0.position[.white(.white1)] = CantStop.Position(col: .eight, row: 2)
+    }
+    
+    await store.send(.sequence([
+      .progressColumn(.two),
+      .progressColumn(.two),
+      .progressColumn(.two),
+      .progressColumn(.twelve),
+      .progressColumn(.twelve),
+      .progressColumn(.twelve),
+    ])) {
+      $0.position[.white(.white2)] = CantStop.Position(col: .two, row: 3)
+      $0.position[.white(.white3)] = CantStop.Position(col: .twelve, row: 3)
+    }
+    
+    await store.send(.pass) {
+      $0.player = .player1
+      $0.position[.placeholder(.player2, .two)]    = CantStop.Position(col: .two, row: 3)
+      $0.position[.placeholder(.player2, .twelve)] = CantStop.Position(col: .twelve, row: 3)
+      $0.position[.placeholder(.player2, .eight)]  = CantStop.Position(col: .eight, row: 2)
+      $0.position[.white(.white1)] = CantStop.Position(col: .none, row: 0)
+      $0.position[.white(.white2)] = CantStop.Position(col: .none, row: 0)
+      $0.position[.white(.white3)] = CantStop.Position(col: .none, row: 0)
+    }
+
+    await store.send(.pass) {
+      $0.player = .player2
+    }
+    
+    await store.send(.sequence([
+      .progressColumn(.eight),
+      .progressColumn(.eight),
+      .progressColumn(.eight),
+      .progressColumn(.eight),
+      .progressColumn(.eight),
+      .progressColumn(.eight),
+      .progressColumn(.eight),
+      .progressColumn(.eight),
+      .progressColumn(.eight),
+    ])) {
+      $0.position[.white(.white1)] = CantStop.Position(col: .eight, row: 11)
+    }
+
+    await store.send(.claimVictory) {
+      $0.ended = true
     }
   }
 }

@@ -23,6 +23,11 @@ extension Array where Element: Hashable {
   public func intersection(_ other: Array) -> Set<Element> {
     return Set(self).intersection(Set(other))
   }
+  
+  public func minus(_ other: Array) -> Array {
+    return self.filter { !other.contains($0) }
+  }
+
 }
 
 extension Array {

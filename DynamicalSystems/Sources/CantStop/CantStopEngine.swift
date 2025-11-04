@@ -45,6 +45,14 @@ struct CantStop: LookaheadReducer {
   struct Rule {
     let condition: StatePredicate
     let actions: (State) -> [Action]
+    
+    // Form a conjunction of a rule with another predicate, for when you want to say "oh but it also needs to be the case that..."
+    func also(_ cond: @escaping StatePredicate) -> Rule {
+      return Rule(
+        condition: { self.condition($0) && cond($0) },
+        actions: self.actions
+      )
+    }
   }
 
   // here we are appending the actions of `first` with all the actions of `second` such that

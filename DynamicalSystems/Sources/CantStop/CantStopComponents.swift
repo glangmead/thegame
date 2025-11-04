@@ -104,18 +104,6 @@ extension CantStop: GameComponents {
      .eight: 11, .nine:  9, .ten:  7, .eleven: 5, .twelve: 3,]
   }
   
-  enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable {
-    case none = 0, one = 1, two, three, four, five, six
-    
-    static func allFaces() -> [DSix] {
-      DSix.allCases.filter { $0 != .none}
-    }
-    
-    var name: String {
-      String(describing: self)
-    }
-  }
-  
   struct Position: Hashable, Equatable {
     var col: Column
     var row: Int
@@ -159,9 +147,5 @@ extension CantStop: GameComponents {
       }
     }
   }
-}
-
-protocol Cyclic {
-  func next() -> Self
 }
 
