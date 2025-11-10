@@ -6,10 +6,21 @@
 //
 
 import ComposableArchitecture
+import SpriteKit
 import SwiftUI
 
+// A simple game scene with falling boxes
 struct CantStopView: View {
-  let store: StoreOf<CantStop>
+  var store: StoreOf<CantStop>
+  
+  var scene: SKScene {
+    let scene = CantStopScene(
+      state: SharedReader(value: store.state),
+      size: CGSize(width: 400, height: 300)
+    )
+    //scene.scaleMode = .fill
+    return scene
+  }
   
   var body: some View {
     NavigationStack {
@@ -17,6 +28,10 @@ struct CantStopView: View {
         let _ = CantStop.allowedActions(state: store.state)
       }
       Text("\(CantStop.allowedActions(state: store.state).count) actions available")
+      
+      SpriteView(scene: scene)
+        .frame(width: 400, height: 300)
+        .ignoresSafeArea()
       
       Form {
         ForEach(CantStop.Column.allCases, id: \.self) { col in
@@ -41,6 +56,7 @@ struct CantStopView: View {
         }
       }
       .navigationTitle(store.state.player.name)
+      .navigationBarTitleDisplayMode(.inline)
     }
   }
 }

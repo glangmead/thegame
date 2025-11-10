@@ -10,36 +10,59 @@ import Foundation
 extension BattleCard: GameComponents {
   
   /// The manual should perhaps be directly translatable, i.e. easier for a person to digitize.
+  ///
   /// Setup:
+  ///
   /// There are four named locations in a track: E, G, N, A. Also, E-1=B (Belgium)
   /// Each location has a space for an ally, a german, a control, and 30 corps
-  ///   - immobile positions AE, AG, AN, AA; GE, GG, GN, GA; CE:G, CG:G, CN:G, CA:G
+  ///   - positions AE, AG, AN, AA; GE, GG, GN, GA; CE:G, CG:G, CN:G, CA:G
   ///   - mobile pieces All101, All82, All1, All30
-  /// Allies (All101, All82, All1) and german (GE, GG, GN, GA) have D6 strength
-  /// Germans: GE:2, GG:2, GN:1, GA:2
-  /// Allies: All101:6->E, All82:6->G, All1:5->A, 30C->B
+  ///   - German pieces disappear when 30 corps gets there
+  /// Strength: Germans: GE:2, GG:2, GN:1, GA:2
+  /// Strength: Allies: All101:6->E, All82:6->G, All1:5->A, 30C->B
   /// There is a D6 turn count, starting at 1
   /// Advancing to turn 7 = LOSE game
   /// There is a boolean for Clear/Fog which starts with Fog
+  ///
   /// Airdrop:
+  ///
   /// for each (All101, All82, All1), roll and adjust strength
+  ///
   /// Battle:
+  ///
   /// for each ally (which can shrink), in any order (actions commute):
   ///   - choose attack or defend
   ///   - roll
-  ///   - update strengths per table
+  ///   - update ALLY strength and GERMAN strength per table
   ///   - ally strength to 0 means LOSE game. german strength clamped at 1.
-  ///   - update control
+  ///   - update CONTROL of CITY
+  /// therefore, for each ally we need to gather
+  ///   - ally strength
+  ///   - german unit
+  ///   - german strength
+  ///   - control
+  ///
   /// German reinforcements:
+  ///
   /// for GE, GG, GN, GA add 1 to strength
-  /// but for GN, only add if CA:G (control of Arnhem is german)
+  /// if not CA:G (i.e. allies control arnhem), revoke the action to add 1 to GN strength
+  /// (non-action)
+  ///
   /// Allied advance:
-  /// advance a unit to the next city
+  ///
+  /// advance one unit to the next city
+  /// candidates: 30C and ally in same city
   /// only advance 30C if the next city has allied control
   /// advancing 30C to A WINS game
-  /// only advance an army in the same city as 30C
   /// when army1 advances into army2, add army1's strength to army2 and dissolve army1
+  /// therefore we need to gather
+  ///   - 30C city
+  ///   - Ally in that city
+  ///   - Control of next city
+  ///   - Ally in next city
+  ///
   /// Allied reinforcements:
+  ///
   /// if d6 leq turn number and if fog, increase strength of All1, set to clear
   
   enum Player: Equatable, Hashable {
@@ -169,12 +192,17 @@ extension BattleCard: GameComponents {
     }
   }
   
+  enum Control: Equatable, Hashable {
+    case allies
+    case germans
+  }
+    
   enum Advantage: Equatable, Hashable {
     case allies
     case germans
     case tied
   }
-    
+  
   struct PiecePosition: Equatable, Hashable {
     var piece: Piece
     var position: Position

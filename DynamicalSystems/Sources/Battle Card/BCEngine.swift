@@ -177,32 +177,32 @@ struct BattleCard: LookaheadReducer {
       state.strength[ally] = DSix.minus(state.strength[ally]!, penalty)
     case .rollForAttack(let army):
       let roll = DSix.allFaces().randomElement()!
-      let german = state.germanFacing(army)
-      let advantage = state.advantageFacing(army)
-      let (allyHit, germanHit, advantageAllies) = attackOutcome(roll: roll, advantage: advantage)
-      state.strength[army]   = DSix.minus(state.strength[army]!,   allyHit)
-      state.strength[german] = DSix.minus(state.strength[german]!, germanHit)
-      if advantageAllies {
-        state.advantage[state.position[army]!] = Advantage.allies
-      }
+//      let german = state.germanFacing(army)
+//      let advantage = state.advantageFacing(army)
+//      let (allyHit, germanHit, advantageAllies) = attackOutcome(roll: roll, advantage: advantage)
+//      state.strength[army]   = DSix.minus(state.strength[army]!,   allyHit)
+//      state.strength[german] = DSix.minus(state.strength[german]!, germanHit)
+//      if advantageAllies {
+//        state.advantage[state.position[army]!] = Advantage.allies
+//      }
     case .rollForDefend(let army):
       let roll = DSix.allFaces().randomElement()!
-      let german = state.germanFacing(army)
-      let advantage = state.advantageFacing(army)
-      let (allyHit, germanHit) = defendOutcome(roll: roll, advantage: advantage)
-      state.strength[army]   = DSix.minus(state.strength[army]!,   allyHit)
-      state.strength[german] = DSix.minus(state.strength[german]!, germanHit)
+//      let german = state.germanFacing(army)
+//      let advantage = state.advantageFacing(army)
+//      let (allyHit, germanHit) = defendOutcome(roll: roll, advantage: advantage)
+//      state.strength[army]   = DSix.minus(state.strength[army]!,   allyHit)
+//      state.strength[german] = DSix.minus(state.strength[german]!, germanHit)
     case .reinforceGermans(let germanArmy):
-      switch germanArmy {
-      case .germanArnhem, .germanEindhoven, .germanGrave:
-        state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
-      case .germanNijmegen:
-        if state.advantage[.arnhem] == .germans {
-          state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
-        }
-      default:
-        ()
-      }
+//      switch germanArmy {
+//      case .germanArnhem, .germanEindhoven, .germanGrave:
+//        state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
+//      case .germanNijmegen:
+//        if state.advantage[.arnhem] == .germans {
+//          state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
+//        }
+//      default:
+//        ()
+//      }
       state.updateControl(germanArmy: germanArmy)
     case .advanceAllies(let ally):
       ()

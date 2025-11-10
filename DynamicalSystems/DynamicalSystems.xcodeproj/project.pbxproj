@@ -42,6 +42,7 @@
 			membershipExceptions = (
 				CantStop/CantStopComponents.swift,
 				CantStop/CantStopEngine.swift,
+				CantStop/CantStopScene.swift,
 				CantStop/CantStopState.swift,
 				CantStop/CantStopView.swift,
 				Game.swift,
