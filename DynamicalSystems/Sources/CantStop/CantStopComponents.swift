@@ -47,7 +47,6 @@ extension CantStop: GameComponents {
   }
   
   enum Piece: CaseIterable, Equatable, Hashable {
-    case none
     case white(WhitePiece)
     case placeholder(Player, Column)
     
@@ -59,8 +58,7 @@ extension CantStop: GameComponents {
     }
     
     static var allCases: [Piece] {
-      return [Piece.none]
-      + WhitePiece.allCases.map { Piece.white($0) }
+      return WhitePiece.allCases.map { Piece.white($0) }
       + Player.allCases.flatMap { placeholders(for: $0) }
     }
     
@@ -70,8 +68,6 @@ extension CantStop: GameComponents {
         String(describing: w)
       case let .placeholder(player, _):
         "\(player.name)" // omit col because it's visible elsewhere
-      default:
-        String(describing: self)
       }
     }
   }

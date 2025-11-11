@@ -13,13 +13,14 @@ import SwiftUI
 struct CantStopView: View {
   var store: StoreOf<CantStop>
   
-  var scene: SKScene {
-    let scene = CantStopScene(
+  var scene: SKScene
+  
+  init(store: StoreOf<CantStop>) {
+    self.store = store
+    self.scene = CantStopScene(
       state: SharedReader(value: store.state),
       size: CGSize(width: 400, height: 300)
     )
-    //scene.scaleMode = .fill
-    return scene
   }
   
   var body: some View {
@@ -31,7 +32,6 @@ struct CantStopView: View {
       
       SpriteView(scene: scene)
         .frame(width: 400, height: 300)
-        .ignoresSafeArea()
       
       Form {
         ForEach(CantStop.Column.allCases, id: \.self) { col in
@@ -55,13 +55,13 @@ struct CantStopView: View {
           }
         }
       }
-      .navigationTitle(store.state.player.name)
+      .navigationTitle("F My Luck: \(store.state.player.name)")
       .navigationBarTitleDisplayMode(.inline)
     }
   }
 }
 
-#Preview("Can't Stop™®") {
+#Preview("F My Luck") {
   CantStopView(store: Store(initialState: CantStop.State()) {
     CantStop()
   })
