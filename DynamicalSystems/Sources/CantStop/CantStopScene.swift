@@ -51,31 +51,67 @@ import SpriteKit
 
 // this will observe a CantStopState and draw stuff accordingly
 class CantStopScene: SKScene {
-  @SharedReader var state: CantStop.State
+  @SharedReader var store: StoreOf<CantStop>
   
   var CELL: CGFloat {
-    min(self.size.height, self.size.width) / 15.0
+    min(self.size.height, self.size.width) / 13.0
+  }
+  
+  class DieNode: SKShapeNode {
+    var labelNode: SKLabelNode
+    var label: String {
+      didSet {
+        labelNode.text = label
+      }
+    }
+    
+    init(_ die: CantStop.Die, rect: CGRect) {
+      labelNode = SKLabelNode(text: "")
+      label = ""
+      super.init()
+      
+      self.name = String(describing: die)
+      self.path = UIBezierPath(rect: rect).cgPath
+      self.fillColor = UIColor.lightGray
+      labelNode.name = "label"
+      self.addChild(labelNode)
+      labelNode.position = CGPoint(x: rect.size.width / 2.0, y: 0)
+      labelNode.fontColor = UIColor.black
+      labelNode.fontSize = 24
+      labelNode.fontName = UIFont.boldSystemFont(ofSize: 24).fontName
+    }
+    
+    required init?(coder aDecoder: NSCoder) {
+      // nope
+      return nil
+    }
   }
 
   var pieceNode: [CantStop.Piece:SKNode] = [:]
   var positionNode: [CantStop.Position:SKNode] = [:]
   var columnNode: [CantStop.Column:SKNode] = [:]
-  var dieNode: [CantStop.Die:SKNode] = [:]
+  var dieNode: [CantStop.Die:DieNode] = [:]
   
-  init(state: SharedReader<CantStop.State>, size: CGSize) {
-    self._state = state
+  init(store: SharedReader<StoreOf<CantStop>>, size: CGSize) {
+    self._store = store
     super.init(size: size)
 
     let boardNode = SKNode()
-    let whiteTrayNode = SKShapeNode(rectOf: CGSize(width: CELL, height: CELL))
-    let placeholderTrayNode = SKShapeNode(rectOf: CGSize(width: CELL, height: CELL))
-    let diceComponentsNode = SKShapeNode(rectOf: CGSize(width: CELL, height: 4 * CELL))
+    let whiteTrayNode = SKShapeNode(rect: CGRect(x: 0, y: 0, width: CELL, height: CELL))
+    let placeholderTrayNode = SKShapeNode(rect: CGRect(x: 0, y: 0, width: CELL, height: CELL))
+    let diceComponentsNode = SKShapeNode(rect: CGRect(x: 0, y: 0, width: 4 * CELL, height: CELL))
     boardNode.addChild(whiteTrayNode)
     boardNode.addChild(placeholderTrayNode)
     boardNode.addChild(diceComponentsNode)
-    whiteTrayNode.position = CGPoint(x: 2 * CELL, y: 3 * CELL)
-    placeholderTrayNode.position = CGPoint(x: 2 * CELL, y: 2 * CELL)
-    diceComponentsNode.position = CGPoint(x: 2 * CELL, y: 4 * CELL)
+    whiteTrayNode.strokeColor = UIColor.red
+    whiteTrayNode.lineWidth = 1
+    placeholderTrayNode.strokeColor = UIColor.green
+    placeholderTrayNode.lineWidth = 1
+    diceComponentsNode.strokeColor = UIColor.blue
+    diceComponentsNode.lineWidth = 1
+    placeholderTrayNode.position = CGPoint(x: 1 * CELL, y: 8  * CELL)
+    whiteTrayNode.position       = CGPoint(x: 1 * CELL, y: 9  * CELL)
+    diceComponentsNode.position =  CGPoint(x: 1 * CELL, y: 10 * CELL)
 
     for col in CantStop.Column.allCases {
 
@@ -83,7 +119,7 @@ class CantStopScene: SKScene {
         columnNode[col] = placeholderTrayNode
         positionNode[CantStop.Position.init(col: col, row: 0)] = placeholderTrayNode
       } else {
-        let colNode = trayNode(x: col.rawValue + 3, y: 0, w: 1, h: 1 + CantStop.colHeights()[col]!, parent: boardNode)
+        let colNode = trayNode(x: col.rawValue + 2, y: -1, w: 1, h: 1 + CantStop.colHeights()[col]!, parent: boardNode)
         columnNode[col] = colNode
         for row in 0...CantStop.colHeights()[col]! {
           let posNode = trayNode(x: 0, y: row, w: 1, h: 1, parent: colNode)
@@ -95,15 +131,16 @@ class CantStopScene: SKScene {
         let placeholderNode = placeholderNode(player: player, column: col)
         pieceNode[.placeholder(player, col)] = placeholderNode
         placeholderTrayNode.addChild(placeholderNode)
+        placeholderNode.position = CGPoint(x: 0.5 * CELL, y: 0.5 * CELL)
       }
       
     }
     
     for (index, die) in CantStop.Die.allCases.enumerated() {
-      let aDieNode = dieNode(die)
+      let aDieNode = DieNode(die, rect: CGRect(x: 0, y: 0, width: CELL, height: CELL))
       dieNode[die] = aDieNode
       diceComponentsNode.addChild(aDieNode)
-      diceComponentsNode.position = CGPoint(x: 0, y: CGFloat(index) * CELL)
+      aDieNode.position = CGPoint(x: CGFloat(index) * CELL, y: 0)
     }
     
     for whitePiece in CantStop.WhitePiece.allCases {
@@ -114,36 +151,23 @@ class CantStopScene: SKScene {
     
     self.backgroundColor = UIColor.white
     self.addChild(boardNode)
-    print("frame: \(self.size)")
   }
   
   func trayNode(x: Int, y: Int, w: Int, h: Int, parent: SKNode) -> SKNode {
     let rect = CGRect(x: CGFloat(x) * CELL, y: CGFloat(y) * CELL, width: CGFloat(w) * CELL, height: CGFloat(h) * CELL)
     let node = SKShapeNode()
     parent.addChild(node)
-    node.path = UIBezierPath(rect: rect).cgPath
+    node.path = UIBezierPath(rect: CGRect(x: 0, y: 0, width: rect.width, height: rect.height)).cgPath
     node.strokeColor = UIColor.black
-    node.lineWidth = 4
-    node.position = CGPoint(x: x, y: y)
+    node.lineWidth = 2
+    node.position = CGPoint(x: CGFloat(x) * CELL, y: CGFloat(y) * CELL)
     return node
   }
   
   func whiteNode(_ whitePiece: CantStop.WhitePiece) -> SKNode {
     let node = SKShapeNode(circleOfRadius: CELL / 2.0)
     node.name = String(describing: whitePiece)
-    node.fillColor = UIColor.white
-    return node
-  }
-  
-  func dieNode(_ die: CantStop.Die) -> SKNode {
-    let rect = CGRect(x: 0, y: 0, width: CELL, height: CELL)
-    let node = SKShapeNode()
-    node.name = String(describing: die)
-    node.path = UIBezierPath(rect: rect).cgPath
     node.fillColor = UIColor.gray
-    let labelNode = SKLabelNode(text: "")
-    labelNode.name = "label"
-    node.addChild(labelNode)
     return node
   }
   
@@ -164,27 +188,24 @@ class CantStopScene: SKScene {
 
   required init?(coder aDecoder: NSCoder) {
     // this will not let us observe the model being used in the app
-    self._state = SharedReader(value: CantStop.State())
-    super.init(coder: aDecoder)
+    nil
   }
   
   // helper to move a piece to a board position
   func actionThatPuts(node: SKNode!, on destination: SKNode!) -> SKAction {
     node.move(toParent: destination)
-    return SKAction.move(to: CGPoint.zero, duration: TimeInterval.zero)
+    return SKAction.move(to: CGPoint(x: 0.5 * CELL, y: 0.5 * CELL), duration: TimeInterval.zero)
   }
 
   override func didMove(to view: SKView) {
     observe { [weak self] in
-      print("\(self!.state.whitePositions)")
+      guard let self else { return }
       // move every component to its position
-      for (piece, pos) in self!.state.position {
-        self?.pieceNode[piece]!.run(self!.actionThatPuts(node: self?.pieceNode[piece], on: self?.positionNode[pos]))
+      for (piece, pos) in store.position {
+        pieceNode[piece]!.run(actionThatPuts(node: pieceNode[piece], on: positionNode[pos]))
       }
-      for (die, val) in self!.state.dice {
-        if let labelNode = self?.dieNode[die]!.childNode(withName: "label") as SKLabelNode? {
-          
-        }
+      for (die, val) in store.dice {
+        dieNode[die]!.label = val.rawValue > 0 ? "\(val.rawValue)" : ""
       }
     }
   }

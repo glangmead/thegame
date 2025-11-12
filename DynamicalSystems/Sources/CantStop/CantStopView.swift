@@ -18,7 +18,7 @@ struct CantStopView: View {
   init(store: StoreOf<CantStop>) {
     self.store = store
     self.scene = CantStopScene(
-      state: SharedReader(value: store.state),
+      store: SharedReader(value: store),
       size: CGSize(width: 400, height: 300)
     )
   }
@@ -34,21 +34,21 @@ struct CantStopView: View {
         .frame(width: 400, height: 300)
       
       Form {
-        ForEach(CantStop.Column.allCases, id: \.self) { col in
-          if col != .none {
-            ForEach(store.state.boardReport[col]!, id: \.self) { piece in
-              let row = store.state.position[piece]!.row
-              if row > 0 {
-                Text("\(col.name).\(row): \(piece.name)")
-                  .fontWeight(row == CantStop.colHeights()[col]! ? .bold : .regular)
-              }
-            }
-          }
-        }
-        ForEach(CantStop.Die.allCases, id: \.self) { die in
-          let dieState = store.state.diceReport[die]!
-          Text("\(die.name): \(dieState.name)")
-        }
+//        ForEach(CantStop.Column.allCases, id: \.self) { col in
+//          if col != .none {
+//            ForEach(store.state.boardReport[col]!, id: \.self) { piece in
+//              let row = store.state.position[piece]!.row
+//              if row > 0 {
+//                Text("\(col.name).\(row): \(piece.name)")
+//                  .fontWeight(row == CantStop.colHeights()[col]! ? .bold : .regular)
+//              }
+//            }
+//          }
+//        }
+//        ForEach(CantStop.Die.allCases, id: \.self) { die in
+//          let dieState = store.state.diceReport[die]!
+//          Text("\(die.name): \(dieState.name)")
+//        }
         ForEach(CantStop.allowedActions(state: store.state), id: \.self) { action in
           Button("\(action.name)") {
             store.send(action)
