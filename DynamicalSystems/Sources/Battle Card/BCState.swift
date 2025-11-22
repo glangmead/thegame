@@ -16,6 +16,9 @@ extension BattleCard: StatePredicates {
     typealias Piece         = BattleCard.Piece
     typealias Position      = BattleCard.Position
     typealias PiecePosition = BattleCard.PiecePosition
+    var name: String {
+      "Battle Card: Market Garden"
+    }
     var player: Player = .solo
     var players: [Player] = [.solo]
     var phase: Phase = .setup

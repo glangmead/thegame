@@ -22,19 +22,30 @@ struct CantStop: LookaheadReducer {
     case forceRoll([DSix])
     case assignDicePair(Pair<Die>)
     case progressColumn(Column)
+    case playAgain
     // recursive: ordered list of actions
     case sequence([Action])
     
     var name: String {
       switch self {
-      case .assignDicePair(let pair):
-        return "\(pair.fst.name)/\(pair.snd.name)"
+      case .assignDicePair(_):
+        return ""
       case .sequence(let actions):
-        let name = actions.map { $0.name }
-          .joined(separator: " + ")
-        return "(\(name))"
+        let name = actions.compactMap { $0.name.isEmpty ? nil : $0.name }
+          .joined(separator: " and ")
+        return "\(name)"
       case .progressColumn(let col):
-        return "move \(col)"
+        return "\(col.rawValue)"
+      case .rollDice:
+        return "Roll dice"
+      case .claimVictory:
+        return "Claim victory!"
+      case .pass:
+        return "Pass"
+      case .bust:
+        return "Busted: Pass"
+      case .playAgain:
+        return "New game"
       default:
         return String(describing: self)
       }
@@ -154,12 +165,15 @@ struct CantStop: LookaheadReducer {
     
     let victoryRule = Rule(
       condition: { state in
+        !state.ended &&
         state.winAchieved() &&
         state.rolledDice().count < 4 &&
         moveRule.actions(state).isEmpty
       },
       actions: { _ in [.claimVictory] }
     )
+    
+    let newGameRule = Rule(condition: { state in state.ended }, actions: {_ in [.playAgain]})
 
     let bustRule = Rule(
       condition: { state in
@@ -169,13 +183,10 @@ struct CantStop: LookaheadReducer {
       actions: { _ in [.bust] }
     )
 
-    return [victoryRule, passRule, bustRule, append(moveRule, moveRule)]
+    return [victoryRule, passRule, bustRule, append(moveRule, moveRule), newGameRule]
   }
     
   static func allowedActions(state: State) -> [Action] {
-    if state.ended {
-      return []
-    }
     let actions = rules().flatMap { rule in
       if rule.condition(state) {
         return rule.actions(state)
@@ -208,6 +219,8 @@ struct CantStop: LookaheadReducer {
   
   static func reduce(state: inout State, action: Action) {
     switch action {
+    case .playAgain:
+      state = State()
     case .claimVictory:
       state.ended = true
     case .pass:

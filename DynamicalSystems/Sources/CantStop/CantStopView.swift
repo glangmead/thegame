@@ -12,8 +12,10 @@ import SwiftUI
 // A simple game scene with falling boxes
 struct CantStopView: View {
   var store: StoreOf<CantStop>
-  
   var scene: SKScene
+  var aiPlayer: CantStopRandomPlayer
+  let aiMoveStr = "*"
+  let notAIMoveStr = ""
   
   init(store: StoreOf<CantStop>) {
     self.store = store
@@ -21,43 +23,29 @@ struct CantStopView: View {
       store: SharedReader(value: store),
       size: CGSize(width: 400, height: 300)
     )
+    // TODO: Where can I find a CantStop()
+    self.aiPlayer = CantStopRandomPlayer(state: store.state, game: CantStop())
   }
   
   var body: some View {
     NavigationStack {
-      Button("Recheck rules") {
-        let _ = CantStop.allowedActions(state: store.state)
-      }
-      Text("\(CantStop.allowedActions(state: store.state).count) actions available")
-      
       SpriteView(scene: scene)
         .frame(width: 400, height: 300)
-      
       Form {
-//        ForEach(CantStop.Column.allCases, id: \.self) { col in
-//          if col != .none {
-//            ForEach(store.state.boardReport[col]!, id: \.self) { piece in
-//              let row = store.state.position[piece]!.row
-//              if row > 0 {
-//                Text("\(col.name).\(row): \(piece.name)")
-//                  .fontWeight(row == CantStop.colHeights()[col]! ? .bold : .regular)
-//              }
-//            }
-//          }
-//        }
-//        ForEach(CantStop.Die.allCases, id: \.self) { die in
-//          let dieState = store.state.diceReport[die]!
-//          Text("\(die.name): \(dieState.name)")
-//        }
         ForEach(CantStop.allowedActions(state: store.state), id: \.self) { action in
-          Button("\(action.name)") {
+          Button("\(action.name) \(aiPlayer.chooseAction(state: store.state, game: CantStop()) == action ? aiMoveStr : notAIMoveStr)") {
             store.send(action)
           }
         }
       }
-      .navigationTitle("F My Luck: \(store.state.player.name)")
+      .navigationTitle("\(store.state.name): \(store.state.player.name)")
       .navigationBarTitleDisplayMode(.inline)
     }
+    Button("Recheck rules") {
+      let _ = CantStop.allowedActions(state: store.state)
+    }
+    Text("\(CantStop.allowedActions(state: store.state).count) actions available") 
+    
   }
 }
 

@@ -40,6 +40,7 @@
 		9B8CDCD22EA2BC5D00BE059C /* Exceptions for "Sources" folder in "DynamicalSystemsTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				CantStop/CantStopAI.swift,
 				CantStop/CantStopComponents.swift,
 				CantStop/CantStopEngine.swift,
 				CantStop/CantStopScene.swift,

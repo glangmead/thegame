@@ -8,6 +8,36 @@
 import ComposableArchitecture
 import Foundation
 
+/// Notes from Ludii
+///
+/// Components:
+///   Piece (e.g. Marker, Disc, Scale, Colour, Pawn, Soldier, Tank, Jaguar, Dog), flippable
+///   Dice (d:4, optional faces: { a b c d })
+///   Domino
+///   Card
+///   Tile (to play on cells, same shape as cells)
+/// Container:
+///   Dice
+///   Board (sites: cells/faces, edges, vertices)
+///     helpers: columns, rows, perimeter, corners, major, minor, top, bottom, left, right
+///     edges are between vertices AND between faces
+///     generators: graph (list vertices w/ 2D coords, list edges as pairs of indices, list cells as lists of indices)
+///     play on vertices, edges, and/or faces
+///     generator helpers: brickwork, celtic, hex, mesh, morris, square, tiling, triangular, ...
+///     generator helpers: add, remove, hole, intersect, keep, rotate, skew, ...
+///     relations: neighbors, neighbors of distance d
+///     cell/face can have "values", e.g. sudoku having 1-9: (board (square 9) (values Cell (range 1 9)))
+///     Direction:
+///       Relative, Absolute (forward, forwards (like a cone for a tank))
+///       Facing: Spatial, Rotational, Compass
+///     Track:
+///       extra data referring to the board sites; can use direction commands
+///       can be directed, or loop
+///       end (one space off the end of the track)
+///       a player's hand could have a track(?)
+///   Hand
+///   Deck
+
 protocol GameComponents {
   associatedtype Phase
   associatedtype Piece: Hashable
@@ -21,6 +51,7 @@ protocol StatePredicates {
 }
 
 protocol GameState: GameComponents, Equatable {
+  var name: String { get }
   var player: Player { get set }
   var players: [Player] { get set }
   var ended: Bool { get set }
@@ -31,7 +62,20 @@ protocol LookaheadReducer<State, Action>: Reducer {
   associatedtype Rule
   static func rules() -> [Rule]
   static func allowedActions(state: State) -> [Action]
-  
+}
+
+protocol ComputerPlayer<State, Action> {
+  associatedtype State
+  associatedtype Action
+  func chooseAction(state: State, game: any LookaheadReducer<State, Action>) -> Action
+}
+
+struct Track: Equatable, Hashable {
+  let length: Int
+}
+
+struct TrackPos: Equatable, Hashable {
+  let pos: Int
 }
 
 enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable, Linear {

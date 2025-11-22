@@ -48,6 +48,8 @@ import SpriteKit
 
 /// GameplayKit: GKComponent, GKState.
 /// One subclasses GKState to create a new state, similarly with GKComponent.
+///
+/// SKSpriteNode from SF Symbols character: https://stackoverflow.com/questions/59886426/creating-an-skspritenode-from-the-sf-symbols-font-in-a-different-color
 
 // this will observe a CantStopState and draw stuff accordingly
 class CantStopScene: SKScene {
@@ -78,7 +80,7 @@ class CantStopScene: SKScene {
       labelNode.position = CGPoint(x: rect.size.width / 2.0, y: 0)
       labelNode.fontColor = UIColor.black
       labelNode.fontSize = 24
-      labelNode.fontName = UIFont.boldSystemFont(ofSize: 24).fontName
+      labelNode.fontName = UIFont.init(name: "Helvetica", size: 24)?.fontName
     }
     
     required init?(coder aDecoder: NSCoder) {
@@ -86,7 +88,8 @@ class CantStopScene: SKScene {
       return nil
     }
   }
-
+  
+  // Map from components to SpriteKit
   var pieceNode: [CantStop.Piece:SKNode] = [:]
   var positionNode: [CantStop.Position:SKNode] = [:]
   var columnNode: [CantStop.Column:SKNode] = [:]

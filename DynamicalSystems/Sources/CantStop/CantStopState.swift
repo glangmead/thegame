@@ -13,13 +13,16 @@ extension CantStop: StatePredicates {
   // The pi type of the family, i.e. a type of sections of the family.
   // In that light, members like player: Player are maps from the unit type to Player.
   @ObservableState
-  struct State: Equatable, Sendable, GameState {
+  struct State: Equatable, Hashable, Sendable, GameState {
     typealias Player = CantStop.Player
     typealias Phase = CantStop.Phase
     typealias Piece = CantStop.Piece
     typealias Position = CantStop.Position
     typealias PiecePosition = CantStop.PiecePosition
     
+    var name: String {
+      "F My Luck"
+    }
     // TODO: force-query w/ extension Dictionary { subscript(force key: Key) -> Value {} } like in https://stackoverflow.com/questions/59793783/force-swift-dictionary-to-return-a-non-optional-or-assert
     var position = [Piece: Position]()
     var dice = [Die: DSix]()
