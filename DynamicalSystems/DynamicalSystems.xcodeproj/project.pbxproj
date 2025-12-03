@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		9B1F01492EB8055B00C5110F /* Gen in Frameworks */ = {isa = PBXBuildFile; productRef = 9B1F01482EB8055B00C5110F /* Gen */; };
+		9B7ABDBF2EE0E65800F0FD43 /* Gen in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7ABDBE2EE0E65800F0FD43 /* Gen */; };
+		9B7ABDC12EE0E65B00F0FD43 /* Overture in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7ABDC02EE0E65B00F0FD43 /* Overture */; };
+		9B7ABDC32EE0E65E00F0FD43 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7ABDC22EE0E65E00F0FD43 /* ComposableArchitecture */; };
 		9B8CDCE12EA6BCA200BE059C /* Overture in Frameworks */ = {isa = PBXBuildFile; productRef = 9B8CDCE02EA6BCA200BE059C /* Overture */; };
 		9BB9EBD22E9431ED00163BC3 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB9EBD12E9431ED00163BC3 /* ComposableArchitecture */; };
 /* End PBXBuildFile section */
@@ -29,14 +32,46 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		9B7ABDA62EE0E5E700F0FD43 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		9B3138722E63462B00D3AE6D /* DynamicalSystems.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DynamicalSystems.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9B31387F2E63462C00D3AE6D /* DynamicalSystemsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DynamicalSystemsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9B3138892E63462C00D3AE6D /* DynamicalSystemsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DynamicalSystemsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9B7ABDA82EE0E5E700F0FD43 /* gamer */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = gamer; sourceTree = BUILT_PRODUCTS_DIR; };
 		9BB9EBEB2E95AF9700163BC3 /* REPL.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = REPL.playground; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9B7ABDBD2EE0E64900F0FD43 /* Exceptions for "Sources" folder in "gamer" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Array+uniques.swift",
+				"Battle Card/BCComponents.swift",
+				"Battle Card/BCEngine.swift",
+				"Battle Card/BCState.swift",
+				CantStop/CantStopAI.swift,
+				CantStop/CantStopComponents.swift,
+				CantStop/CantStopEngine.swift,
+				CantStop/CantStopState.swift,
+				Game.swift,
+				Lens.swift,
+				MCTS.swift,
+				Pair.swift,
+				RawComparable.swift,
+			);
+			target = 9B7ABDA72EE0E5E700F0FD43 /* gamer */;
+		};
 		9B8CDCD22EA2BC5D00BE059C /* Exceptions for "Sources" folder in "DynamicalSystemsTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -60,6 +95,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				9B8CDCD22EA2BC5D00BE059C /* Exceptions for "Sources" folder in "DynamicalSystemsTests" target */,
+				9B7ABDBD2EE0E64900F0FD43 /* Exceptions for "Sources" folder in "gamer" target */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -72,6 +108,11 @@
 		9B31388C2E63462C00D3AE6D /* DynamicalSystemsUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = DynamicalSystemsUITests;
+			sourceTree = "<group>";
+		};
+		9B7ABDA92EE0E5E700F0FD43 /* gamer */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = gamer;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -101,6 +142,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9B7ABDA52EE0E5E700F0FD43 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9B7ABDC12EE0E65B00F0FD43 /* Overture in Frameworks */,
+				9B7ABDBF2EE0E65800F0FD43 /* Gen in Frameworks */,
+				9B7ABDC32EE0E65E00F0FD43 /* ComposableArchitecture in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -110,6 +161,7 @@
 				9BB9EBEB2E95AF9700163BC3 /* REPL.playground */,
 				9B3138822E63462C00D3AE6D /* DynamicalSystemsTests */,
 				9B31388C2E63462C00D3AE6D /* DynamicalSystemsUITests */,
+				9B7ABDA92EE0E5E700F0FD43 /* gamer */,
 				9BB9EBD02E9431ED00163BC3 /* Frameworks */,
 				9B3138732E63462B00D3AE6D /* Products */,
 				9B3138742E63462B00D3AE6D /* Sources */,
@@ -122,6 +174,7 @@
 				9B3138722E63462B00D3AE6D /* DynamicalSystems.app */,
 				9B31387F2E63462C00D3AE6D /* DynamicalSystemsTests.xctest */,
 				9B3138892E63462C00D3AE6D /* DynamicalSystemsUITests.xctest */,
+				9B7ABDA82EE0E5E700F0FD43 /* gamer */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -207,6 +260,31 @@
 			productReference = 9B3138892E63462C00D3AE6D /* DynamicalSystemsUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		9B7ABDA72EE0E5E700F0FD43 /* gamer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9B7ABDAE2EE0E5E700F0FD43 /* Build configuration list for PBXNativeTarget "gamer" */;
+			buildPhases = (
+				9B7ABDA42EE0E5E700F0FD43 /* Sources */,
+				9B7ABDA52EE0E5E700F0FD43 /* Frameworks */,
+				9B7ABDA62EE0E5E700F0FD43 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				9B7ABDA92EE0E5E700F0FD43 /* gamer */,
+			);
+			name = gamer;
+			packageProductDependencies = (
+				9B7ABDBE2EE0E65800F0FD43 /* Gen */,
+				9B7ABDC02EE0E65B00F0FD43 /* Overture */,
+				9B7ABDC22EE0E65E00F0FD43 /* ComposableArchitecture */,
+			);
+			productName = gamer;
+			productReference = 9B7ABDA82EE0E5E700F0FD43 /* gamer */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -214,7 +292,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1640;
+				LastSwiftUpdateCheck = 2610;
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					9B3138712E63462B00D3AE6D = {
@@ -227,6 +305,9 @@
 					9B3138882E63462C00D3AE6D = {
 						CreatedOnToolsVersion = 16.4;
 						TestTargetID = 9B3138712E63462B00D3AE6D;
+					};
+					9B7ABDA72EE0E5E700F0FD43 = {
+						CreatedOnToolsVersion = 26.1.1;
 					};
 				};
 			};
@@ -252,6 +333,7 @@
 				9B3138712E63462B00D3AE6D /* DynamicalSystems */,
 				9B31387E2E63462C00D3AE6D /* DynamicalSystemsTests */,
 				9B3138882E63462C00D3AE6D /* DynamicalSystemsUITests */,
+				9B7ABDA72EE0E5E700F0FD43 /* gamer */,
 			);
 		};
 /* End PBXProject section */
@@ -296,6 +378,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		9B3138852E63462C00D3AE6D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9B7ABDA42EE0E5E700F0FD43 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -567,6 +656,36 @@
 			};
 			name = Release;
 		};
+		9B7ABDAC2EE0E5E700F0FD43 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 5Y5NG75847;
+				ENABLE_HARDENED_RUNTIME = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		9B7ABDAD2EE0E5E700F0FD43 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 5Y5NG75847;
+				ENABLE_HARDENED_RUNTIME = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -606,6 +725,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		9B7ABDAE2EE0E5E700F0FD43 /* Build configuration list for PBXNativeTarget "gamer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9B7ABDAC2EE0E5E700F0FD43 /* Debug */,
+				9B7ABDAD2EE0E5E700F0FD43 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -640,6 +768,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9B1F01472EB8055B00C5110F /* XCRemoteSwiftPackageReference "swift-gen" */;
 			productName = Gen;
+		};
+		9B7ABDBE2EE0E65800F0FD43 /* Gen */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B1F01472EB8055B00C5110F /* XCRemoteSwiftPackageReference "swift-gen" */;
+			productName = Gen;
+		};
+		9B7ABDC02EE0E65B00F0FD43 /* Overture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B8CDCDF2EA6BCA200BE059C /* XCRemoteSwiftPackageReference "swift-overture" */;
+			productName = Overture;
+		};
+		9B7ABDC22EE0E65E00F0FD43 /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B31389C2E63463900D3AE6D /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
 		};
 		9B8CDCE02EA6BCA200BE059C /* Overture */ = {
 			isa = XCSwiftPackageProductDependency;
