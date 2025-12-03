@@ -72,17 +72,21 @@ protocol ComputerPlayer<State, Action> {
 
 struct Track: Equatable, Hashable {
   let length: Int
+  var names: [String] = []
 }
 
-struct TrackPos: Equatable, Hashable {
-  let pos: Int
-}
+typealias TrackPos = Int
 
+// TODO: remove .none
 enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable, Linear {
   case none = 0, one = 1, two, three, four, five, six
   
   static func allFaces() -> [DSix] {
     DSix.allCases.filter { $0 != .none}
+  }
+  
+  static func roll() -> DSix {
+    DSix.allCases.randomElement()!
   }
   
   static func sum(_ lhs: DSix, _ rhs: DSix, clamp: Bool = true) -> DSix {
@@ -99,6 +103,10 @@ enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable, Linear {
       val = max(val, 1)
     }
     return DSix(rawValue: val)!
+  }
+  
+  static func greater(_ lhs: DSix, _ rhs: DSix) -> Bool {
+    return lhs.rawValue > rhs.rawValue
   }
   
   var name: String {

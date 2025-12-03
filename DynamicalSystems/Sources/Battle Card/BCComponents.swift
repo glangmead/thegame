@@ -7,9 +7,9 @@
 
 import Foundation
 
-extension BattleCard: GameComponents {
+struct BattleCardComponents: GameComponents {
   
-  /// The manual should perhaps be directly translatable, i.e. easier for a person to digitize.
+  /// The rules are written as follows:
   ///
   /// Setup:
   ///
@@ -54,7 +54,7 @@ extension BattleCard: GameComponents {
   /// candidates: 30C and ally in same city
   /// only advance 30C if the next city has allied control
   /// advancing 30C to A WINS game
-  /// when army1 advances into army2, add army1's strength to army2 and dissolve army1
+  /// when army1 advances onto army2, add army2's strength to army1 and dissolve army2
   /// therefore we need to gather
   ///   - 30C city
   ///   - Ally in that city
@@ -67,6 +67,11 @@ extension BattleCard: GameComponents {
   
   enum Player: Equatable, Hashable {
     case solo
+  }
+  
+  enum Weather: Equatable, Hashable {
+    case fog
+    case clear
   }
   
   enum Phase: Equatable, Hashable {
@@ -94,8 +99,11 @@ extension BattleCard: GameComponents {
     }
   }
   
-  enum Piece: Equatable, Hashable, CaseIterable {
-    case thirtycorps
+  // The german pieces have associated Int value that line up semantically with the Ints in var track,
+  // so you can do let city = track.names[Piece.germanGrave.rawValue]. This is only for the Germans because they are
+  // semantically attached to constant cities. The allied pieces are mobile.
+  enum Piece: Int, Equatable, Hashable, CaseIterable {
+    case thirtycorps = 0
     case germanEindhoven
     case germanGrave
     case germanNijmegen
@@ -104,36 +112,14 @@ extension BattleCard: GameComponents {
     case allied82nd
     case allied1st
     
-    static func germanFacing(_ city: Position) -> Piece? {
-      switch city {
-      case .belgium:
-        return nil
-      case .eindhoven:
-        return .germanEindhoven
-      case .grave:
-        return .germanGrave
-      case .nijmegen:
-        return .germanNijmegen
-      case .arnhem:
-        return .germanArnhem
-      }
+    static func allies() -> [Piece] {
+      [.allied101st, .allied82nd, .allied1st]
     }
-
-    static func cityContaining(_ germanArmy: Piece) -> Position? {
-      switch germanArmy {
-      case .germanEindhoven:
-        return .eindhoven
-      case .germanGrave:
-        return .grave
-      case .germanNijmegen:
-        return .nijmegen
-      case .germanArnhem:
-        return .arnhem
-      default:
-        return nil
-      }
+    
+    static func germans() -> [Piece] {
+      [.germanEindhoven, .germanGrave, .germanNijmegen, .germanArnhem]
     }
-
+    
     var name: String {
       switch self {
       case .thirtycorps:
@@ -162,35 +148,13 @@ extension BattleCard: GameComponents {
     case defend
     case reinforcement
   }
+
+  let track = Track(
+    length: 5,
+    names: ["Belgium", "Eindhoven", "Grave", "Nijmegen", "Arnhem"]
+  )
   
-  // the board is organized by city, with a few positions per city
-  enum Position: String, CaseIterable, Linear {
-    case belgium = "Belgium"
-    case eindhoven = "Eindhoven"
-    case grave = "Grave"
-    case nijmegen = "Nijmegen"
-    case arnhem = "Arnhem"
-    func next() -> Position {
-      switch self {
-      case .belgium:
-        .eindhoven
-      case .eindhoven:
-        .grave
-      case .grave:
-        .nijmegen
-      case .nijmegen:
-        .arnhem
-      case .arnhem:
-        .arnhem
-      }
-    }
-    var start: Self {
-      return .belgium
-    }
-    var end: Self {
-      return .arnhem
-    }
-  }
+  typealias Position = TrackPos
   
   enum Control: Equatable, Hashable {
     case allies

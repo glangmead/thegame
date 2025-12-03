@@ -10,6 +10,11 @@ import Foundation
 
 @Reducer
 struct BattleCard: LookaheadReducer {
+  typealias Piece = BattleCardComponents.Piece
+  typealias Phase = BattleCardComponents.Phase
+  typealias Advantage = BattleCardComponents.Advantage
+  typealias Control = BattleCardComponents.Control
+
   enum Action: Hashable, Equatable, Sendable {
     case initialize
     case setPhase(Phase)
@@ -69,11 +74,62 @@ struct BattleCard: LookaheadReducer {
     let reinforceGermansRule = Rule(
       condition: { $0.phase == .reinforceGermans },
       actions: { state in
-        state.germansToReinforce.map { Action.reinforceGermans($0) }
+        state.germansToReinforce.map { Action.reinforceGermans($0) } + [Action.setPhase(Phase.advance)]
       }
     )
     
-    return [initRule, airdropRule, battleRule, battlesOverRule, reinforceGermansRule]
+    let advanceRule = Rule(
+      condition: { state in
+        state.phase == Phase.advance && state.control[state.position[.thirtycorps]! + 1]! == .allies
+      },
+      actions: { state in
+        var actions = [Action.sequence([Action.advance30Corps, Action.setPhase(Phase.reinforce1st)])]
+        let corpsPos = state.position[.thirtycorps]!
+        if let ally = state.allyIn(pos: corpsPos) {
+          actions.append(Action.sequence([Action.advanceAllies(ally), Action.setPhase(Phase.reinforce1st)]))
+        }
+        return actions
+      }
+    )
+    
+    let checkWeather = Rule(
+      condition: { $0.phase == Phase.reinforce1st },
+      actions: { _ in [Action.roll1stAirborne] }
+    )
+    
+    let reinforce1st = Rule(
+      condition: { $0.phase == Phase.reinforce1st },
+      actions: { state in
+        if state.weatherJustCleared {
+          [Action.sequence([Action.perform1stAirborneReinforcement, Action.advanceTurn])]
+        } else {
+          [Action.advanceTurn]
+        }
+      }
+    )
+    
+    let loseRule = Rule(
+      condition: { $0.turnNumber >= 7 },
+      actions: { _ in [Action.declareLoss] }
+    )
+    
+    let winRule = Rule(
+      condition: { $0.position[.thirtycorps] == 5 },
+      actions: { _ in [Action.claimVictory] }
+    )
+
+    return [
+      initRule,
+      airdropRule,
+      battleRule,
+      battlesOverRule,
+      reinforceGermansRule,
+      advanceRule,
+      checkWeather,
+      reinforce1st,
+      loseRule,
+      winRule
+    ]
   }
 
   static func allowedActions(state: State) -> [Action] {
@@ -102,7 +158,7 @@ struct BattleCard: LookaheadReducer {
   
   static func attackOutcome(roll: DSix, advantage: Advantage) -> (DSix, DSix, Bool) {
     switch roll {
-    case DSix.one:
+    case DSix.one, DSix.none:
       switch advantage {
       case .allies:
         (DSix.one, DSix.none, false)
@@ -120,7 +176,7 @@ struct BattleCard: LookaheadReducer {
       case .tied:
         (DSix.one, DSix.one, false)
       }
-    default:
+    case DSix.five, DSix.six:
       switch advantage {
       case .allies:
         (DSix.none, DSix.one, true)
@@ -163,55 +219,109 @@ struct BattleCard: LookaheadReducer {
       state.player = .solo
       state.players = [.solo]
       state.ended = false
-      state.facing[.allied101st] = .germanEindhoven
-      state.facing[.germanEindhoven] = .allied101st
-      state.facing[.allied82nd] = .germanGrave
-      state.facing[.germanGrave] = .allied82nd
-      state.facing[.allied1st] = .germanArnhem
-      state.facing[.germanArnhem] = .allied1st
+      state.position[.allied101st] = 1
+      state.position[.germanEindhoven] = 1
+      state.position[.allied82nd] = 2
+      state.position[.germanGrave] = 2
+      state.position[.germanNijmegen] = 3
+      state.position[.allied1st] = 4
+      state.position[.germanArnhem] = 4
+      state.strength[.allied101st] = DSix.six
+      state.strength[.allied82nd] = DSix.six
+      state.strength[.allied1st] = DSix.five
+      state.strength[.germanEindhoven] = DSix.two
+      state.strength[.germanGrave] = DSix.two
+      state.strength[.germanNijmegen] = DSix.one
+      state.strength[.germanArnhem] = DSix.two
+      state.control[1] = .germans
+      state.control[2] = .germans
+      state.control[3] = .germans
+      state.control[4] = .germans
+      state.weather = .fog
     case .setPhase(let phase):
       state.phase = phase
     case .airdrop(let ally):
-      let roll = DSix.allFaces().randomElement()!
+      let roll = DSix.roll()
       let penalty = airdropPenalty(roll)
       state.strength[ally] = DSix.minus(state.strength[ally]!, penalty)
     case .rollForAttack(let army):
-      let roll = DSix.allFaces().randomElement()!
-//      let german = state.germanFacing(army)
-//      let advantage = state.advantageFacing(army)
-//      let (allyHit, germanHit, advantageAllies) = attackOutcome(roll: roll, advantage: advantage)
-//      state.strength[army]   = DSix.minus(state.strength[army]!,   allyHit)
-//      state.strength[german] = DSix.minus(state.strength[german]!, germanHit)
-//      if advantageAllies {
-//        state.advantage[state.position[army]!] = Advantage.allies
-//      }
+      let german = state.opponentFacing(piece: army)!
+      let armyStrength = state.strength[army]!
+      let germanStrength = state.strength[german]!
+      var advantage = Advantage.tied
+      if DSix.greater(armyStrength, germanStrength) {
+        advantage = Advantage.allies
+      } else if DSix.greater(germanStrength, armyStrength) {
+        advantage = Advantage.germans
+      }
+      let roll = DSix.roll()
+      let (allyHit, germanHit, alliedControl) = attackOutcome(roll: roll, advantage: advantage)
+      state.strength[army]   = DSix.minus(state.strength[army]!,   allyHit)
+      state.strength[german] = DSix.minus(state.strength[german]!, germanHit)
+      if alliedControl {
+        state.control[state.position[army]!] = Control.allies
+      }
     case .rollForDefend(let army):
-      let roll = DSix.allFaces().randomElement()!
-//      let german = state.germanFacing(army)
-//      let advantage = state.advantageFacing(army)
-//      let (allyHit, germanHit) = defendOutcome(roll: roll, advantage: advantage)
-//      state.strength[army]   = DSix.minus(state.strength[army]!,   allyHit)
-//      state.strength[german] = DSix.minus(state.strength[german]!, germanHit)
+      let german = state.opponentFacing(piece: army)!
+      let armyStrength = state.strength[army]!
+      let germanStrength = state.strength[german]!
+      var advantage = Advantage.tied
+      if DSix.greater(armyStrength, germanStrength) {
+        advantage = Advantage.allies
+      } else if DSix.greater(germanStrength, armyStrength) {
+        advantage = Advantage.germans
+      }
+      let roll = DSix.roll()
+      let (allyHit, germanHit) = defendOutcome(roll: roll, advantage: advantage)
+      state.strength[army]   = DSix.minus(state.strength[army]!,   allyHit)
+      state.strength[german] = DSix.minus(state.strength[german]!, germanHit)
+      if DSix.greater(state.strength[german]!, state.strength[army]!) {
+        state.control[state.position[army]!] = Control.germans
+      }
     case .reinforceGermans(let germanArmy):
-//      switch germanArmy {
-//      case .germanArnhem, .germanEindhoven, .germanGrave:
-//        state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
-//      case .germanNijmegen:
-//        if state.advantage[.arnhem] == .germans {
-//          state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
-//        }
-//      default:
-//        ()
-//      }
-      state.updateControl(germanArmy: germanArmy)
+      let city = state.position[germanArmy]!
+      switch germanArmy {
+      case .germanArnhem, .germanEindhoven, .germanGrave:
+        state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
+      case .germanNijmegen:
+        if state.control[4] == .germans {
+          state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
+        }
+      default:
+        ()
+      }
+      switch state.opponentFacing(piece: germanArmy) {
+      case .none:
+        state.control[city] = Control.germans
+      case .some(let ally):
+        if DSix.greater(state.strength[germanArmy]!, state.strength[ally]!) {
+          state.control[city] = Control.germans
+        }
+      }
     case .advanceAllies(let ally):
-      ()
+      let startingCity = state.position[ally]!
+      let destCity = startingCity + 1
+      // make the move
+      state.position[ally]! = destCity
+      if let destAlly = state.allyIn(pos: destCity) {
+        // sum the strength
+        state.strength[ally] = DSix.sum(state.strength[ally]!, state.strength[destAlly]!)
+        // remove the piece we moved onto
+        state.alliesToAttack.removeAll(where: {$0 == destAlly})
+      }
     case .advance30Corps:
-      ()
+      state.position[.thirtycorps]! += 1
     case .roll1stAirborne:
-      ()
+      // if d6 leq turn number and if fog, increase strength of All1, set to clear
+      if state.weather == .fog {
+        if DSix.greater(DSix(rawValue: state.turnNumber)!, DSix.roll()) {
+          state.weather = .clear
+          state.weatherJustCleared = true
+        }
+      }
     case .perform1stAirborneReinforcement:
-      ()
+      state.weatherJustCleared = false
+      state.strength[.allied1st] = DSix.sum(DSix.one, state.strength[.allied1st]!)
     case .advanceTurn:
       state.turnNumber += 1
     case .claimVictory:
