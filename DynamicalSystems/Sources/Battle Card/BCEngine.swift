@@ -30,6 +30,41 @@ struct BattleCard: LookaheadReducer {
     case claimVictory
     case declareLoss
     case sequence([Action])
+    
+    var name: String {
+      switch self {
+      case .initialize:
+        return "Init"
+      case .setPhase(let phase):
+        return "Next phase: \(phase)"
+      case .airdrop(let ally):
+        return "Airdrop for \(ally)"
+      case .rollForAttack(let ally):
+        return "\(ally) attacking"
+      case .rollForDefend(let ally):
+        return "\(ally) defending"
+      case .reinforceGermans(let german):
+        return "Reinforcements: \(german)"
+      case .advanceAllies(let ally):
+        return "Advancing \(ally)"
+      case .advance30Corps:
+        return "Advancing XXX Corps"
+      case .roll1stAirborne:
+        return "Rolling for weather"
+      case .perform1stAirborneReinforcement:
+        return "Sunny! Reinforcing 1st Airborne"
+      case .advanceTurn:
+        return "Next turn"
+      case .claimVictory:
+        return "You win"
+      case .declareLoss:
+        return "You lose"
+      case .sequence(let actions):
+        let name = actions.compactMap { $0.name.isEmpty ? nil : $0.name }
+          .joined(separator: "\n")
+        return "\(name)"
+      }
+    }
   }
   
   /// A Rule is a conditional action
