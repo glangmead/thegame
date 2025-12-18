@@ -86,7 +86,7 @@ enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable, Linear {
   }
   
   static func roll() -> DSix {
-    DSix.allCases.randomElement()!
+    DSix.allFaces().randomElement()!
   }
   
   static func sum(_ lhs: DSix, _ rhs: DSix, clamp: Bool = true) -> DSix {
@@ -115,12 +115,12 @@ enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable, Linear {
   
   func next() -> Self {
     switch self {
-    case .none:
-      return .none
     case .one, .two, .three, .four, .five:
       return DSix(rawValue: rawValue + 1)!
     case .six:
       return .six
+    default:
+      return self
     }
   }
   

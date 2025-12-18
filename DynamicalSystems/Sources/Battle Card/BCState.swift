@@ -32,7 +32,7 @@ extension BattleCard: StatePredicates {
     func piecesIn(_ pos: Position) -> [Piece] {
       var pieces: [Piece] = []
       for piece in Piece.allCases {
-        if position[piece]! == pos {
+        if position[piece] == pos {
           pieces.append(piece)
         }
       }
@@ -47,12 +47,15 @@ extension BattleCard: StatePredicates {
     var alliesToAirdrop: [Piece] = Piece.allies()
     var germansToReinforce: [Piece] = Piece.germans()
     
+    var actionsTaken = [Action]()
+    var loggedActions = [Log]()
+    
     func allyIn(pos: Position) -> Piece? {
-      return piecesIn(pos).filter({ Piece.allies().contains($0) })[0]
+      return piecesIn(pos).filter({ Piece.allies().contains($0) }).first
     }
     
     func germanIn(pos: Position) -> Piece? {
-      return piecesIn(pos).filter({ Piece.germans().contains($0) })[0]
+      return piecesIn(pos).filter({ Piece.germans().contains($0) }).first
     }
     
     func opponentFacing(piece: Piece) -> Piece? {
@@ -63,5 +66,34 @@ extension BattleCard: StatePredicates {
       }
     }
     
+    func asText() -> [[String]] {
+      var text = [[String]]()
+      let track = BattleCardComponents().track
+      text.append(["Turn \(state.turnNumber)"])
+      for city in (0..<track.length).reversed() {
+        var cityText = [track.names[city]]
+        
+        var allyText = "none"
+        var allyStrength = " "
+        if let ally = allyIn(pos: city) {
+          allyText = ally.name
+          allyStrength = "\(strength[ally]!.rawValue)"
+        }
+        cityText.append(allyText)
+        cityText.append(allyStrength)
+        cityText.append(piecesIn(city).contains(.thirtycorps) ? "XXXCorps" : " ")
+        var germanText = "none"
+        var germanStrength = " "
+        if let german = germanIn(pos: city) {
+          germanText = "vs German"
+          germanStrength = "\(strength[german]!.rawValue)"
+        }
+        cityText.append(germanText)
+        cityText.append(germanStrength)
+        cityText.append(control[city]?.rawValue ?? "")
+        text.append(cityText)
+      }
+      return text
+    }
   }
 }

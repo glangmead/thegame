@@ -80,6 +80,7 @@ struct BattleCardComponents: GameComponents {
     case battle
     case reinforceGermans
     case advance
+    case rollForWeather
     case reinforce1st
     var name: String {
       switch self {
@@ -93,6 +94,8 @@ struct BattleCardComponents: GameComponents {
         "German reinforcements"
       case .advance:
         "Allied advance"
+      case .rollForWeather:
+        "Roll for weather"
       case .reinforce1st:
         "1st Airb. reinforcement"
       }
@@ -123,21 +126,21 @@ struct BattleCardComponents: GameComponents {
     var name: String {
       switch self {
       case .thirtycorps:
-        "30 Corps"
+        return "30 Corps"
       case .germanEindhoven:
-        "Germans: Eindhoven"
+        return "Germans in Eindhoven"
       case .germanGrave:
-        "Germans: Grave"
+        return "Germans in Grave"
       case .germanNijmegen:
-        "Germans: Nimjegen"
+        return "Germans in Nijmegen"
       case .germanArnhem:
-        "Germans: Arnhem"
+        return "Germans in Arnhem"
       case .allied101st:
-        "Allies: 101st"
+        return "101st"
       case .allied82nd:
-        "Allies: 82nd"
+        return "82nd"
       case .allied1st:
-        "Allies: 1st"
+        return "1st"
       }
     }
   }
@@ -156,9 +159,9 @@ struct BattleCardComponents: GameComponents {
   
   typealias Position = TrackPos
   
-  enum Control: Equatable, Hashable {
-    case allies
-    case germans
+  enum Control: String, Equatable, Hashable {
+    case allies = "allies"
+    case germans = "germans"
   }
     
   enum Advantage: Equatable, Hashable {
