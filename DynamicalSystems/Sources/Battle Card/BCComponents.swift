@@ -157,19 +157,25 @@ struct BattleCardComponents: GameComponents {
     names: ["Belgium", "Eindhoven", "Grave", "Nijmegen", "Arnhem"]
   )
   
-  typealias Position = TrackPos
+  enum Position: Equatable, Hashable {
+    case offBoard
+    case onTrack(TrackPos)
+    
+    var name: String {
+      switch self {
+      case .offBoard:
+        return "(Off board)"
+      case .onTrack(let cityIndex):
+        return BattleCardComponents().track.names[cityIndex]
+      }
+    }
+  }
   
   enum Control: String, Equatable, Hashable {
     case allies = "allies"
     case germans = "germans"
   }
     
-  enum Advantage: Equatable, Hashable {
-    case allies
-    case germans
-    case tied
-  }
-  
   struct PiecePosition: Equatable, Hashable {
     var piece: Piece
     var position: Position

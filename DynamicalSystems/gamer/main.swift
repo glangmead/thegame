@@ -15,7 +15,7 @@ var action: BattleCard.Action? = nil
 var done = false
 while(!done) {
   if let action = getAction(state: state) {
-    let logs = BattleCard.reduce(state: &state, action: action)
+    let logs = game.reduce(state: &state, action: action)
     for log in logs { print(log.msg) }
   } else {
     done = true
@@ -23,7 +23,7 @@ while(!done) {
 }
 
 func getAction(state: BattleCard.State) -> BattleCard.Action? {
-  let actions = BattleCard.allowedActions(state: state)
+  let actions = game.allowedActions(state: state)
   for stateLine in state.asText() {
     var formattedLine = ""
     for (index, piece) in stateLine.enumerated() {

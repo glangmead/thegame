@@ -40,11 +40,16 @@ import Foundation
 ///   state.alliesToAttack.removeAll(where: {$0 == army})
 ///
 /// It's gathering some data from the state (the opposing army, the two strength values)
-/// It's deriving a ternary advantage value from the strengths
-/// It's rolling a die
-/// It's looking up the (advantage, die roll) pair in a table.
+/// ✅It's deriving a ternary advantage value from the strengths
+/// ✅It's rolling a die
+/// ✅It's looking up the (advantage, die roll) pair in a table.
 /// It's applying three consequences: lowering the two strengths, updating control of the city.
 /// Lastly it's marking this piece as having moved.
+/// 
+///
+/// Marking a piece as needing to move.
+/// Marking it as moved.
+///
 ///
 /// Maybe a combat results table should itself query the state to get all the info it needs.
 /// Maybe we can have an expression for the inputs and outputs.
@@ -77,9 +82,9 @@ import Foundation
 
 @Reducer
 struct BattleCard: LookaheadReducer {
+  typealias Position = BattleCardComponents.Position
   typealias Piece = BattleCardComponents.Piece
   typealias Phase = BattleCardComponents.Phase
-  typealias Advantage = BattleCardComponents.Advantage
   typealias Control = BattleCardComponents.Control
   
   struct Log: Hashable, Equatable, Sendable {
@@ -108,33 +113,33 @@ struct BattleCard: LookaheadReducer {
     var name: String {
       switch self {
       case .initialize:
-        return "Init"
-      case .addLog(let str):
-        return "Logging msg '\(str)'"
+        return "Perform setup"
+      case .addLog(_):
+        return ""
       case .setPhase(let phase):
-        return "Next phase: \(phase)"
+        return "Go to \(phase) phase"
       case .airdrop(let ally):
         return "Airdrop for \(ally)"
       case .rollForAttack(let ally):
-        return "\(ally) attacking"
+        return "Attack with \(ally)"
       case .rollForDefend(let ally):
-        return "\(ally) defending"
+        return "Defend with \(ally)"
       case .reinforceGermans(let german):
-        return "Reinforcements: \(german)"
+        return "Reinforce \(german)"
       case .advanceAllies(let ally):
-        return "Advancing \(ally)"
+        return "Advance \(ally)"
       case .advance30Corps:
-        return "Advancing XXX Corps"
+        return "Advance XXX Corps"
       case .roll1stAirborne:
-        return "Rolling for weather"
+        return "Roll for weather"
       case .perform1stAirborneReinforcement:
-        return "Sunny! Reinforcing 1st Airborne"
+        return "Reinforce 1st Airborne"
       case .advanceTurn:
         return "Next turn"
       case .claimVictory:
-        return "You win"
+        return "Declare victory!"
       case .declareLoss:
-        return "You lose"
+        return "Declare loss."
       case .sequence(let actions):
         let name = actions.compactMap { $0.name.isEmpty ? nil : $0.name }
           .joined(separator: "; ")
@@ -142,6 +147,67 @@ struct BattleCard: LookaheadReducer {
       }
     }
   }
+  
+  let attackCRT = TwoParamCRT<Trichotomy, DSix, (DSix, DSix, Bool)>(
+    result: { advantage, roll in
+      switch roll {
+      case DSix.one, DSix.none:
+        switch advantage {
+        case .larger:
+          (DSix.one, DSix.none, false)
+        case .smaller:
+          (DSix.three, DSix.none, false)
+        case .equal:
+          (DSix.two, DSix.none, false)
+        }
+      case DSix.two, DSix.three, DSix.four:
+        switch advantage {
+        case .larger:
+          (DSix.one, DSix.one, true)
+        case .smaller:
+          (DSix.two, DSix.one, false)
+        case .equal:
+          (DSix.one, DSix.one, false)
+        }
+      case DSix.five, DSix.six:
+        switch advantage {
+        case .larger:
+          (DSix.none, DSix.one, true)
+        case .smaller:
+          (DSix.one, DSix.none, true) // fascinating, never noticed playing digitally
+        case .equal:
+          (DSix.one, DSix.one, true)
+        }
+      }
+    }
+  )
+
+  let defendCRT = TwoParamCRT<Trichotomy, DSix, (DSix, DSix)>(
+    result: { advantage, roll in
+      switch roll {
+      case DSix.one:
+        switch advantage {
+        case .larger:
+          (DSix.one, DSix.one)
+        case .smaller:
+          (DSix.two, DSix.none)
+        case .equal:
+          (DSix.one, DSix.none)
+        }
+      case DSix.two, DSix.three, DSix.four:
+        switch advantage {
+        case .larger:
+          (DSix.none, DSix.none)
+        case .smaller:
+          (DSix.one, DSix.none)
+        case .equal:
+          (DSix.one, DSix.one)
+        }
+      default:
+        (DSix.none, DSix.none)
+      }
+    }
+  )
   
   /// A Rule is a conditional action
   struct Rule {
@@ -156,7 +222,7 @@ struct BattleCard: LookaheadReducer {
     }
   }
   
-  static func rules() -> [Rule] {
+  func rules() -> [Rule] {
 
     let initRule = Rule(
       condition: { $0.phase == .setup },
@@ -199,25 +265,31 @@ struct BattleCard: LookaheadReducer {
       actions: { _ in [Action.setPhase(Phase.advance)] }
     )
 
-    let advanceRule = Rule(
+    let advanceRule1 = Rule(
       condition: { state in
-        state.phase == Phase.advance && state.control[state.position[.thirtycorps]! + 1]! == .allies
+        state.phase == Phase.advance && state.control[state.cityPastXXXCorps!]! == .allies
+      },
+      actions: { _ in [Action.sequence([Action.advance30Corps, Action.setPhase(Phase.rollForWeather)])] }
+    )
+    
+    let advanceRule2 = Rule(
+      condition: { state in
+        state.phase == Phase.advance
       },
       actions: { state in
-        var actions = [Action.sequence([Action.advance30Corps, Action.setPhase(Phase.rollForWeather)])]
         let corpsPos = state.position[.thirtycorps]!
         if let ally = state.allyIn(pos: corpsPos) {
-          actions.append(Action.sequence([Action.advanceAllies(ally), Action.setPhase(Phase.rollForWeather)]))
+          return [Action.sequence([Action.advanceAllies(ally), Action.setPhase(Phase.rollForWeather)])]
         }
-        return actions
+        return []
       }
     )
     
     let cantAdvanceRule = Rule(
       condition: { state in
-        state.phase == Phase.advance && state.control[state.position[.thirtycorps]! + 1]! == .germans
+        state.phase == Phase.advance && state.control[state.cityPastXXXCorps!]! == .germans
       },
-      actions: { _ in [Action.addLog("Can't advance into German control"), Action.setPhase(Phase.rollForWeather)] }
+      actions: { _ in [Action.sequence([Action.addLog("Can't advance into German control"), Action.setPhase(Phase.rollForWeather)])]}
     )
     
     let checkWeather = Rule(
@@ -229,20 +301,33 @@ struct BattleCard: LookaheadReducer {
       condition: { $0.phase == Phase.reinforce1st },
       actions: { state in
         if state.weatherJustCleared {
-          [Action.sequence([Action.perform1stAirborneReinforcement, Action.advanceTurn, Action.setPhase(.battle)])]
+          [Action.sequence([
+            Action.perform1stAirborneReinforcement,
+            Action.advanceTurn,
+            Action.setPhase(.battle)])]
         } else {
-          [Action.sequence([Action.advanceTurn, Action.setPhase(.battle)])]
+          [Action.sequence([
+            Action.addLog("Unable to reinforce 1st."),
+            Action.advanceTurn,
+            Action.setPhase(.battle)])]
         }
       }
     )
     
-    let loseRule = Rule(
+    let loseRuleOutOfTime = Rule(
       condition: { $0.turnNumber >= 7 },
       actions: { _ in [Action.declareLoss] }
     )
     
+    let loseRuleArmyDefeated = Rule(
+      condition: { state in
+        state.alliesOnBoard.compactMap({state.strength[$0]}).anySatisfy({$0 == DSix.none})
+      },
+      actions: { _ in [Action.declareLoss] }
+    )
+    
     let winRule = Rule(
-      condition: { $0.position[.thirtycorps] == 5 },
+      condition: { $0.position[.thirtycorps] == Position.onTrack(5) },
       actions: { _ in [Action.claimVictory] }
     )
 
@@ -254,29 +339,38 @@ struct BattleCard: LookaheadReducer {
       battlesOverRule,
       reinforceGermansRule,
       reinforcementOverRule,
-      advanceRule,
+      advanceRule1,
+      advanceRule2,
       cantAdvanceRule,
       checkWeather,
       reinforce1st,
-      loseRule,
+      loseRuleOutOfTime,
+      loseRuleArmyDefeated,
       winRule
     ]
   }
 
-  static func allowedActions(state: State) -> [Action] {
+  func allowedActions(state: State) -> [Action] {
     if state.ended {
       return []
     }
-    return rules().flatMap { rule in
+    let allRules = rules().flatMap { rule in
       if rule.condition(state) {
         return rule.actions(state)
       } else {
         return [Action]()
       }
     }
+    if allRules.contains(where: {$0 == Action.declareLoss}) {
+      return [Action.declareLoss]
+    }
+    if allRules.contains(where: {$0 == Action.claimVictory}) {
+      return [Action.claimVictory]
+    }
+    return allRules
   }
   
-  static func airdropPenalty(_ roll: DSix) -> DSix {
+  func airdropPenalty(_ roll: DSix) -> DSix {
     switch roll {
     case .one, .two:
       DSix.two
@@ -287,89 +381,32 @@ struct BattleCard: LookaheadReducer {
     }
   }
   
-  static func attackOutcome(roll: DSix, advantage: Advantage) -> (DSix, DSix, Bool) {
-    switch roll {
-    case DSix.one, DSix.none:
-      switch advantage {
-      case .allies:
-        (DSix.one, DSix.none, false)
-      case .germans:
-        (DSix.three, DSix.none, false)
-      case .tied:
-        (DSix.two, DSix.none, false)
-      }
-    case DSix.two, DSix.three, DSix.four:
-      switch advantage {
-      case .allies:
-        (DSix.one, DSix.one, true)
-      case .germans:
-        (DSix.two, DSix.one, false)
-      case .tied:
-        (DSix.one, DSix.one, false)
-      }
-    case DSix.five, DSix.six:
-      switch advantage {
-      case .allies:
-        (DSix.none, DSix.one, true)
-      case .germans:
-        (DSix.one, DSix.none, true) // fascinating, never noticed playing digitally
-      case .tied:
-        (DSix.one, DSix.one, true)
-      }
-    }
-  }
-  
-  static func defendOutcome(roll: DSix, advantage: Advantage) -> (DSix, DSix) {
-    switch roll {
-    case DSix.one:
-      switch advantage {
-      case .allies:
-        (DSix.one, DSix.one)
-      case .germans:
-        (DSix.two, DSix.none)
-      case .tied:
-        (DSix.one, DSix.none)
-      }
-    case DSix.two, DSix.three, DSix.four:
-      switch advantage {
-      case .allies:
-        (DSix.none, DSix.none)
-      case .germans:
-        (DSix.one, DSix.none)
-      case .tied:
-        (DSix.one, DSix.one)
-      }
-    default:
-      (DSix.none, DSix.none)
-    }
-  }
-  
   // my reducer doesn't report back to the user what happened.
   // for example, after executing Airdrop for allied1st, I observed its strength go from 6 to 4
   // but I should have printed something like "roll 1: -2 strength!"
   // such I/O is obviously what they mean by Effect!
-  static func reduce(state: inout State, action: Action) -> [Log] {
+  func reduce(state: inout State, action: Action) -> [Log] {
     var logs = [Log]()
     switch action {
     case .initialize:
       state.player = .solo
       state.players = [.solo]
       state.ended = false
-      state.position[.thirtycorps] = 0
-      state.position[.allied101st] = 1
-      state.position[.germanEindhoven] = 1
-      state.position[.allied82nd] = 2
-      state.position[.germanGrave] = 2
-      state.position[.germanNijmegen] = 3
-      state.position[.allied1st] = 4
-      state.position[.germanArnhem] = 4
-      state.strength[.allied101st] = DSix.six
-      state.strength[.allied82nd] = DSix.six
-      state.strength[.allied1st] = DSix.five
+      state.position[.thirtycorps]     = Position.onTrack(0)
+      state.position[.allied101st]     = Position.onTrack(1)
+      state.position[.germanEindhoven] = Position.onTrack(1)
+      state.position[.allied82nd]      = Position.onTrack(2)
+      state.position[.germanGrave]     = Position.onTrack(2)
+      state.position[.germanNijmegen]  = Position.onTrack(3)
+      state.position[.allied1st]       = Position.onTrack(4)
+      state.position[.germanArnhem]    = Position.onTrack(4)
+      state.strength[.allied101st]     = DSix.six
+      state.strength[.allied82nd]      = DSix.six
+      state.strength[.allied1st]       = DSix.five
       state.strength[.germanEindhoven] = DSix.two
-      state.strength[.germanGrave] = DSix.two
-      state.strength[.germanNijmegen] = DSix.one
-      state.strength[.germanArnhem] = DSix.two
+      state.strength[.germanGrave]     = DSix.two
+      state.strength[.germanNijmegen]  = DSix.one
+      state.strength[.germanArnhem]    = DSix.two
       state.control[1] = .germans
       state.control[2] = .germans
       state.control[3] = .germans
@@ -388,90 +425,103 @@ struct BattleCard: LookaheadReducer {
       let german = state.opponentFacing(piece: army)!
       let armyStrength = state.strength[army]!
       let germanStrength = state.strength[german]!
-      var advantage = Advantage.tied
-      if DSix.greater(armyStrength, germanStrength) {
-        advantage = Advantage.allies
-      } else if DSix.greater(germanStrength, armyStrength) {
-        advantage = Advantage.germans
-      }
       let roll = DSix.roll()
-      let (allyHit, germanHit, alliedControl) = attackOutcome(roll: roll, advantage: advantage)
-      state.strength[army]   = DSix.minus(state.strength[army]!,   allyHit)
+      let (allyHit, germanHit, alliedControl) = attackCRT.result(DSix.compare(armyStrength, germanStrength), roll)
+      state.strength[army]   = DSix.minus(state.strength[army]!,   allyHit, clamp: false)
       state.strength[german] = DSix.minus(state.strength[german]!, germanHit)
-      logs.append(Log(msg: "Attack roll was \(roll.rawValue): -\(allyHit.rawValue) to ally, -\(germanHit) to german."))
+      logs.append(Log(msg: "Attack roll was \(roll.rawValue): -\(allyHit.rawValue) to ally, -\(germanHit.rawValue) to german."))
       if alliedControl {
-        let city = state.position[army]!
-        logs.append(Log(msg: "Allies control \(BattleCardComponents().track.names[city])."))
-        state.control[city] = Control.allies
+        if let city = state.position[army] {
+          switch city {
+          case .onTrack(let trackPos):
+            logs.append(Log(msg: "Allies control \(BattleCardComponents().track.names[trackPos])."))
+            state.control[trackPos] = Control.allies
+          default:
+            ()
+          }
+        }
       }
       state.alliesToAttack.removeAll(where: {$0 == army})
     case .rollForDefend(let army):
       let german = state.opponentFacing(piece: army)!
       let armyStrength = state.strength[army]!
       let germanStrength = state.strength[german]!
-      var advantage = Advantage.tied
-      if DSix.greater(armyStrength, germanStrength) {
-        advantage = Advantage.allies
-      } else if DSix.greater(germanStrength, armyStrength) {
-        advantage = Advantage.germans
-      }
       let roll = DSix.roll()
-      let (allyHit, germanHit) = defendOutcome(roll: roll, advantage: advantage)
-      state.strength[army]   = DSix.minus(state.strength[army]!,   allyHit)
+      let (allyHit, germanHit) = defendCRT.result(DSix.compare(armyStrength, germanStrength), roll)
+      state.strength[army]   = DSix.minus(state.strength[army]!,   allyHit, clamp: false)
       state.strength[german] = DSix.minus(state.strength[german]!, germanHit)
-      logs.append(Log(msg: "Defend roll was \(roll.rawValue): -\(allyHit.rawValue) to ally, -\(germanHit) to german."))
+      logs.append(Log(msg: "Defend roll was \(roll.rawValue): -\(allyHit.rawValue) to ally, -\(germanHit.rawValue) to german."))
       if DSix.greater(state.strength[german]!, state.strength[army]!) {
-        let city = state.position[army]!
-        state.control[city] = Control.germans
-        logs.append(Log(msg: "Germans control \(BattleCardComponents().track.names[city])."))
+        if let city = state.position[army] {
+          switch city {
+          case .onTrack(let trackPos):
+            state.control[trackPos] = Control.germans
+            logs.append(Log(msg: "Germans control \(BattleCardComponents().track.names[trackPos])."))
+          default:
+            ()
+          }
+        }
       }
       state.alliesToAttack.removeAll(where: {$0 == army})
     case .reinforceGermans(let germanArmy):
-      let city = state.position[germanArmy]!
-      switch germanArmy {
-      case .germanArnhem, .germanEindhoven, .germanGrave:
-        state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
-        logs.append(Log(msg:"+1 to \(germanArmy.name)"))
-      case .germanNijmegen:
-        if state.control[4] == .germans {
+      if case let .onTrack(city) = state.position[germanArmy] {
+        switch germanArmy {
+        case .germanArnhem, .germanEindhoven, .germanGrave:
           state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
           logs.append(Log(msg:"+1 to \(germanArmy.name)"))
-        } else {
-          logs.append(Log(msg:"+0 to \(germanArmy.name) (Allies control Arnhem)"))
+        case .germanNijmegen:
+          if state.control[4] == .germans {
+            state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
+            logs.append(Log(msg:"+1 to \(germanArmy.name)"))
+          } else {
+            logs.append(Log(msg:"+0 to \(germanArmy.name) (Allies control Arnhem)"))
+          }
+        default:
+          ()
         }
-      default:
-        ()
-      }
-      switch state.opponentFacing(piece: germanArmy) {
-      case .none:
-        state.control[city] = Control.germans
-      case .some(let ally):
-        if DSix.greater(state.strength[germanArmy]!, state.strength[ally]!) {
+        switch state.opponentFacing(piece: germanArmy) {
+        case .none:
           state.control[city] = Control.germans
+        case .some(let ally):
+          if DSix.greater(state.strength[germanArmy]!, state.strength[ally]!) {
+            state.control[city] = Control.germans
+          }
         }
+        state.germansToReinforce.removeAll(where: {$0 == germanArmy})
       }
-      state.germansToReinforce.removeAll(where: {$0 == germanArmy})
     case .advanceAllies(let ally):
-      let startingCity = state.position[ally]!
-      let destCity = startingCity + 1
-      // make the move
-      state.position[ally]! = destCity
-      if let destAlly = state.allyIn(pos: destCity) {
-        // sum the strength
-        state.strength[ally] = DSix.sum(state.strength[ally]!, state.strength[destAlly]!)
-        // remove the piece we moved onto
-        state.alliesToAttack.removeAll(where: {$0 == destAlly})
+      if case let .onTrack(startingCity) = state.position[ally] {
+        let destCity = Position.onTrack(startingCity + 1)
+        logs.append(Log(msg: "Advancing \(ally.name) to \(destCity.name)"))
+        // make the move
+        if let destAlly = state.allyIn(pos: destCity) {
+          // moving piece just sums itself into the strength of its neighbor
+          state.strength[destAlly] = DSix.sum(state.strength[ally]!, state.strength[destAlly]!)
+          // remove the piece that moved
+          state.removePiece(ally)
+        } else {
+          // just move the piece
+          state.position[ally]! = destCity
+        }
       }
     case .advance30Corps:
-      state.position[.thirtycorps]! += 1
+      if case let .onTrack(city) = state.position[.thirtycorps] {
+        let destCity = Position.onTrack(city + 1)
+        state.position[.thirtycorps] = destCity
+        // remove the german army in this city
+        state.removePiece(state.germanIn(pos: destCity)!)
+        logs.append(Log(msg: "Advancing \(Piece.thirtycorps.name) to \(destCity.name)"))
+      }
     case .roll1stAirborne:
       // if d6 leq turn number and if fog, increase strength of All1, set to clear
       if state.weather == .fog {
-        logs.append(Log(msg:"Rolling to see if the fog clears."))
+        logs.append(Log(msg:"Rolling to see if the fog clears:"))
         if DSix.greater(DSix(rawValue: state.turnNumber)!, DSix.roll()) {
-          logs.append(Log(msg:"Weather clear!"))
+          logs.append(Log(msg:"Yes, weather clear!"))
           state.weather = .clear
           state.weatherJustCleared = true
+        } else {
+          logs.append(Log(msg:"No, still foggy."))
         }
       }
     case .perform1stAirborneReinforcement:
@@ -480,6 +530,8 @@ struct BattleCard: LookaheadReducer {
       state.strength[.allied1st] = DSix.sum(DSix.one, state.strength[.allied1st]!)
     case .advanceTurn:
       logs.append(Log(msg:"Next turn."))
+      state.alliesToAttack = state.alliesOnBoard.filter { state.opponentFacing(piece: $0) != nil }
+      state.germansToReinforce = state.germansOnBoard
       state.turnNumber += 1
     case .claimVictory:
       state.ended = true
@@ -497,7 +549,7 @@ struct BattleCard: LookaheadReducer {
 
   var body: some Reducer<State, Action> {
     Reduce { st, act in
-      let _ = BattleCard.reduce(state: &st, action: act)
+      let _ = reduce(state: &st, action: act)
       return .none
     }
   }

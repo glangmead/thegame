@@ -48,16 +48,16 @@ class TreeSearch<State: GameState, Action> {
     switch policy {
     case .Exhaustive:
       // TODO: implement
-      type(of: reducer).allowedActions(state: state).randomElement()!
+      reducer.allowedActions(state: state).randomElement()!
     case .Random:
-      type(of: reducer).allowedActions(state: state).randomElement()!
+      reducer.allowedActions(state: state).randomElement()!
     }
   }
   
   private func expand() {
-    if let action = type(of: reducer).allowedActions(state: cursorNode.state).randomElement() {
+    if let action = reducer.allowedActions(state: cursorNode.state).randomElement() {
       var stateCopy = cursorNode.state
-      let effect = reducer.reduce(into: &stateCopy, action: action)
+      let _ = reducer.reduce(into: &stateCopy, action: action)
     }
   }
 }

@@ -60,8 +60,8 @@ protocol GameState: GameComponents, Equatable {
 
 protocol LookaheadReducer<State, Action>: Reducer {
   associatedtype Rule
-  static func rules() -> [Rule]
-  static func allowedActions(state: State) -> [Action]
+  func rules() -> [Rule]
+  func allowedActions(state: State) -> [Action]
 }
 
 protocol ComputerPlayer<State, Action> {
@@ -101,12 +101,18 @@ enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable, Linear {
     var val = lhs.rawValue - rhs.rawValue
     if clamp {
       val = max(val, 1)
+    } else {
+      val = max(val, 0)
     }
     return DSix(rawValue: val)!
   }
   
   static func greater(_ lhs: DSix, _ rhs: DSix) -> Bool {
     return lhs.rawValue > rhs.rawValue
+  }
+  
+  static func compare(_ lhs: DSix, _ rhs: DSix) -> Trichotomy {
+    return Int.compare(lhs.rawValue, rhs.rawValue)
   }
   
   var name: String {
@@ -133,6 +139,24 @@ enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable, Linear {
   }
 }
 
+enum Trichotomy {
+  case larger
+  case smaller
+  case equal
+}
+
+extension Int {
+  static func compare(_ lhs: Int, _ rhs: Int) -> Trichotomy {
+    if lhs > rhs {
+      return .larger
+    } else if rhs > lhs {
+      return .smaller
+    } else {
+      return .equal
+    }
+  }
+}
+
 protocol Cyclic {
   func next() -> Self
 }
@@ -141,4 +165,12 @@ protocol Linear {
   func next() -> Self
   var start: Self { get }
   var end: Self { get }
+}
+
+struct TwoParamCRT<T, U, V> {
+  var result: (_ tee: T, _ you: U) -> V
+}
+
+struct ThreeParamCRT<T, U, V, W> {
+  var result: (_ tee: T, _ you: U, _ vee: V) -> W
 }

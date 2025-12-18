@@ -40,13 +40,17 @@ extension BattleCard: StatePredicates {
     }
 
     var strength: [Piece: DSix] = [:]
-    var control: [Position: BattleCardComponents.Control] = [:]
+    var control: [TrackPos: BattleCardComponents.Control] = [:]
     var turnNumber = 1
 
-    var alliesToAttack: [Piece] = Piece.allies()
-    var alliesToAirdrop: [Piece] = Piece.allies()
-    var germansToReinforce: [Piece] = Piece.germans()
-    
+    var alliesOnBoard = Piece.allies()
+    var germansOnBoard = Piece.germans()
+
+    var alliesToAirdrop = Piece.allies()
+
+    var alliesToAttack = Piece.allies()
+    var germansToReinforce = Piece.germans()
+
     var actionsTaken = [Action]()
     var loggedActions = [Log]()
     
@@ -66,12 +70,37 @@ extension BattleCard: StatePredicates {
       }
     }
     
+    var cityPastXXXCorps: TrackPos? {
+      switch position[Piece.thirtycorps] {
+      case .none:
+        return nil
+      case .some(let pos):
+        switch pos {
+        case .offBoard:
+          return nil
+        case .onTrack(let trackPos):
+          return trackPos + 1
+        }
+      }
+    }
+    
+    mutating func removePiece(_ piece: Piece) {
+      germansToReinforce.removeAll(where: { $0 == piece })
+      alliesToAttack.removeAll(where: { $0 == piece })
+      alliesToAirdrop.removeAll(where: { $0 == piece })
+      germansOnBoard.removeAll(where: {$0 == piece})
+      alliesOnBoard.removeAll(where: {$0 == piece})
+      position[piece] = Position.offBoard
+      strength.removeValue(forKey: piece)
+    }
+
     func asText() -> [[String]] {
       var text = [[String]]()
       let track = BattleCardComponents().track
       text.append(["Turn \(state.turnNumber)"])
-      for city in (0..<track.length).reversed() {
-        var cityText = [track.names[city]]
+      for cityIndex in (0..<track.length).reversed() {
+        let city = Position.onTrack(cityIndex)
+        var cityText = [track.names[cityIndex]]
         
         var allyText = "none"
         var allyStrength = " "
@@ -90,10 +119,11 @@ extension BattleCard: StatePredicates {
         }
         cityText.append(germanText)
         cityText.append(germanStrength)
-        cityText.append(control[city]?.rawValue ?? "")
+        cityText.append(control[cityIndex]?.rawValue ?? "")
         text.append(cityText)
       }
       return text
     }
+
   }
 }

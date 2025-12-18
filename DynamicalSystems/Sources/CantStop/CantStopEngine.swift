@@ -73,7 +73,7 @@ struct CantStop: LookaheadReducer {
   // - `second` no longer applies after an action of `first`
   // - `second` emits no rules after an action of `first`
   // - we want to use .sequence only for two or more actions
-  static func append(_ first: Rule, _ second: Rule) -> Rule {
+  func append(_ first: Rule, _ second: Rule) -> Rule {
     return Rule(
       condition: first.condition, // to enter into this sequence, you just need the first condition to be met
       actions: { state in
@@ -122,7 +122,7 @@ struct CantStop: LookaheadReducer {
   ///
   /// The rules are using these.
   ///
-  static func rules() -> [Rule] {
+  func rules() -> [Rule] {
     // in words: you can turn two rolled dice into a column advance (.assignDicePair)
     // you can advance an existing white piece in that column (.progressColumn)
     // you can place and advance an unused white piece in that column (.progressColumn)
@@ -143,7 +143,7 @@ struct CantStop: LookaheadReducer {
         let dicePairings: [Pair<Die>] = pairs(of: state.rolledDice())
         
         return dicePairings.compactMap { pairing in
-          let col = twod6_total(pairing.map {state.dice[$0]!})
+          let col = Self.twod6_total(pairing.map {state.dice[$0]!})
           // possible factorization: whiteThatCanMoveIn(col:)
           if !state.colIsWon(col) &&
               (state.whiteIn(col: col) != nil || state.whiteIn(col: .none) != nil) {
@@ -186,7 +186,7 @@ struct CantStop: LookaheadReducer {
     return [victoryRule, passRule, bustRule, append(moveRule, moveRule), newGameRule]
   }
     
-  static func allowedActions(state: State) -> [Action] {
+  func allowedActions(state: State) -> [Action] {
     let actions = rules().flatMap { rule in
       if rule.condition(state) {
         return rule.actions(state)
@@ -197,7 +197,7 @@ struct CantStop: LookaheadReducer {
     return removeSameState(state: state, actions: actions)
   }
   
-  static func yieldsEquivState(state: State, lhs: Action, rhs: Action) -> Bool {
+  func yieldsEquivState(state: State, lhs: Action, rhs: Action) -> Bool {
     var stateAfterLHS = state
     reduce(state: &stateAfterLHS, action: lhs)
     var stateAfterRHS = state
@@ -205,7 +205,7 @@ struct CantStop: LookaheadReducer {
     return State.equiv(lhs: stateAfterLHS, rhs: stateAfterRHS)
   }
 
-  static func removeSameState(state: State, actions: [Action]) -> [Action] {
+  func removeSameState(state: State, actions: [Action]) -> [Action] {
     var result = [Action]()
     for action in actions {
       if result.contains(where: { yieldsEquivState(state: state, lhs: $0, rhs: action) }) {
@@ -217,7 +217,7 @@ struct CantStop: LookaheadReducer {
     return result
   }
   
-  static func reduce(state: inout State, action: Action) {
+  func reduce(state: inout State, action: Action) {
     switch action {
     case .playAgain:
       state = State()
@@ -248,7 +248,7 @@ struct CantStop: LookaheadReducer {
         state.dice[die] = DSix.none
       }
     case let .progressColumn(col):
-      let newRow = min(colHeights()[col]!, state.farthestAlong(in: col) + 1)
+      let newRow = min(Self.colHeights()[col]!, state.farthestAlong(in: col) + 1)
       if let white = state.whiteIn(col: col) {
         state.position[white]!.row = newRow
       } else if let spareWhite = state.whiteIn(col: .none) {
@@ -265,7 +265,7 @@ struct CantStop: LookaheadReducer {
   /// for TCA
   var body: some Reducer<State, Action> {
     Reduce { st, act in
-      CantStop.reduce(state: &st, action: act)
+      reduce(state: &st, action: act)
       return .none
     }
   }
