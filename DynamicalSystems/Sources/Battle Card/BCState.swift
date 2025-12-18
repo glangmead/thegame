@@ -97,7 +97,7 @@ extension BattleCard: StatePredicates {
     func asText() -> [[String]] {
       var text = [[String]]()
       let track = BattleCardComponents().track
-      text.append(["Turn \(state.turnNumber)"])
+      text.append(["Turn \(turnNumber)"])
       for cityIndex in (0..<track.length).reversed() {
         let city = Position.onTrack(cityIndex)
         var cityText = [track.names[cityIndex]]

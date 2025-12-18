@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		9B1F01492EB8055B00C5110F /* Gen in Frameworks */ = {isa = PBXBuildFile; productRef = 9B1F01482EB8055B00C5110F /* Gen */; };
+		9B6E9DE52EF4BB0200FF4F48 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = 9B6E9DE42EF4BB0200FF4F48 /* ArgumentParser */; };
 		9B7ABDBF2EE0E65800F0FD43 /* Gen in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7ABDBE2EE0E65800F0FD43 /* Gen */; };
 		9B7ABDC12EE0E65B00F0FD43 /* Overture in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7ABDC02EE0E65B00F0FD43 /* Overture */; };
 		9B7ABDC32EE0E65E00F0FD43 /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7ABDC22EE0E65E00F0FD43 /* ComposableArchitecture */; };
@@ -148,6 +149,7 @@
 			files = (
 				9B7ABDC12EE0E65B00F0FD43 /* Overture in Frameworks */,
 				9B7ABDBF2EE0E65800F0FD43 /* Gen in Frameworks */,
+				9B6E9DE52EF4BB0200FF4F48 /* ArgumentParser in Frameworks */,
 				9B7ABDC32EE0E65E00F0FD43 /* ComposableArchitecture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -280,6 +282,7 @@
 				9B7ABDBE2EE0E65800F0FD43 /* Gen */,
 				9B7ABDC02EE0E65B00F0FD43 /* Overture */,
 				9B7ABDC22EE0E65E00F0FD43 /* ComposableArchitecture */,
+				9B6E9DE42EF4BB0200FF4F48 /* ArgumentParser */,
 			);
 			productName = gamer;
 			productReference = 9B7ABDA82EE0E5E700F0FD43 /* gamer */;
@@ -324,6 +327,7 @@
 				9B31389C2E63463900D3AE6D /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 				9B8CDCDF2EA6BCA200BE059C /* XCRemoteSwiftPackageReference "swift-overture" */,
 				9B1F01472EB8055B00C5110F /* XCRemoteSwiftPackageReference "swift-gen" */,
+				9B6E9DE32EF4BB0200FF4F48 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9B3138732E63462B00D3AE6D /* Products */;
@@ -753,6 +757,14 @@
 				minimumVersion = 1.22.2;
 			};
 		};
+		9B6E9DE32EF4BB0200FF4F48 /* XCRemoteSwiftPackageReference "swift-argument-parser" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-argument-parser.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.7.0;
+			};
+		};
 		9B8CDCDF2EA6BCA200BE059C /* XCRemoteSwiftPackageReference "swift-overture" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/pointfreeco/swift-overture.git";
@@ -768,6 +780,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9B1F01472EB8055B00C5110F /* XCRemoteSwiftPackageReference "swift-gen" */;
 			productName = Gen;
+		};
+		9B6E9DE42EF4BB0200FF4F48 /* ArgumentParser */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B6E9DE32EF4BB0200FF4F48 /* XCRemoteSwiftPackageReference "swift-argument-parser" */;
+			productName = ArgumentParser;
 		};
 		9B7ABDBE2EE0E65800F0FD43 /* Gen */ = {
 			isa = XCSwiftPackageProductDependency;
