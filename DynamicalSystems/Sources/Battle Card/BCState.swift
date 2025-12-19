@@ -26,8 +26,10 @@ extension BattleCard: StatePredicates {
     var players: [Player] = [.solo]
     var phase: Phase = .setup
     var weather: Weather = .fog
-    var weatherJustCleared: Bool = false
+    var weatherCleared: Bool = false
     var ended: Bool = false
+    var endedInVictory: Bool = false
+    var endedInDefeat: Bool = false
     var position: [Piece: Position] = [:]
     func piecesIn(_ pos: Position) -> [Piece] {
       var pieces: [Piece] = []

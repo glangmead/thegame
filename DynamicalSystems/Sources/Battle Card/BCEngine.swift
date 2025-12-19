@@ -267,7 +267,7 @@ struct BattleCard: LookaheadReducer {
 
     let advanceRule1 = Rule(
       condition: { state in
-        state.phase == Phase.advance && state.control[state.cityPastXXXCorps!]! == .allies
+        state.phase == Phase.advance && state.control[state.cityPastXXXCorps!] == .allies
       },
       actions: { _ in [Action.sequence([Action.advance30Corps, Action.setPhase(Phase.rollForWeather)])] }
     )
@@ -287,7 +287,7 @@ struct BattleCard: LookaheadReducer {
     
     let cantAdvanceRule = Rule(
       condition: { state in
-        state.phase == Phase.advance && state.control[state.cityPastXXXCorps!]! == .germans
+        state.phase == Phase.advance && state.control[state.cityPastXXXCorps!] == .germans
       },
       actions: { _ in [Action.sequence([Action.addLog("Can't advance into German control"), Action.setPhase(Phase.rollForWeather)])]}
     )
@@ -300,7 +300,7 @@ struct BattleCard: LookaheadReducer {
     let reinforce1st = Rule(
       condition: { $0.phase == Phase.reinforce1st },
       actions: { state in
-        if state.weatherJustCleared {
+        if state.weatherCleared {
           [Action.sequence([
             Action.perform1stAirborneReinforcement,
             Action.advanceTurn,
@@ -327,7 +327,7 @@ struct BattleCard: LookaheadReducer {
     )
     
     let winRule = Rule(
-      condition: { $0.position[.thirtycorps] == Position.onTrack(5) },
+      condition: { $0.position[.thirtycorps] == Position.onTrack(4) },
       actions: { _ in [Action.claimVictory] }
     )
 
@@ -519,13 +519,12 @@ struct BattleCard: LookaheadReducer {
         if DSix.greater(DSix(rawValue: state.turnNumber)!, DSix.roll()) {
           logs.append(Log(msg:"Yes, weather clear!"))
           state.weather = .clear
-          state.weatherJustCleared = true
+          state.weatherCleared = true
         } else {
           logs.append(Log(msg:"No, still foggy."))
         }
       }
     case .perform1stAirborneReinforcement:
-      state.weatherJustCleared = false
       logs.append(Log(msg:"Dropping reinforcements for 1st."))
       state.strength[.allied1st] = DSix.sum(DSix.one, state.strength[.allied1st]!)
     case .advanceTurn:
@@ -535,8 +534,12 @@ struct BattleCard: LookaheadReducer {
       state.turnNumber += 1
     case .claimVictory:
       state.ended = true
+      state.endedInVictory = true
+      state.endedInDefeat = false
     case .declareLoss:
       state.ended = true
+      state.endedInDefeat = true
+      state.endedInVictory = false
     case let .addLog(str):
       logs.append(Log(msg: str))
     case let .sequence(actions):

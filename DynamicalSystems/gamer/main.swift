@@ -12,18 +12,35 @@ GamerTool.main()
 
 struct GamerTool: ParsableCommand {
   @Option(help: "Number of trials to run") private var numTrials: Int = 1
+  @Option(help: "Whether to print out the UI") private var printUI: Bool = true
   var colwidths = [15, 10, 3, 10, 10, 10, 3, 20]
 
   mutating func run() throws {
     let game = BattleCard()
     var state = BattleCard.State()
     var done = false
+    var numWins = 0
+    var numLosses = 0
+    var numGames = 0
     while(!done) {
       if let action = getAction(game: game, state: state, auto: numTrials > 1) {
         let logs = game.reduce(state: &state, action: action)
-        for log in logs { print(log.msg) }
+        if printUI {
+          for log in logs { print(log.msg) }
+        }
       } else {
-        done = true
+        numGames += 1
+        if numGames >= numTrials {
+          done = true
+        }
+        if state.endedInDefeat {
+          numLosses += 1
+        }
+        if state.endedInVictory {
+          numWins += 1
+        }
+        print("\(numLosses) losses, \(numWins) wins, \(numGames) games total.")
+        state = BattleCard.State()
       }
     }
   }
@@ -35,10 +52,14 @@ struct GamerTool: ParsableCommand {
       for (index, piece) in stateLine.enumerated() {
         formattedLine.append(piece.padding(toLength: colwidths[index], withPad: " ", startingAt: 0))
       }
-      print(formattedLine)
+      if printUI {
+        print(formattedLine)
+      }
     }
-    for (index, action) in actions.enumerated() {
-      print("\(index+1). \(action.name)")
+    if printUI {
+      for (index, action) in actions.enumerated() {
+        print("\(index+1). \(action.name)")
+      }
     }
     if auto {
       return actions.randomElement()
