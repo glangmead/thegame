@@ -30,6 +30,8 @@ extension CantStop: StatePredicates {
     var player: Player
     var players: [Player] // which players are playing
     var ended = false
+    var endedInVictory = false
+    var endedInDefeat = false
     
     init() {
       assignedDicePair = Column.none

@@ -9,7 +9,6 @@ import ComposableArchitecture
 import SpriteKit
 import SwiftUI
 
-// A simple game scene with falling boxes
 struct CantStopView: View {
   var store: StoreOf<CantStop>
   var scene: SKScene

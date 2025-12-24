@@ -55,6 +55,8 @@ protocol GameState: GameComponents, Equatable {
   var player: Player { get set }
   var players: [Player] { get set }
   var ended: Bool { get set }
+  var endedInVictory: Bool { get set }
+  var endedInDefeat: Bool { get set }
   var position: [Piece: Position] { get set }
 }
 

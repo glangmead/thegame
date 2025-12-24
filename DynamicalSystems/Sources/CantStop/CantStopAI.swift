@@ -19,7 +19,7 @@ class CantStopRandomPlayer: ComputerPlayer {
     if let action = chosenActions[state] {
       return action
     }
-    chosenActions[state] = search.pickAction(state: state, policy: .Random)
+    chosenActions[state] = search.recommendation(iters: 1)
     return chosenActions[state]!
   }
 }

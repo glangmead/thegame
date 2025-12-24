@@ -32,6 +32,7 @@ struct GamerTool: ParsableCommand {
         numGames += 1
         if numGames >= numTrials {
           done = true
+          print("\(numLosses) losses, \(numWins) wins, \(numGames) games total.")
         }
         if state.endedInDefeat {
           numLosses += 1
@@ -39,7 +40,6 @@ struct GamerTool: ParsableCommand {
         if state.endedInVictory {
           numWins += 1
         }
-        print("\(numLosses) losses, \(numWins) wins, \(numGames) games total.")
         state = BattleCard.State()
       }
     }
@@ -62,7 +62,7 @@ struct GamerTool: ParsableCommand {
       }
     }
     if auto {
-      return actions.randomElement()
+      return treeSearch(game: game, state: state)
     } else {
       let typed = readLine()!
       let typedNum = (Int(typed) ?? 1) - 1
@@ -71,5 +71,36 @@ struct GamerTool: ParsableCommand {
       }
     }
     return nil
+  }
+  
+  func treeSearch(game: BattleCard, state: BattleCard.State) -> BattleCard.Action? {
+    let search = TreeSearch(state: state, reducer: game)
+    return search.recommendation(iters: 2)
+  }
+  
+  func strategy(state: BattleCard.State, actions: [BattleCard.Action]) -> BattleCard.Action? {
+    for action in actions {
+      if case let BattleCard.Action.rollForAttack(piece) = action {
+        if let pos = state.position[piece] {
+          if case let BattleCard.Position.onTrack(city) = pos {
+            if state.control[city] == .allies {
+              return BattleCard.Action.rollForDefend(piece)
+            } else {
+              return action
+            }
+          }
+        }
+      }
+//      else if case BattleCard.Action.advanceAllies = action {
+//        if (state.strength[BattleCard.Piece.allied1st] ?? DSix.none).rawValue >= 9 {
+//          if actions.contains([BattleCard.Action.advance30Corps]) {
+//            return BattleCard.Action.advance30Corps
+//          } else {
+//            return action
+//          }
+//        }
+//      }
+    }
+    return actions.randomElement()
   }
 }
