@@ -11,8 +11,11 @@ import Foundation
 GamerTool.main()
 
 struct GamerTool: ParsableCommand {
-  @Option(help: "Number of trials to run") private var numTrials: Int = 1
+  @Option(help: "Number of trials to run") private var numTrials: Int = 0
+  @Option(help: "Number of MCTS search iterations to run for each action") private var numMCTSIters: Int = 1
   @Option(help: "Whether to print out the UI") private var printUI: Bool = true
+  @Option(help: "Whether to print out the MCTS log") private var printLog: Bool = false
+  @Option(help: "Whether to show MCTS opinions") private var showAIHints: Bool = false
   var colwidths = [15, 10, 3, 10, 10, 10, 3, 20]
 
   mutating func run() throws {
@@ -23,22 +26,34 @@ struct GamerTool: ParsableCommand {
     var numLosses = 0
     var numGames = 0
     while(!done) {
-      if let action = getAction(game: game, state: state, auto: numTrials > 1) {
+      // print state
+      for stateLine in state.asText() {
+        var formattedLine = ""
+        for (index, piece) in stateLine.enumerated() {
+          formattedLine.append(piece.padding(toLength: colwidths[index], withPad: " ", startingAt: 0))
+        }
+        if printUI {
+          print(formattedLine)
+        }
+      }
+      print("")
+      
+      if let action = getAction(game: game, state: state, auto: numTrials > 0) {
         let logs = game.reduce(state: &state, action: action)
         if printUI {
           for log in logs { print(log.msg) }
         }
       } else {
         numGames += 1
-        if numGames >= numTrials {
-          done = true
-          print("\(numLosses) losses, \(numWins) wins, \(numGames) games total.")
-        }
         if state.endedInDefeat {
           numLosses += 1
         }
         if state.endedInVictory {
           numWins += 1
+        }
+        if numGames >= numTrials {
+          done = true
+          print("\(numLosses) losses, \(numWins) wins, \(numGames) games total.")
         }
         state = BattleCard.State()
       }
@@ -47,22 +62,18 @@ struct GamerTool: ParsableCommand {
   
   func getAction(game: BattleCard, state: BattleCard.State, auto: Bool) -> BattleCard.Action? {
     let actions = game.allowedActions(state: state)
-    for stateLine in state.asText() {
-      var formattedLine = ""
-      for (index, piece) in stateLine.enumerated() {
-        formattedLine.append(piece.padding(toLength: colwidths[index], withPad: " ", startingAt: 0))
-      }
-      if printUI {
-        print(formattedLine)
-      }
-    }
+    let (aiAction, aiValue, aiCount) = treeSearch(game: game, state: state)
+    
     if printUI {
       for (index, action) in actions.enumerated() {
-        print("\(index+1). \(action.name)")
+        let hint = (showAIHints && (action == aiAction)) ? "*" : " "
+        let val  = (showAIHints && (action == aiAction)) ? "\(aiValue)/\(aiCount)" : ""
+        print("\(index+1). \(hint)\(action.name) \(val)")
       }
     }
+    
     if auto {
-      return treeSearch(game: game, state: state)
+      return aiAction
     } else {
       let typed = readLine()!
       let typedNum = (Int(typed) ?? 1) - 1
@@ -73,34 +84,18 @@ struct GamerTool: ParsableCommand {
     return nil
   }
   
-  func treeSearch(game: BattleCard, state: BattleCard.State) -> BattleCard.Action? {
+  func treeSearch(game: BattleCard, state: BattleCard.State) -> (BattleCard.Action?, Float, Int) {
     let search = TreeSearch(state: state, reducer: game)
-    return search.recommendation(iters: 2)
-  }
-  
-  func strategy(state: BattleCard.State, actions: [BattleCard.Action]) -> BattleCard.Action? {
-    for action in actions {
-      if case let BattleCard.Action.rollForAttack(piece) = action {
-        if let pos = state.position[piece] {
-          if case let BattleCard.Position.onTrack(city) = pos {
-            if state.control[city] == .allies {
-              return BattleCard.Action.rollForDefend(piece)
-            } else {
-              return action
-            }
-          }
-        }
-      }
-//      else if case BattleCard.Action.advanceAllies = action {
-//        if (state.strength[BattleCard.Piece.allied1st] ?? DSix.none).rawValue >= 9 {
-//          if actions.contains([BattleCard.Action.advance30Corps]) {
-//            return BattleCard.Action.advance30Corps
-//          } else {
-//            return action
-//          }
-//        }
-//      }
+    let aiAction = search.recommendation(iters: numMCTSIters)
+    if printLog {
+      search.rootNode.printTree(level: 0)
     }
-    return actions.randomElement()
+    var value: Float = 0.0
+    var count: Int = 0
+    if aiAction != nil {
+      value = search.rootNode.children[aiAction!]?.valueSum ?? 0
+      count = search.rootNode.visitCount
+    }
+    return (aiAction, value, count)
   }
 }

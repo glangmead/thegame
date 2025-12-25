@@ -10,7 +10,7 @@ import Foundation
 extension BattleCard: StatePredicates {
   typealias StatePredicate = (State) -> Bool
 
-  struct State: Equatable, Sendable, GameState {
+  struct State: Equatable, Sendable, GameState, CustomStringConvertible {
     typealias Player        = BattleCardComponents.Player
     typealias Phase         = BattleCardComponents.Phase
     typealias Piece         = BattleCardComponents.Piece
@@ -94,6 +94,27 @@ extension BattleCard: StatePredicates {
       alliesOnBoard.removeAll(where: {$0 == piece})
       position[piece] = Position.offBoard
       strength.removeValue(forKey: piece)
+    }
+    
+    var description: String {
+      let fog = weather == .fog ? "☁️" : "🌤️"
+      var result = "\(turnNumber)\(fog): "
+      let track = BattleCardComponents().track
+      for cityIndex in (0..<track.length).reversed() {
+        let city = Position.onTrack(cityIndex)
+        var allyStrength = "0"
+        if let ally = allyIn(pos: city) {
+          allyStrength = "\(strength[ally]!.rawValue)"
+        }
+        var germanStrength = "0"
+        if let german = germanIn(pos: city) {
+          germanStrength = "\(strength[german]!.rawValue)"
+        }
+        let xxxCorps = piecesIn(city).contains(.thirtycorps) ? "X" : ""
+        let control = control[cityIndex] == .allies ? "A" : "G"
+        result.append("\(xxxCorps)\(allyStrength)-\(germanStrength)_\(control) ")
+      }
+      return result
     }
 
     func asText() -> [[String]] {

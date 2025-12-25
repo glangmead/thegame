@@ -16,7 +16,7 @@ import Foundation
 
 // https://github.com/pkamppur/swift-othello-monte-carlo-tree-search/blob/main/Classes/Monte%20Carlo%20Tree%20Search/MonteCarloTreeSearch.swift
 
-class Node<State: GameState, Action: Hashable & Equatable> {
+class Node<State: GameState & CustomStringConvertible, Action: Hashable & Equatable & CustomStringConvertible>: CustomStringConvertible {
   var state: State
   var actions: [Action]
   var children: [Action:Node]
@@ -31,6 +31,18 @@ class Node<State: GameState, Action: Hashable & Equatable> {
   var childrenValues = [Action: Float]()
   var childrenVisitCounts = [Action: Int]()
   
+  var description: String {
+    "\(state) VAL:\(valueSum), #:\(visitCount), PA:\(parentAction?.description ?? "∅")"
+  }
+  
+  func printTree(level: Int = 0) {
+    let indent = String(repeating: " ", count: level)
+    print("\(indent)\(self)")
+    for (_, child) in children {
+      child.printTree(level: level + 1)
+    }
+  }
+  
   var isLeaf: Bool {
     children.isEmpty
   }
@@ -44,6 +56,7 @@ class Node<State: GameState, Action: Hashable & Equatable> {
     self.actions = actions
     self.children = [Action:Node]()
     self.parent = parent
+    self.parentAction = parentAction
   }
   
   func copy() -> Node<State, Action> {
@@ -75,7 +88,7 @@ class Node<State: GameState, Action: Hashable & Equatable> {
     guard let count = childrenVisitCounts[action], count > 0  else {
       return 0
     }
-    return childrenValues[action] ?? 0 / Float(childrenVisitCounts[action]!)
+    return Float(childrenValues[action] ?? 0) / Float(childrenVisitCounts[action]!)
   }
   
   // 0 if we have no data yet
@@ -96,20 +109,22 @@ class Node<State: GameState, Action: Hashable & Equatable> {
 
 // A study of the game tree under the start state, iteratively refined,
 // each iteration consisting of a fixed sequence of actions
-class TreeSearch<State: GameState, Action: Hashable & Equatable> {
+class TreeSearch<State: GameState & CustomStringConvertible, Action: Hashable & Equatable & CustomStringConvertible> {
   var rootState: State
   var reducer: any LookaheadReducer<State, Action>
   var cursorNode: Node<State, Action>
+  var rootNode: Node<State, Action>
   
   init(state: State, reducer: any LookaheadReducer<State, Action>) {
     self.rootState = state
     self.reducer = reducer
-    cursorNode = Node<State, Action>(
+    rootNode = Node<State, Action>(
       state: state,
       actions: reducer.allowedActions(state: state),
       parent: nil,
       parentAction: nil
     )
+    cursorNode = rootNode
   }
   
   func createChild(of parent: Node<State, Action>, with action: Action) -> Node<State, Action> {

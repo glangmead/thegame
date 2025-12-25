@@ -91,7 +91,7 @@ struct BattleCard: LookaheadReducer {
     let msg: String
   }
 
-  enum Action: Hashable, Equatable, Sendable {
+  enum Action: Hashable, Equatable, Sendable, CustomStringConvertible {
     // to organize actions, we need to have effects
     // e.g. an action "generate decision actions for these 3 armies" that pushes that onto a stack?
     case initialize
@@ -111,6 +111,10 @@ struct BattleCard: LookaheadReducer {
     case sequence([Action])
     
     var name: String {
+      description
+    }
+    
+    var description: String {
       switch self {
       case .initialize:
         return "Perform setup"
