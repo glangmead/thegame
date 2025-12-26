@@ -14,7 +14,7 @@ struct CantStop: LookaheadReducer {
   
   // the sigma type of the type family: pairs of (component, value)
   // The state will supply some context, such as who is performing the action
-  enum Action: Hashable, Equatable, Sendable, CustomStringConvertible {
+  enum Action: Hashable, Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible {
     case pass
     case bust
     case claimVictory
@@ -27,6 +27,10 @@ struct CantStop: LookaheadReducer {
     case sequence([Action])
     
     var name: String {
+      description
+    }
+    
+    var debugDescription: String {
       description
     }
     

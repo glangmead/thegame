@@ -91,7 +91,7 @@ struct BattleCard: LookaheadReducer {
     let msg: String
   }
 
-  enum Action: Hashable, Equatable, Sendable, CustomStringConvertible {
+  enum Action: Hashable, Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible {
     // to organize actions, we need to have effects
     // e.g. an action "generate decision actions for these 3 armies" that pushes that onto a stack?
     case initialize
@@ -111,6 +111,10 @@ struct BattleCard: LookaheadReducer {
     case sequence([Action])
     
     var name: String {
+      description
+    }
+    
+    var debugDescription: String {
       description
     }
     
@@ -234,9 +238,9 @@ struct BattleCard: LookaheadReducer {
     )
     
     let airdropRule = Rule(
-      condition: { $0.phase == .airdrop },
+      condition: { $0.phase == .airdrop && !$0.alliesToAirdrop.isEmpty },
       actions: { state in
-        return state.alliesToAirdrop.reversed().map { .airdrop($0) }
+        [Action.sequence(state.alliesToAirdrop.reversed().map { .airdrop($0) })]
       }
     )
     
@@ -258,9 +262,9 @@ struct BattleCard: LookaheadReducer {
     )
     
     let reinforceGermansRule = Rule(
-      condition: { $0.phase == .reinforceGermans },
+      condition: { $0.phase == .reinforceGermans && !$0.germansToReinforce.isEmpty },
       actions: { state in
-        state.germansToReinforce.reversed().map { Action.reinforceGermans($0) }
+        [Action.sequence(state.germansToReinforce.reversed().map { Action.reinforceGermans($0) })]
       }
     )
 

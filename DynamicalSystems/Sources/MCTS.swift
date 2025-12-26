@@ -14,9 +14,14 @@
 import ComposableArchitecture
 import Foundation
 
+extension BinaryFloatingPoint {
+  func near(_ other: Self, epsilon: Self = 0.0001) -> Bool {
+    return abs(self - other) < epsilon
+  }
+}
 // https://github.com/pkamppur/swift-othello-monte-carlo-tree-search/blob/main/Classes/Monte%20Carlo%20Tree%20Search/MonteCarloTreeSearch.swift
 
-class Node<State: GameState & CustomStringConvertible, Action: Hashable & Equatable & CustomStringConvertible>: CustomStringConvertible {
+class Node<State: GameState & CustomStringConvertible & CustomDebugStringConvertible, Action: Hashable & Equatable & CustomStringConvertible & CustomDebugStringConvertible>: CustomStringConvertible, CustomDebugStringConvertible {
   var state: State
   var actions: [Action]
   var children: [Action:Node]
@@ -35,6 +40,10 @@ class Node<State: GameState & CustomStringConvertible, Action: Hashable & Equata
     "\(state) VAL:\(valueSum), #:\(visitCount), PA:\(parentAction?.description ?? "∅")"
   }
   
+  var debugDescription: String {
+    description
+  }
+  
   func printTree(level: Int = 0) {
     let indent = String(repeating: " ", count: level)
     print("\(indent)\(self)")
@@ -43,8 +52,8 @@ class Node<State: GameState & CustomStringConvertible, Action: Hashable & Equata
     }
   }
   
-  var isLeaf: Bool {
-    children.isEmpty
+  var isUnvisited: Bool {
+    visitCount == 0
   }
   
   var isTerminal: Bool {
@@ -109,7 +118,7 @@ class Node<State: GameState & CustomStringConvertible, Action: Hashable & Equata
 
 // A study of the game tree under the start state, iteratively refined,
 // each iteration consisting of a fixed sequence of actions
-class TreeSearch<State: GameState & CustomStringConvertible, Action: Hashable & Equatable & CustomStringConvertible> {
+class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringConvertible, Action: Hashable & Equatable & CustomStringConvertible & CustomDebugStringConvertible> {
   var rootState: State
   var reducer: any LookaheadReducer<State, Action>
   var cursorNode: Node<State, Action>
@@ -141,42 +150,48 @@ class TreeSearch<State: GameState & CustomStringConvertible, Action: Hashable & 
     return newNode
   }
   
-  // use our best heuristic selectionOfChild to recursively find an unexpanded node
-  // (creates up to one node)
-  func selectionAnyLevel(from: Node<State, Action>) -> Node<State, Action> {
+  // use our best heuristic selectAction to recursively find a promising node with an unexplored action
+  // (creates no nodes)
+  func selectNode(from: Node<State, Action>) -> Node<State, Action> {
     var selectedNode = from
-    var selectedAction = selectionOfChild(of: selectedNode)
-    if let node = from.children[selectedAction] {
-      selectedNode = node
-    }
-    while(!selectedNode.isLeaf) {
-      selectedAction = selectionOfChild(of: selectedNode)
+    // look for an unvisited action
+    while(!selectedNode.isTerminal && selectedNode.visitlessActions().isEmpty) {
+      let selectedAction = selectAction(of: selectedNode)!
       if let node = selectedNode.children[selectedAction] {
         selectedNode = node
-      } else {
-        selectedNode = createChild(of: selectedNode, with: selectedAction)
       }
     }
     return selectedNode
   }
   
   // creates no nodes
-  func selectionOfChild(of node: Node<State, Action>) -> Action {
-    return node.actions.max {
-      node.exploreExploitValue(action: $0) < node.exploreExploitValue(action: $1)
-    }!
+  func selectAction(of node: Node<State, Action>) -> Action? {
+    if node.actions.isEmpty {
+      return nil
+    }
+    if node.visitlessActions().isNonEmpty {
+      return node.visitlessActions().randomElement()!
+    }
+    let maxExExValue = node.actions.map { node.exploreExploitValue(action: $0) }.max()!
+    let maxAttainingActions = node.actions.filter { node.exploreExploitValue(action: $0).near(maxExExValue) }
+    return maxAttainingActions.randomElement()!
   }
   
   // creates up to one node
-  func expansion(from parent: Node<State, Action>) -> Node<State, Action> {
+  func expandNode(from parent: Node<State, Action>) -> Node<State, Action> {
     if parent.visitlessActions().isEmpty {
       return parent
     }
     let randoAction = parent.visitlessActions().randomElement()!
-    return createChild(of: parent, with: randoAction)
+    var child = createChild(of: parent, with: randoAction)
+    // now drill down through singleton actions as well
+    while child.actions.count == 1 {
+      child = createChild(of: child, with: child.actions[0])
+    }
+    return child
   }
   
-  func rollout(from: Node<State, Action>) -> Float {
+  func rolloutNode(from: Node<State, Action>) -> Float {
     var cursor = from
     while !cursor.isTerminal {
       let randoAction = cursor.actions.randomElement()!
@@ -186,21 +201,26 @@ class TreeSearch<State: GameState & CustomStringConvertible, Action: Hashable & 
     return cursor.state.endedInVictory ? 1.0 : -1.0
   }
   
+  /// When I run this, it has the property that even if there is only 1 action at the root,
+  /// I get a very pessimistic value at the root, and a better value after taking that 1 action.
   func recommendation(iters: Int) -> Action? {
     guard !cursorNode.isTerminal else {
       return nil
     }
-    var bestGuessAction = cursorNode.actions.randomElement()!
+    var bestGuessAction = cursorNode.actions.randomElement()
     for iter in 0..<iters {
       //print("iteration \(iter)")
       // do the iter
-      let selected = selectionAnyLevel(from: cursorNode)
-      let expanded = expansion(from: selected)
-      let    value = rollout(from: expanded.copy()) // copy() so that created children are temporary
+      let selected = selectNode(from: cursorNode)
+      let expanded = expandNode(from: selected)
+      let value = rolloutNode(from: expanded.copy()) // copy() so that created children are temporary
+      //if let expandedState = expanded.state as? BattleCard.State, iter == iters-1 {
+      //  print("expanded to a node where the turn is \(expandedState.turnNumber)")
+      //}
       // backprop
       expanded.recordRolloutSample(value: value, via: nil)
       
-      let newBestGuessAction = selectionOfChild(of: cursorNode)
+      let newBestGuessAction = selectAction(of: cursorNode)
       if newBestGuessAction != bestGuessAction {
         // log something about the new best
       }

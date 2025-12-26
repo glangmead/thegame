@@ -10,7 +10,7 @@ import Foundation
 extension BattleCard: StatePredicates {
   typealias StatePredicate = (State) -> Bool
 
-  struct State: Equatable, Sendable, GameState, CustomStringConvertible {
+  struct State: Equatable, Sendable, GameState, CustomStringConvertible, CustomDebugStringConvertible {
     typealias Player        = BattleCardComponents.Player
     typealias Phase         = BattleCardComponents.Phase
     typealias Piece         = BattleCardComponents.Piece
@@ -111,10 +111,21 @@ extension BattleCard: StatePredicates {
           germanStrength = "\(strength[german]!.rawValue)"
         }
         let xxxCorps = piecesIn(city).contains(.thirtycorps) ? "X" : ""
-        let control = control[cityIndex] == .allies ? "A" : "G"
-        result.append("\(xxxCorps)\(allyStrength)-\(germanStrength)_\(control) ")
+        let control = control[cityIndex] == .allies ? "🇺🇸" : "🇩🇪"
+        result.append("\(xxxCorps)\(allyStrength)\(germanStrength)\(control) ")
       }
+      var ended = ""
+      if endedInDefeat {
+        ended = "❌"
+      } else if endedInVictory {
+        ended = "✅"
+      }
+      result += ended
       return result
+    }
+    
+    var debugDescription: String {
+      description
     }
 
     func asText() -> [[String]] {
