@@ -84,7 +84,7 @@ enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable, Linear {
   case none = 0, one = 1, two, three, four, five, six
   
   static func allFaces() -> [DSix] {
-    DSix.allCases.filter { $0 != .none}
+    DSix.allCases.filter { $0 != DSix.none}
   }
   
   static func roll() -> DSix {

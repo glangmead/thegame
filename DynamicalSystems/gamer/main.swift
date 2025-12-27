@@ -63,11 +63,12 @@ struct GamerTool: ParsableCommand {
   func getAction(game: BattleCard, state: BattleCard.State, auto: Bool) -> BattleCard.Action? {
     let actions = game.allowedActions(state: state)
     let (aiAction, aiValue, aiCount) = treeSearch(game: game, state: state)
+    let ratio = abs((aiValue + Float(aiCount)) / (2 * Float(aiCount)))
     
     if printUI {
       for (index, action) in actions.enumerated() {
-        let hint = (showAIHints && (action == aiAction)) ? "*" : " "
-        let val  = (showAIHints && (action == aiAction)) ? "\(aiValue)/\(aiCount)" : ""
+        let hint = (showAIHints && (action == aiAction)) ? "" : ""
+        let val  = (showAIHints && (action == aiAction)) ? "[⚛️  \(ratio.formatted(.percent.precision(.significantDigits(0...2)))) win rate (\(aiCount) trials)]" : ""
         print("\(index+1). \(hint)\(action.name) \(val)")
       }
     }

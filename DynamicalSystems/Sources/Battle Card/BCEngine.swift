@@ -428,7 +428,7 @@ struct BattleCard: LookaheadReducer {
       let penalty = airdropPenalty(roll)
       state.strength[ally] = DSix.minus(state.strength[ally]!, penalty)
       state.alliesToAirdrop.removeAll(where: {$0 == ally})
-      logs.append(Log(msg: "Airdrop roll was \(roll.rawValue): -\(penalty.rawValue) to strength"))
+      logs.append(Log(msg: "Airdrop roll for \(ally.name) was \(roll.rawValue): -\(penalty.rawValue) to strength"))
     case .rollForAttack(let army):
       let german = state.opponentFacing(piece: army)!
       let armyStrength = state.strength[army]!

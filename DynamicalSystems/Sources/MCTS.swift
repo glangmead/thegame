@@ -181,6 +181,14 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
     return maxAttainingActions.randomElement()!
   }
   
+  func mostVisitedAction(of node: Node<State, Action>) -> Action? {
+    node.actions.max(by: { node.childrenVisitCounts[$0] ?? 0 < node.childrenVisitCounts[$1] ?? 0})
+  }
+  
+  func mostValuedAction(of node: Node<State, Action>) -> Action? {
+    node.actions.max(by: { node.exploitValue(action: $0) < node.exploitValue(action: $1) })
+  }
+  
   // creates a node (and all trivial single-action descendents) for each untried action of the given node
   func expandNode(from parent: Node<State, Action>) -> [Node<State, Action>] {
     if parent.visitlessActions().isEmpty {
@@ -219,7 +227,7 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
       return nil
     }
     var bestGuessAction = cursorNode.actions.randomElement()
-    for iter in 0..<iters {
+    for _ in 0..<iters {
       //print("iter \(iter) size \(cursorNode.recursiveSize)")
       // do the iter
       let selected = selectNode(from: cursorNode)
@@ -230,7 +238,7 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
         expandedNode.recordRolloutSample(value: value, via: nil)
       }
       
-      let newBestGuessAction = selectAction(of: cursorNode)
+      let newBestGuessAction = mostValuedAction(of: cursorNode)
       if newBestGuessAction != bestGuessAction {
         // log something about the new best
       }
