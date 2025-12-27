@@ -14,7 +14,7 @@ struct GamerTool: ParsableCommand {
   @Option(help: "Number of trials to run") private var numTrials: Int = 0
   @Option(help: "Number of MCTS search iterations to run for each action") private var numMCTSIters: Int = 1
   @Option(help: "Whether to print out the UI") private var printUI: Bool = true
-  @Option(help: "Whether to print out the MCTS log") private var printLog: Bool = false
+  @Option(help: "Where to print out the MCTS log") private var logFile: String = "gamertool.log"
   @Option(help: "Whether to show MCTS opinions") private var showAIHints: Bool = false
   var colwidths = [15, 10, 3, 10, 10, 10, 3, 20]
 
@@ -87,15 +87,34 @@ struct GamerTool: ParsableCommand {
   func treeSearch(game: BattleCard, state: BattleCard.State) -> (BattleCard.Action?, Float, Int) {
     let search = TreeSearch(state: state, reducer: game)
     let aiAction = search.recommendation(iters: numMCTSIters)
-    if printLog {
-      search.rootNode.printTree(level: 0)
+    if !logFile.isEmpty {
+      var logStream: any TextOutputStream = LogDestination(path: logFile)
+      //print("treeSearch from state \(state)", to: &logStream)
+      search.rootNode.printTree(level: 0, to: &logStream)
     }
     var value: Float = 0.0
     var count: Int = 0
     if aiAction != nil {
       value = search.rootNode.children[aiAction!]?.valueSum ?? 0
-      count = search.rootNode.visitCount
+      count = search.rootNode.children[aiAction!]?.visitCount ?? 0
     }
     return (aiAction, value, count)
+  }
+}
+
+final class LogDestination: TextOutputStream {
+  private let path: String
+  init(path: String) {
+    self.path = path
+  }
+  
+  func write(_ string: String) {
+    if let data = string.data(using: .utf8), let fileHandle = FileHandle(forWritingAtPath: path) {
+      defer {
+        fileHandle.closeFile()
+      }
+      fileHandle.seekToEndOfFile()
+      fileHandle.write(data)
+    }
   }
 }

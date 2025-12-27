@@ -40,15 +40,19 @@ class Node<State: GameState & CustomStringConvertible & CustomDebugStringConvert
     "\(state) VAL:\(valueSum), #:\(visitCount), PA:\(parentAction?.description ?? "∅")"
   }
   
+  var recursiveSize: Int {
+    1 + children.values.map({$0.recursiveSize}).reduce(0, +)
+  }
+  
   var debugDescription: String {
     description
   }
   
-  func printTree(level: Int = 0) {
+  func printTree<Target>(level: Int = 0, to: inout Target) where Target: TextOutputStream {
     let indent = String(repeating: " ", count: level)
-    print("\(indent)\(self)")
+    print("\(indent)\(self)", to: &to)
     for (_, child) in children {
-      child.printTree(level: level + 1)
+      child.printTree(level: level + 1, to: &to)
     }
   }
   
@@ -177,18 +181,19 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
     return maxAttainingActions.randomElement()!
   }
   
-  // creates up to one node
-  func expandNode(from parent: Node<State, Action>) -> Node<State, Action> {
+  // creates a node (and all trivial single-action descendents) for each untried action of the given node
+  func expandNode(from parent: Node<State, Action>) -> [Node<State, Action>] {
     if parent.visitlessActions().isEmpty {
-      return parent
+      return [parent]
     }
-    let randoAction = parent.visitlessActions().randomElement()!
-    var child = createChild(of: parent, with: randoAction)
-    // now drill down through singleton actions as well
-    while child.actions.count == 1 {
-      child = createChild(of: child, with: child.actions[0])
+    return parent.visitlessActions().map { action in
+      var child = createChild(of: parent, with: action)
+      // now drill down through singleton actions as well
+      while child.actions.count == 1 {
+        child = createChild(of: child, with: child.actions[0])
+      }
+      return child
     }
-    return child
   }
   
   func rolloutNode(from: Node<State, Action>) -> Float {
@@ -198,7 +203,13 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
       cursor = createChild(of: cursor, with: randoAction)
     }
     // TODO: generalize to > 1 player
-    return cursor.state.endedInVictory ? 1.0 : -1.0
+    if cursor.state.endedInVictory {
+      return 1.0
+    } else if cursor.state.endedInDefeat {
+      return -1.0
+    } else {
+      fatalError()
+    }
   }
   
   /// When I run this, it has the property that even if there is only 1 action at the root,
@@ -209,16 +220,15 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
     }
     var bestGuessAction = cursorNode.actions.randomElement()
     for iter in 0..<iters {
-      //print("iteration \(iter)")
+      //print("iter \(iter) size \(cursorNode.recursiveSize)")
       // do the iter
       let selected = selectNode(from: cursorNode)
       let expanded = expandNode(from: selected)
-      let value = rolloutNode(from: expanded.copy()) // copy() so that created children are temporary
-      //if let expandedState = expanded.state as? BattleCard.State, iter == iters-1 {
-      //  print("expanded to a node where the turn is \(expandedState.turnNumber)")
-      //}
-      // backprop
-      expanded.recordRolloutSample(value: value, via: nil)
+      for expandedNode in expanded {
+        let value = rolloutNode(from: expandedNode.copy()) // copy() so that created children are temporary
+        // backprop the win/loss value
+        expandedNode.recordRolloutSample(value: value, via: nil)
+      }
       
       let newBestGuessAction = selectAction(of: cursorNode)
       if newBestGuessAction != bestGuessAction {
