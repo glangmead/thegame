@@ -19,7 +19,7 @@ class CantStopRandomPlayer: ComputerPlayer {
     if let action = chosenActions[state] {
       return action
     }
-    chosenActions[state] = search.recommendation(iters: 1)
+    chosenActions[state] = search.recommendation(iters: 1).keys.randomElement()!
     return chosenActions[state]!
   }
 }

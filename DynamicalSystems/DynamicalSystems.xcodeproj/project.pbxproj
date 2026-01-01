@@ -68,6 +68,7 @@
 				Game.swift,
 				Lens.swift,
 				MCTS.swift,
+				OpenLoopMCTS.swift,
 				Pair.swift,
 				RawComparable.swift,
 			);

@@ -21,8 +21,8 @@ extension BinaryFloatingPoint {
 }
 
 protocol AnytimePlayer {
-  associatedtype Action
-  func recommendation(iters: Int) -> Action?
+  associatedtype Action: Hashable
+  func recommendation(iters: Int) -> [Action:(Float, Float)]
 }
 
 // https://github.com/pkamppur/swift-othello-monte-carlo-tree-search/blob/main/Classes/Monte%20Carlo%20Tree%20Search/MonteCarloTreeSearch.swift
@@ -256,11 +256,11 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
   
   /// When I run this, it has the property that even if there is only 1 action at the root,
   /// I get a very pessimistic value at the root, and a better value after taking that 1 action.
-  func recommendation(iters: Int) -> Action? {
+  func recommendation(iters: Int) -> [Action:(Float, Float)] {
+    var result = [Action:(Float, Float)]()
     guard !cursorNode.isTerminal else {
-      return nil
+      return result
     }
-    var bestGuessAction = cursorNode.actions.randomElement()
     for _ in 0..<iters {
       //print("iter \(iter) size \(cursorNode.recursiveSize)")
       // do the iter
@@ -271,14 +271,15 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
         // backprop the win/loss value
         expandedNode.recordRolloutSample(value: value, via: nil)
       }
-      
-      let newBestGuessAction = mostValuedAction(of: cursorNode)
-      if newBestGuessAction != bestGuessAction {
-        // log something about the new best
-      }
-      bestGuessAction = newBestGuessAction
     }
-    return bestGuessAction
+    
+    for action in cursorNode.actions {
+      result[action] = (
+        cursorNode.children[action]?.valueSum ?? 0,
+        Float(cursorNode.children[action]?.visitCount ?? 0)
+      )
+    }
+    return result
   }
   
 }

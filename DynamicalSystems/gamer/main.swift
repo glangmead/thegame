@@ -64,19 +64,27 @@ struct GamerTool: ParsableCommand {
   
   func getAction(game: BattleCard, state: BattleCard.State, auto: Bool) -> BattleCard.Action? {
     let actions = game.allowedActions(state: state)
-    let (aiAction, aiValue, aiCount) = treeSearch(game: game, state: state)
-    let ratio = abs((aiValue + Float(aiCount)) / (2 * Float(aiCount)))
-    
+    let results = treeSearch(game: game, state: state)
+    let ratio: ((Float, Float)) -> Float = { valCount in
+      let val = valCount.0
+      let count = valCount.1
+      return val / (count > 0 ? count : 1)
+    }
+
+    let bestValue = results.values.map({ ratio($0) }).max()!
+    let bestAction = results.keys.filter { action in
+      ratio(results[action]!).near(bestValue)
+    }.randomElement()!
     if printUI {
       for (index, action) in actions.enumerated() {
-        let hint = (showAIHints && (action == aiAction)) ? "" : ""
-        let val  = (showAIHints && (action == aiAction)) ? "[⚛️  \(ratio.formatted(.percent.precision(.significantDigits(0...2)))) win rate (\(aiCount) trials)]" : ""
+        let hint = (showAIHints && (action == bestAction)) ? "🤖 " : "  "
+        let val  = showAIHints ? "[⚛️  \(ratio(results[action]!).formatted(.percent.precision(.significantDigits(0...2)))) win rate (\(results[action]!.1.formatted()) trials)]" : ""
         print("\(index+1). \(hint)\(action.name) \(val)")
       }
     }
     
     if auto {
-      return aiAction
+      return bestAction
     } else {
       let typed = readLine()!
       let typedNum = (Int(typed) ?? 1) - 1
@@ -87,21 +95,15 @@ struct GamerTool: ParsableCommand {
     return nil
   }
   
-  func treeSearch(game: BattleCard, state: BattleCard.State) -> (BattleCard.Action?, Float, Int) {
-    let search = TreeSearch(state: state, reducer: game)
-    let aiAction = search.recommendation(iters: numMCTSIters)
+  func treeSearch(game: BattleCard, state: BattleCard.State) -> [BattleCard.Action:(Float, Float)] {
+    let search = OpenLoopMCTS(state: state, reducer: game)
+    let results = search.recommendation(iters: numMCTSIters)
     if !logFile.isEmpty {
       var logStream: any TextOutputStream = LogDestination(path: logFile)
       //print("treeSearch from state \(state)", to: &logStream)
-      search.rootNode.printTree(level: 0, to: &logStream)
+      search.printTree(to: &logStream)
     }
-    var value: Float = 0.0
-    var count: Int = 0
-    if aiAction != nil {
-      value = search.rootNode.children[aiAction!]?.valueSum ?? 0
-      count = search.rootNode.children[aiAction!]?.visitCount ?? 0
-    }
-    return (aiAction, value, count)
+    return results
   }
 }
 

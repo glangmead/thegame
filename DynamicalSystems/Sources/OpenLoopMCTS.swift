@@ -13,7 +13,7 @@ import Foundation
 // The client then selects one of those actions and applies its reducer to create a new state
 // with new child actions.
 class ActionNode<Action: Hashable & Equatable & CustomStringConvertible>: CustomStringConvertible {
-  let inboundAction: Action
+  let inboundAction: Action?
   let inboundPath: [Action] // list of actions leading here. appending inboundAction would continue it.
   var children = [Action:ActionNode]()
   var parent: ActionNode?
@@ -22,11 +22,15 @@ class ActionNode<Action: Hashable & Equatable & CustomStringConvertible>: Custom
   var visitCount: Int = 0
   var valueSum: Float = 0
   
-  var description: String {
-    "\(inboundPath) + \(inboundAction)"
+  var depth: Int {
+    inboundPath.count
   }
   
-  init(action: Action, parent: ActionNode?, inboundPath: [Action]) {
+  var description: String {
+    "\(inboundPath) " + ((inboundAction == nil) ? "none" : "\(inboundAction!)")
+  }
+  
+  init(action: Action?, parent: ActionNode?, inboundPath: [Action]) {
     self.inboundAction = action
     self.parent = parent
     self.inboundPath = inboundPath
@@ -47,6 +51,7 @@ class ActionNode<Action: Hashable & Equatable & CustomStringConvertible>: Custom
   // updates the stats and propagates them upward
   func recordRolloutValue(value: Float) {
     valueSum += value
+    visitCount += 1
     parent?.recordRolloutValue(value: value)
   }
 
@@ -63,7 +68,7 @@ class ActionNode<Action: Hashable & Equatable & CustomStringConvertible>: Custom
     // modified further by discussion of N(a) in 4.2, p. 47
     visitCount > 0
       ? sqrt(Float(visitableCount) / Float(visitCount))
-      : Float.infinity
+      : Float.greatestFiniteMagnitude
   }
   
   // upper confidence for trees (Kocsis & Szepesvári, Bandit-based monte-carlo planning, 2006)
@@ -76,17 +81,18 @@ class OpenLoopMCTS<
   State: GameState & CustomStringConvertible,
   Action: Hashable & Equatable & CustomStringConvertible
 >: AnytimePlayer {
-
+  
   var rootState: State
+  var rootNode: ActionNode<Action>
   var reducer: any LookaheadReducer<State, Action>
-  var rootNodes: [ActionNode<Action>]
   
   init(state: State, reducer: any LookaheadReducer<State, Action>) {
     self.rootState = state
     self.reducer = reducer
+    self.rootNode = ActionNode(action: nil, parent: nil, inboundPath: [])
     let firstActions = reducer.allowedActions(state: state)
-    rootNodes = firstActions.map {
-      ActionNode<Action>(action: $0, parent: nil, inboundPath: [])
+    for action in firstActions {
+      rootNode.children[action] = ActionNode<Action>(action: action, parent: rootNode, inboundPath: [])
     }
   }
   
@@ -97,7 +103,7 @@ class OpenLoopMCTS<
     while !stop {
       let nextAction = selectAction(for: selectedNode, in: state)
       if nextAction != nil && parent.children[nextAction!] != nil {
-        let _ = reducer.reduce(into: &state, action: selectedNode.inboundAction)
+        let _ = reducer.reduce(into: &state, action: nextAction!)
         selectedNode = parent.children[nextAction!]!
         stop = state.ended
       } else {
@@ -130,7 +136,6 @@ class OpenLoopMCTS<
   
   // pick an unexpanded action and expand it, updating the state alongside
   func expandNode(from parent: ActionNode<Action>, in state: inout State) -> ActionNode<Action> {
-    var result = parent
     let legalActions = reducer.allowedActions(state: state)
     // by assumption one of these actions has no visit count
     if let randoAction = legalActions.filter({
@@ -138,59 +143,56 @@ class OpenLoopMCTS<
     }).randomElement() {
       let _ = reducer.reduce(into: &state, action: randoAction)
       return parent.children[randoAction]!
+    } else {
+      return parent
     }
-    return result
   }
   
   func rolloutNode(from: ActionNode<Action>, in state: State) -> Float {
     var cursor = from
     var depth = 0
     var stateCopy = state
-    while !state.ended && depth < 100 {
-      let randoAction = reducer.allowedActions(state: state).randomElement()!
+    while !stateCopy.ended && depth < 100 {
+      let randoAction = reducer.allowedActions(state: stateCopy).randomElement()!
       cursor = ActionNode(action: randoAction, parent: cursor, inboundPath: cursor.inboundPath + [randoAction])
       let _ = reducer.reduce(into: &stateCopy, action: randoAction)
       depth += 1
     }
     // TODO: generalize to > 1 player
-    if state.endedInVictory {
+    if stateCopy.endedInVictory {
       return 1.0
-    } else if state.endedInDefeat {
-      return -1.0
+    } else if stateCopy.endedInDefeat {
+      return 0
     } else {
       return 0// fatalError()
     }
   }
-
-  func bestRootNode(by: (ActionNode<Action>) -> Float) -> ActionNode<Action> {
-    let topValue = rootNodes.map({ by($0) }).max() ?? 0
-    return rootNodes.filter({ by($0).near(topValue) }).randomElement()!
-  }
-
-  func recommendation(iters: Int) -> Action? {
+  
+  func recommendation(iters: Int) -> [Action:(Float, Float)] {
+    var result = [Action:(Float, Float)]()
     guard !rootState.ended else {
-      return nil
+      return result
     }
     
-    var state = rootState
-    var bestGuessNode = bestRootNode(by: {$0.exploreExploitValue})
-    var bestGuessAction = bestGuessNode.inboundAction
-    let _ = reducer.reduce(into: &state, action: bestGuessAction)
-    
     for _ in 0..<iters {
-      let selected = selectDeep(from: bestGuessNode, in: &state)
+      var state = rootState
+      let selected = selectDeep(from: rootNode, in: &state)
       let expanded = expandNode(from: selected, in: &state)
       let value = rolloutNode(from: expanded.copy(), in: state) // copy() so that created children are temporary
       // backprop the win/loss value
       expanded.recordRolloutValue(value: value)
-      
-      bestGuessNode = bestRootNode(by: {$0.exploitValue})
-      if bestGuessNode.inboundAction != bestGuessAction {
-        // log something about the new best
+      for action in rootNode.children.keys {
+        result[action] = (
+          rootNode.children[action]?.valueSum ?? 0,
+          Float(rootNode.children[action]?.visitCount ?? 0)
+        )
       }
-      bestGuessAction = bestGuessNode.inboundAction
     }
     
-    return bestGuessAction
+    return result
+  }
+  
+  func printTree<Target>(to: inout Target) where Target: TextOutputStream {
+    rootNode.printTree(level: 0, to: &to)
   }
 }
