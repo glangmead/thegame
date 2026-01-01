@@ -275,7 +275,9 @@ struct BattleCard: LookaheadReducer {
 
     let advanceRule1 = Rule(
       condition: { state in
-        state.phase == Phase.advance && state.control[state.cityPastXXXCorps!] == .allies
+        state.phase == Phase.advance &&
+        state.cityPastXXXCorps != nil &&
+        state.control[state.cityPastXXXCorps!] == .allies
       },
       actions: { _ in [Action.sequence([Action.advance30Corps, Action.setPhase(Phase.rollForWeather)])] }
     )
@@ -295,7 +297,9 @@ struct BattleCard: LookaheadReducer {
     
     let cantAdvanceRule = Rule(
       condition: { state in
-        state.phase == Phase.advance && state.control[state.cityPastXXXCorps!] == .germans
+        state.phase == Phase.advance &&
+        state.cityPastXXXCorps != nil &&
+        state.control[state.cityPastXXXCorps!] == .germans
       },
       actions: { _ in [Action.sequence([Action.addLog("Can't advance into German control"), Action.setPhase(Phase.rollForWeather)])]}
     )
@@ -525,11 +529,11 @@ struct BattleCard: LookaheadReducer {
       if state.weather == .fog {
         logs.append(Log(msg:"Rolling to see if the fog clears:"))
         if DSix.greater(DSix(rawValue: state.turnNumber)!, DSix.roll()) {
-          logs.append(Log(msg:"Yes, weather clear!"))
+          logs.append(Log(msg:"🌤️ Yes, weather clear!"))
           state.weather = .clear
           state.weatherCleared = true
         } else {
-          logs.append(Log(msg:"No, still foggy."))
+          logs.append(Log(msg:"☁️ No, still foggy."))
         }
       }
     case .perform1stAirborneReinforcement:

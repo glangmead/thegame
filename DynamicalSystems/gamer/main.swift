@@ -36,7 +36,9 @@ struct GamerTool: ParsableCommand {
           print(formattedLine)
         }
       }
-      print("")
+      if printUI {
+        print("")
+      }
       
       if let action = getAction(game: game, state: state, auto: numTrials > 0) {
         let logs = game.reduce(state: &state, action: action)
@@ -53,8 +55,8 @@ struct GamerTool: ParsableCommand {
         }
         if numGames >= numTrials {
           done = true
-          print("\(numLosses) losses, \(numWins) wins, \(numGames) games total.")
         }
+        print("\(numLosses) losses, \(numWins) wins, \(numGames) games total.")
         state = BattleCard.State()
       }
     }

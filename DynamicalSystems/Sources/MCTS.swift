@@ -19,11 +19,29 @@ extension BinaryFloatingPoint {
     return abs(self - other) < epsilon
   }
 }
+
+protocol AnytimePlayer {
+  associatedtype Action
+  func recommendation(iters: Int) -> Action?
+}
+
 // https://github.com/pkamppur/swift-othello-monte-carlo-tree-search/blob/main/Classes/Monte%20Carlo%20Tree%20Search/MonteCarloTreeSearch.swift
 
-class Node<State: GameState & CustomStringConvertible & CustomDebugStringConvertible, Action: Hashable & Equatable & CustomStringConvertible & CustomDebugStringConvertible>: CustomStringConvertible, CustomDebugStringConvertible {
+// TODO: ponder how, even after taking the same actions from the root, not all actions may be available.
+// Easy example: if you don't take Nijmegen, you can't advance XXXCorps.
+// TODO: do not hold the state! We want so-called "open loop" search.
+// Open loop would work like this:
+//   at the start of an iteration we take in the state
+//   we want to learn only at the action level, so the nodes are
+class Node<
+  State: GameState & CustomStringConvertible & CustomDebugStringConvertible,
+  Action: Hashable & Equatable & CustomStringConvertible & CustomDebugStringConvertible
+>: CustomStringConvertible, CustomDebugStringConvertible {
+  let reducer: any LookaheadReducer<State, Action>
   var state: State
-  var actions: [Action]
+  var actions: [Action] {
+    reducer.allowedActions(state: state)
+  }
   var children: [Action:Node]
   var parent: Node?
   var parentAction: Action? // the action that created us when applies to our parent
@@ -35,7 +53,11 @@ class Node<State: GameState & CustomStringConvertible & CustomDebugStringConvert
   // stats for the actions/children
   var childrenValues = [Action: Float]()
   var childrenVisitCounts = [Action: Int]()
-  
+  // subtle point: we revisit a node by choosing an incoming action
+  // but when we arrive there, a different set of actions may be available
+  // e.g., if we don't control Eindhoven, we can't move XXXCorps into Eindhoven
+  var childrenAvailabilityCounts = [Action: Int]()
+
   var description: String {
     "\(state) VAL:\(valueSum), #:\(visitCount), PA:\(parentAction?.description ?? "∅")"
   }
@@ -64,9 +86,9 @@ class Node<State: GameState & CustomStringConvertible & CustomDebugStringConvert
     state.ended
   }
   
-  init(state: State, actions: [Action], parent: Node?, parentAction: Action?) {
+  init(state: State, reducer: any LookaheadReducer<State, Action>, parent: Node?, parentAction: Action?) {
     self.state = state
-    self.actions = actions
+    self.reducer = reducer
     self.children = [Action:Node]()
     self.parent = parent
     self.parentAction = parentAction
@@ -75,21 +97,29 @@ class Node<State: GameState & CustomStringConvertible & CustomDebugStringConvert
   func copy() -> Node<State, Action> {
     return Node(
       state: self.state,
-      actions: self.actions,
+      reducer: self.reducer,
       parent: self.parent,
       parentAction: self.parentAction
     )
   }
   
   // updates the stats and propagates them upward
-  func recordRolloutSample(value: Float, via: Action?) {
+  func recordRolloutSample(value: Float, via childbearingAction: Action?) {
     self.visitCount += 1
     self.valueSum += value
-    if let childbearingAction = via {
-      self.childrenValues[childbearingAction] = self.childrenValues[childbearingAction] ?? 0 + value
-      self.childrenVisitCounts[childbearingAction] = self.childrenVisitCounts[childbearingAction] ?? 0 + 1
+    if childbearingAction != nil {
+      self.childrenValues[childbearingAction!] = self.childrenValues[childbearingAction!] ?? 0 + value
+      self.childrenVisitCounts[childbearingAction!] = self.childrenVisitCounts[childbearingAction!] ?? 0 + 1
     }
     self.parent?.recordRolloutSample(value: value, via: self.parentAction)
+  }
+  
+  func recomputeFromParent(reducer: any LookaheadReducer<State, Action>) {
+    // recompute the node's actions
+    if parentAction != nil {
+      // reapply parent action
+      let _ = reducer.reduce(into: &state, action: parentAction!)
+    }
   }
   
   func visitlessActions() -> [Action] {
@@ -109,7 +139,7 @@ class Node<State: GameState & CustomStringConvertible & CustomDebugStringConvert
     guard let count = childrenVisitCounts[action],  count > 0  else {
       return 1.0 / Float(visitlessActions().count)
     }
-    return sqrt(log(Float(visitCount > 0 ? visitCount : 1)) / Float(childrenVisitCounts[action]!))
+    return sqrt(/*log*/(Float(visitCount > 0 ? visitCount : 1)) / Float(childrenVisitCounts[action]!))
   }
   
   // upper confidence for trees (Kocsis & Szepesvári, Bandit-based monte-carlo planning, 2006)
@@ -122,7 +152,7 @@ class Node<State: GameState & CustomStringConvertible & CustomDebugStringConvert
 
 // A study of the game tree under the start state, iteratively refined,
 // each iteration consisting of a fixed sequence of actions
-class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringConvertible, Action: Hashable & Equatable & CustomStringConvertible & CustomDebugStringConvertible> {
+class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringConvertible, Action: Hashable & Equatable & CustomStringConvertible & CustomDebugStringConvertible>: AnytimePlayer {
   var rootState: State
   var reducer: any LookaheadReducer<State, Action>
   var cursorNode: Node<State, Action>
@@ -133,7 +163,7 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
     self.reducer = reducer
     rootNode = Node<State, Action>(
       state: state,
-      actions: reducer.allowedActions(state: state),
+      reducer: reducer,
       parent: nil,
       parentAction: nil
     )
@@ -146,7 +176,7 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
     
     let newNode = Node(
       state: beforeAfterState,
-      actions: reducer.allowedActions(state: beforeAfterState),
+      reducer: reducer,
       parent: parent,
       parentAction: action
     )
@@ -162,6 +192,7 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
     while(!selectedNode.isTerminal && selectedNode.visitlessActions().isEmpty) {
       let selectedAction = selectAction(of: selectedNode)!
       if let node = selectedNode.children[selectedAction] {
+        node.recomputeFromParent(reducer: reducer)
         selectedNode = node
       }
     }
@@ -170,6 +201,7 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
   
   // creates no nodes
   func selectAction(of node: Node<State, Action>) -> Action? {
+    node.recomputeFromParent(reducer: reducer)
     if node.actions.isEmpty {
       return nil
     }
@@ -206,9 +238,11 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
   
   func rolloutNode(from: Node<State, Action>) -> Float {
     var cursor = from
-    while !cursor.isTerminal {
+    var depth = 0
+    while !cursor.isTerminal && depth < 100 {
       let randoAction = cursor.actions.randomElement()!
       cursor = createChild(of: cursor, with: randoAction)
+      depth += 1
     }
     // TODO: generalize to > 1 player
     if cursor.state.endedInVictory {
@@ -216,7 +250,7 @@ class TreeSearch<State: GameState & CustomStringConvertible & CustomDebugStringC
     } else if cursor.state.endedInDefeat {
       return -1.0
     } else {
-      fatalError()
+      return 0// fatalError()
     }
   }
   

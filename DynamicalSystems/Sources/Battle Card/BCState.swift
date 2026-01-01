@@ -81,7 +81,11 @@ extension BattleCard: StatePredicates {
         case .offBoard:
           return nil
         case .onTrack(let trackPos):
-          return trackPos + 1
+          if trackPos + 1 < BattleCardComponents().track.length {
+            return trackPos + 1
+          } else {
+            return nil
+          }
         }
       }
     }

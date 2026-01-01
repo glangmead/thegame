@@ -231,6 +231,11 @@ struct CantStop: LookaheadReducer {
       state = State()
     case .claimVictory:
       state.ended = true
+      if state.player == .player1 {
+        state.endedInVictory = true
+      } else {
+        state.endedInDefeat = true
+      }
     case .pass:
       state.savePlace()
       state.advancePlayer()
