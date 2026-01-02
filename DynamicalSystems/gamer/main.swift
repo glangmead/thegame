@@ -13,12 +13,16 @@ GamerTool.main()
 struct GamerTool: ParsableCommand {
   @Option(help: "Number of trials to run") private var numTrials: Int = 0
   @Option(help: "Number of MCTS search iterations to run for each action") private var numMCTSIters: Int = 1
-  @Option(help: "Whether to print out the UI") private var printUI: Bool = true
-  @Option(help: "Where to print out the MCTS log") private var logFile: String = "gamertool.log"
+  @Option(help: "Number of MCTS rollouts to run for each iteration") private var numRollouts: Int = 1
+  @Option(help: "Whether to print out the UI") private var interactive: Bool = true
+  @Option(help: "Where to print out the MCTS log") private var logFile: String = ""
   @Option(help: "Whether to show MCTS opinions") private var showAIHints: Bool = false
   var colwidths = [15, 10, 3, 10, 10, 10, 3, 20]
 
   mutating func run() throws {
+    if numTrials > 0 {
+      interactive = false
+    }
     let game = BattleCard()
     var state = BattleCard.State()
     var done = false
@@ -32,17 +36,17 @@ struct GamerTool: ParsableCommand {
         for (index, piece) in stateLine.enumerated() {
           formattedLine.append(piece.padding(toLength: colwidths[index], withPad: " ", startingAt: 0))
         }
-        if printUI {
+        if interactive {
           print(formattedLine)
         }
       }
-      if printUI {
+      if interactive {
         print("")
       }
       
       if let action = getAction(game: game, state: state, auto: numTrials > 0) {
         let logs = game.reduce(state: &state, action: action)
-        if printUI {
+        if interactive {
           for log in logs { print(log.msg) }
         }
       } else {
@@ -55,8 +59,9 @@ struct GamerTool: ParsableCommand {
         }
         if numGames >= numTrials {
           done = true
+          let battingAverage = Float(numWins) / Float(numGames)
+          print("\(numWins)\t\(numLosses)\t\(battingAverage.formatted(.number.precision(.significantDigits(4))))\t\(numMCTSIters)\t\(numRollouts)")
         }
-        print("\(numLosses) losses, \(numWins) wins, \(numGames) games total.")
         state = BattleCard.State()
       }
     }
@@ -71,11 +76,11 @@ struct GamerTool: ParsableCommand {
       return val / (count > 0 ? count : 1)
     }
 
-    let bestValue = results.values.map({ ratio($0) }).max()!
+    let bestValue = results.values.map({ ratio($0) }).max() ?? 0
     let bestAction = results.keys.filter { action in
       ratio(results[action]!).near(bestValue)
-    }.randomElement()!
-    if printUI {
+    }.randomElement()
+    if interactive {
       for (index, action) in actions.enumerated() {
         let hint = (showAIHints && (action == bestAction)) ? "🤖 " : "  "
         let val  = showAIHints ? "[⚛️  \(ratio(results[action]!).formatted(.percent.precision(.significantDigits(0...2)))) win rate (\(results[action]!.1.formatted()) trials)]" : ""
@@ -97,7 +102,7 @@ struct GamerTool: ParsableCommand {
   
   func treeSearch(game: BattleCard, state: BattleCard.State) -> [BattleCard.Action:(Float, Float)] {
     let search = OpenLoopMCTS(state: state, reducer: game)
-    let results = search.recommendation(iters: numMCTSIters)
+    let results = search.recommendation(iters: numMCTSIters, numRollouts: numRollouts)
     if !logFile.isEmpty {
       var logStream: any TextOutputStream = LogDestination(path: logFile)
       //print("treeSearch from state \(state)", to: &logStream)

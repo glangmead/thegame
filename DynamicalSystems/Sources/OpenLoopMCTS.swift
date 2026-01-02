@@ -102,9 +102,9 @@ class OpenLoopMCTS<
     var stop = false
     while !stop {
       let nextAction = selectAction(for: selectedNode, in: state)
-      if nextAction != nil && parent.children[nextAction!] != nil {
+      if nextAction != nil && selectedNode.children[nextAction!] != nil {
+        selectedNode = selectedNode.children[nextAction!]!
         let _ = reducer.reduce(into: &state, action: nextAction!)
-        selectedNode = parent.children[nextAction!]!
         stop = state.ended
       } else {
         stop = true
@@ -149,12 +149,10 @@ class OpenLoopMCTS<
   }
   
   func rolloutNode(from: ActionNode<Action>, in state: State) -> Float {
-    var cursor = from
     var depth = 0
     var stateCopy = state
     while !stateCopy.ended && depth < 100 {
       let randoAction = reducer.allowedActions(state: stateCopy).randomElement()!
-      cursor = ActionNode(action: randoAction, parent: cursor, inboundPath: cursor.inboundPath + [randoAction])
       let _ = reducer.reduce(into: &stateCopy, action: randoAction)
       depth += 1
     }
@@ -164,11 +162,11 @@ class OpenLoopMCTS<
     } else if stateCopy.endedInDefeat {
       return 0
     } else {
-      return 0// fatalError()
+      fatalError()
     }
   }
   
-  func recommendation(iters: Int) -> [Action:(Float, Float)] {
+  func recommendation(iters: Int, numRollouts: Int = 1) -> [Action:(Float, Float)] {
     var result = [Action:(Float, Float)]()
     guard !rootState.ended else {
       return result
@@ -178,9 +176,11 @@ class OpenLoopMCTS<
       var state = rootState
       let selected = selectDeep(from: rootNode, in: &state)
       let expanded = expandNode(from: selected, in: &state)
-      let value = rolloutNode(from: expanded.copy(), in: state) // copy() so that created children are temporary
-      // backprop the win/loss value
-      expanded.recordRolloutValue(value: value)
+      for _ in 0..<numRollouts {
+        let value = rolloutNode(from: expanded.copy(), in: state) // copy() so that created children are temporary
+        // backprop the win/loss value
+        expanded.recordRolloutValue(value: value)
+      }
       for action in rootNode.children.keys {
         result[action] = (
           rootNode.children[action]?.valueSum ?? 0,
