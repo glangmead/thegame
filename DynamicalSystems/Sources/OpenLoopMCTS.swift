@@ -14,7 +14,6 @@ import Foundation
 // with new child actions.
 class ActionNode<Action: Hashable & Equatable & CustomStringConvertible>: CustomStringConvertible {
   let inboundAction: Action?
-  let inboundPath: [Action] // list of actions leading here. appending inboundAction would continue it.
   var children = [Action:ActionNode]()
   var parent: ActionNode?
 
@@ -22,22 +21,17 @@ class ActionNode<Action: Hashable & Equatable & CustomStringConvertible>: Custom
   var visitCount: Int = 0
   var valueSum: Float = 0
   
-  var depth: Int {
-    inboundPath.count
-  }
-  
   var description: String {
-    "\(inboundPath) " + ((inboundAction == nil) ? "none" : "\(inboundAction!)")
+    ((inboundAction == nil) ? "none" : "\(inboundAction!)")
   }
   
-  init(action: Action?, parent: ActionNode?, inboundPath: [Action]) {
+  init(action: Action?, parent: ActionNode?) {
     self.inboundAction = action
     self.parent = parent
-    self.inboundPath = inboundPath
   }
   
   func copy() -> ActionNode<Action> {
-    return ActionNode(action: self.inboundAction, parent: self.parent, inboundPath: inboundPath)
+    return ActionNode(action: self.inboundAction, parent: self.parent)
   }
   
   func printTree<Target>(level: Int = 0, to: inout Target) where Target: TextOutputStream {
@@ -52,7 +46,12 @@ class ActionNode<Action: Hashable & Equatable & CustomStringConvertible>: Custom
   func recordRolloutValue(value: Float) {
     valueSum += value
     visitCount += 1
-    parent?.recordRolloutValue(value: value)
+    var next = parent
+    while parent != nil {
+      next?.valueSum += value
+      next?.visitCount += 1
+      next = next?.parent
+    }
   }
 
   // a calculation based on visit count unless visit count is 0 in which case 0, to force explore
@@ -89,10 +88,10 @@ class OpenLoopMCTS<
   init(state: State, reducer: any LookaheadReducer<State, Action>) {
     self.rootState = state
     self.reducer = reducer
-    self.rootNode = ActionNode(action: nil, parent: nil, inboundPath: [])
+    self.rootNode = ActionNode(action: nil, parent: nil)
     let firstActions = reducer.allowedActions(state: state)
     for action in firstActions {
-      rootNode.children[action] = ActionNode<Action>(action: action, parent: rootNode, inboundPath: [])
+      rootNode.children[action] = ActionNode<Action>(action: action, parent: rootNode)
     }
   }
   
@@ -120,7 +119,7 @@ class OpenLoopMCTS<
     for legalAction in legalActions {
       var child = node.children[legalAction]
       if child == nil {
-        child = ActionNode(action: legalAction, parent: node, inboundPath: node.inboundPath + [legalAction])
+        child = ActionNode(action: legalAction, parent: node)
         node.children[legalAction] = child
       }
       child?.visitableCount += 1
