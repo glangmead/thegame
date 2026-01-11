@@ -60,6 +60,10 @@ struct CantStop: LookaheadReducer {
     }
   }
   
+  func newState() -> State {
+    State()
+  }
+  
   /// A Rule is a conditional action
   struct Rule {
     let condition: StatePredicate
@@ -88,7 +92,7 @@ struct CantStop: LookaheadReducer {
         first.actions(state).flatMap { a1 in
           // advance the state by a1 to see if we can append any a2 to it
           var stateAfterA1 = state
-          let _ = reduce(state: &stateAfterA1, action: a1)
+          let _ = reduce(into: &stateAfterA1, action: a1)
 
           if second.condition(stateAfterA1) {
             let secondActions = second.actions(stateAfterA1)
@@ -207,9 +211,9 @@ struct CantStop: LookaheadReducer {
   
   func yieldsEquivState(state: State, lhs: Action, rhs: Action) -> Bool {
     var stateAfterLHS = state
-    reduce(state: &stateAfterLHS, action: lhs)
+    let _ = reduce(into: &stateAfterLHS, action: lhs)
     var stateAfterRHS = state
-    reduce(state: &stateAfterRHS, action: rhs)
+    let _ = reduce(into: &stateAfterRHS, action: rhs)
     return State.equiv(lhs: stateAfterLHS, rhs: stateAfterRHS)
   }
 
@@ -225,7 +229,8 @@ struct CantStop: LookaheadReducer {
     return result
   }
   
-  func reduce(state: inout State, action: Action) {
+  func reduce(into state: inout State, action: Action) -> [Log] {
+    var logs = [Log]()
     switch action {
     case .playAgain:
       state = State()
@@ -270,15 +275,16 @@ struct CantStop: LookaheadReducer {
       state.assignedDicePair = Column.none
     case let .sequence(actions):
       for action in actions {
-        reduce(state: &state, action: action)
+        let _ = reduce(into: &state, action: action)
       }
     }
+    return logs
   }
   
   /// for TCA
   var body: some Reducer<State, Action> {
     Reduce { st, act in
-      reduce(state: &st, action: act)
+      let _ = reduce(into: &st, action: act)
       return .none
     }
   }

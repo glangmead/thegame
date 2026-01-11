@@ -6,9 +6,15 @@
 //
 
 import ArgumentParser
+import ComposableArchitecture
 import Foundation
 
 GamerTool.main()
+
+enum Games: String, Codable, ExpressibleByArgument {
+  case CantStop = "CantStop"
+  case BattleCard = "BattleCard"
+}
 
 struct GamerTool: ParsableCommand {
   @Option(help: "Number of trials to run") private var numTrials: Int = 0
@@ -17,14 +23,77 @@ struct GamerTool: ParsableCommand {
   @Option(help: "Whether to print out the UI") private var interactive: Bool = true
   @Option(help: "Where to print out the MCTS log") private var logFile: String = ""
   @Option(help: "Whether to show MCTS opinions") private var showAIHints: Bool = false
-  var colwidths = [15, 10, 3, 10, 10, 10, 3, 20]
+  @Option(help: "Which game to play") private var game: Games
 
+  mutating func run() throws {
+    do {
+      switch game {
+      case .CantStop:
+        var gameRunner = GameRunner<CantStop.State, CantStop.Action>(
+          reducer: CantStop(),
+          numTrials: numTrials,
+          numMCTSIters: numMCTSIters,
+          numRollouts: numRollouts,
+          interactive: interactive,
+          logFile: logFile,
+          showAIHints: showAIHints
+        )
+        try gameRunner.run()
+      case .BattleCard:
+        var gameRunner = GameRunner<BattleCard.State, BattleCard.Action>(
+          reducer: BattleCard(),
+          numTrials: numTrials,
+          numMCTSIters: numMCTSIters,
+          numRollouts: numRollouts,
+          interactive: interactive,
+          logFile: logFile,
+          showAIHints: showAIHints
+        )
+        try gameRunner.run()
+      }
+    }
+  }
+}
+
+struct GameRunner<
+  State: GameState & CustomStringConvertible & TabbedText,
+  Action: Hashable & Equatable & CustomStringConvertible
+>{
+  private var numTrials: Int = 0
+  private var numMCTSIters: Int = 1
+  private var numRollouts: Int = 1
+  private var interactive: Bool = true
+  private var logFile: String = ""
+  private var showAIHints: Bool = false
+  private var reducer: any LookaheadReducer<State, Action>
+  
+  var colwidths: [Int]
+
+  init(
+    reducer: some LookaheadReducer<State, Action>,
+    numTrials: Int,
+    numMCTSIters: Int,
+    numRollouts: Int,
+    interactive: Bool,
+    logFile: String,
+    showAIHints: Bool,
+    colwidths: [Int] = [15, 10, 3, 10, 10, 10, 3, 20]
+  ){
+    self.reducer = reducer
+    self.numTrials = numTrials
+    self.numMCTSIters = numMCTSIters
+    self.numRollouts = numRollouts
+    self.interactive = interactive
+    self.logFile = logFile
+    self.showAIHints = showAIHints
+    self.colwidths = colwidths
+  }
+  
   mutating func run() throws {
     if numTrials > 0 {
       interactive = false
     }
-    let game = BattleCard()
-    var state = BattleCard.State()
+    var state = reducer.newState()
     var done = false
     var numWins = 0
     var numLosses = 0
@@ -44,8 +113,8 @@ struct GamerTool: ParsableCommand {
         print("")
       }
       
-      if let action = getAction(game: game, state: state, auto: numTrials > 0) {
-        let logs = game.reduce(state: &state, action: action)
+      if let action = getAction(state: state, auto: numTrials > 0) {
+        let logs = reducer.reduce(into: &state, action: action)
         if interactive {
           for log in logs { print(log.msg) }
         }
@@ -57,25 +126,25 @@ struct GamerTool: ParsableCommand {
         if state.endedInVictory {
           numWins += 1
         }
+        let battingAverage = Float(numWins) / Float(numGames)
         if numGames >= numTrials {
           done = true
-          let battingAverage = Float(numWins) / Float(numGames)
-          print("\(numWins)\t\(numLosses)\t\(battingAverage.formatted(.number.precision(.significantDigits(4))))\t\(numMCTSIters)\t\(numRollouts)")
         }
-        state = BattleCard.State()
+        print("\(numWins)\t\(numLosses)\t\(battingAverage.formatted(.number.precision(.significantDigits(4))))\t\(numMCTSIters)\t\(numRollouts)")
+        state = reducer.newState()
       }
     }
   }
   
-  func getAction(game: BattleCard, state: BattleCard.State, auto: Bool) -> BattleCard.Action? {
-    let actions = game.allowedActions(state: state)
-    let results = treeSearch(game: game, state: state)
+  func getAction(state: State, auto: Bool) -> Action? {
+    let actions = reducer.allowedActions(state: state)
+    let results = treeSearch(state: state)
     let ratio: ((Float, Float)) -> Float = { valCount in
       let val = valCount.0
       let count = valCount.1
       return val / (count > 0 ? count : 1)
     }
-
+    
     let bestValue = results.values.map({ ratio($0) }).max() ?? 0
     let bestAction = results.keys.filter { action in
       ratio(results[action]!).near(bestValue)
@@ -84,7 +153,7 @@ struct GamerTool: ParsableCommand {
       for (index, action) in actions.enumerated() {
         let hint = (showAIHints && (action == bestAction)) ? "🤖 " : "  "
         let val  = showAIHints ? "[⚛️  \(ratio(results[action]!).formatted(.percent.precision(.significantDigits(0...2)))) win rate (\(results[action]!.1.formatted()) trials)]" : ""
-        print("\(index+1). \(hint)\(action.name) \(val)")
+        print("\(index+1). \(hint)\(action.description) \(val)")
       }
     }
     
@@ -100,8 +169,8 @@ struct GamerTool: ParsableCommand {
     return nil
   }
   
-  func treeSearch(game: BattleCard, state: BattleCard.State) -> [BattleCard.Action:(Float, Float)] {
-    let search = OpenLoopMCTS(state: state, reducer: game)
+  func treeSearch(state: State) -> [Action:(Float, Float)] {
+    let search = OpenLoopMCTS(state: state, reducer: reducer)
     let results = search.recommendation(iters: numMCTSIters, numRollouts: numRollouts)
     if !logFile.isEmpty {
       var logStream: any TextOutputStream = LogDestination(path: logFile)
@@ -109,22 +178,5 @@ struct GamerTool: ParsableCommand {
       search.printTree(to: &logStream)
     }
     return results
-  }
-}
-
-final class LogDestination: TextOutputStream {
-  private let path: String
-  init(path: String) {
-    self.path = path
-  }
-  
-  func write(_ string: String) {
-    if let data = string.data(using: .utf8), let fileHandle = FileHandle(forWritingAtPath: path) {
-      defer {
-        fileHandle.closeFile()
-      }
-      fileHandle.seekToEndOfFile()
-      fileHandle.write(data)
-    }
   }
 }

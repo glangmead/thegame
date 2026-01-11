@@ -7,10 +7,14 @@
 
 import Foundation
 
+protocol TabbedText {
+  func asText() -> [[String]]
+}
+
 extension BattleCard: StatePredicates {
   typealias StatePredicate = (State) -> Bool
 
-  struct State: Equatable, Sendable, GameState, CustomStringConvertible, CustomDebugStringConvertible {
+  struct State: Equatable, Sendable, GameState, CustomStringConvertible, CustomDebugStringConvertible, TabbedText {
     typealias Player        = BattleCardComponents.Player
     typealias Phase         = BattleCardComponents.Phase
     typealias Piece         = BattleCardComponents.Piece
@@ -53,7 +57,6 @@ extension BattleCard: StatePredicates {
     var alliesToAttack = Piece.allies()
     var germansToReinforce = Piece.germans()
 
-    var actionsTaken = [Action]()
     var loggedActions = [Log]()
     
     func allyIn(pos: Position) -> Piece? {

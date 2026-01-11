@@ -87,10 +87,6 @@ struct BattleCard: LookaheadReducer {
   typealias Phase = BattleCardComponents.Phase
   typealias Control = BattleCardComponents.Control
   
-  struct Log: Hashable, Equatable, Sendable {
-    let msg: String
-  }
-
   enum Action: Hashable, Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible {
     // to organize actions, we need to have effects
     // e.g. an action "generate decision actions for these 3 armies" that pushes that onto a stack?
@@ -216,6 +212,10 @@ struct BattleCard: LookaheadReducer {
       }
     }
   )
+  
+  func newState() -> State {
+    State()
+  }
   
   /// A Rule is a conditional action
   struct Rule {
@@ -397,7 +397,7 @@ struct BattleCard: LookaheadReducer {
   // for example, after executing Airdrop for allied1st, I observed its strength go from 6 to 4
   // but I should have printed something like "roll 1: -2 strength!"
   // such I/O is obviously what they mean by Effect!
-  func reduce(state: inout State, action: Action) -> [Log] {
+  func reduce(into state: inout State, action: Action) -> [Log] {
     var logs = [Log]()
     switch action {
     case .initialize:
@@ -555,16 +555,15 @@ struct BattleCard: LookaheadReducer {
     case let .addLog(str):
       logs.append(Log(msg: str))
     case let .sequence(actions):
-      logs.append(contentsOf: actions.flatMap { reduce(state: &state, action: $0)})
+      logs.append(contentsOf: actions.flatMap { reduce(into: &state, action: $0)})
     }
-    state.actionsTaken.append(action)
     state.loggedActions.append(contentsOf: logs)
     return logs
   }
 
   var body: some Reducer<State, Action> {
     Reduce { st, act in
-      let _ = reduce(state: &st, action: act)
+      let _ = reduce(into: &st, action: act)
       return .none
     }
   }

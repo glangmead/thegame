@@ -62,8 +62,14 @@ protocol GameState: GameComponents, Equatable {
 
 protocol LookaheadReducer<State, Action>: Reducer {
   associatedtype Rule
+  func newState() -> State
   func rules() -> [Rule]
   func allowedActions(state: State) -> [Action]
+  func reduce(into: inout State, action: Action) -> [Log]
+}
+
+struct Log: Hashable, Equatable, Sendable {
+  let msg: String
 }
 
 protocol ComputerPlayer<State, Action> {

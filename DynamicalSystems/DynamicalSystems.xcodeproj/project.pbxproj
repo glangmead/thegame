@@ -90,6 +90,13 @@
 			);
 			target = 9B31387E2E63462C00D3AE6D /* DynamicalSystemsTests */;
 		};
+		9BA1F8012F144D2200FA1002 /* Exceptions for "gamer" folder in "DynamicalSystems" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				LogDestination.swift,
+			);
+			target = 9B3138712E63462B00D3AE6D /* DynamicalSystems */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -114,6 +121,9 @@
 		};
 		9B7ABDA92EE0E5E700F0FD43 /* gamer */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9BA1F8012F144D2200FA1002 /* Exceptions for "gamer" folder in "DynamicalSystems" target */,
+			);
 			path = gamer;
 			sourceTree = "<group>";
 		};

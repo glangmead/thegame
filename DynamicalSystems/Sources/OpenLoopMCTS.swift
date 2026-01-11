@@ -47,7 +47,7 @@ class ActionNode<Action: Hashable & Equatable & CustomStringConvertible>: Custom
     valueSum += value
     visitCount += 1
     var next = parent
-    while parent != nil {
+    while next != nil {
       next?.valueSum += value
       next?.visitCount += 1
       next = next?.parent
