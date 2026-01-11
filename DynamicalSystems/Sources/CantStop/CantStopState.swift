@@ -142,13 +142,14 @@ extension CantStop: StatePredicates {
     
     func asText() -> [[String]] {
       var text = [[String]]()
-      for col in Column.allCases {
+      for col in Column.allCases.filter({$0 != Column.none}) {
         var colTexts = [String]()
         colTexts.append(col.name)
         for row in 0..<colHeights()[col]! {
           let pieces = piecesAt([Position(col: col, row: row)])
           colTexts.append("\(pieces)")
         }
+        text.append(colTexts)
       }
       return text
     }
