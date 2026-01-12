@@ -77,7 +77,7 @@ struct GameRunner<
     interactive: Bool,
     logFile: String,
     showAIHints: Bool,
-    colwidths: [Int] = [15, 10, 3, 10, 10, 10, 3, 20]
+    colwidths: [Int] = [15, 10, 10, 10, 10, 10, 3, 20, 10, 10, 10, 10, 10, 10, 10, 10]
   ){
     self.reducer = reducer
     self.numTrials = numTrials

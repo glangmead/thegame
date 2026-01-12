@@ -22,7 +22,6 @@ struct CantStop: LookaheadReducer {
     case forceRoll([DSix])
     case assignDicePair(Pair<Die>)
     case progressColumn(Column)
-    case playAgain
     // recursive: ordered list of actions
     case sequence([Action])
     
@@ -52,8 +51,6 @@ struct CantStop: LookaheadReducer {
         return "Pass"
       case .bust:
         return "Busted: Pass"
-      case .playAgain:
-        return "New game"
       default:
         return String(describing: self)
       }
@@ -185,8 +182,6 @@ struct CantStop: LookaheadReducer {
       actions: { _ in [.claimVictory] }
     )
     
-    let newGameRule = Rule(condition: { state in state.ended }, actions: {_ in [.playAgain]})
-
     let bustRule = Rule(
       condition: { state in
         state.rolledDice().count == 4 &&
@@ -195,7 +190,7 @@ struct CantStop: LookaheadReducer {
       actions: { _ in [.bust] }
     )
 
-    return [victoryRule, passRule, bustRule, append(moveRule, moveRule), newGameRule]
+    return [victoryRule, passRule, bustRule, append(moveRule, moveRule)]
   }
     
   func allowedActions(state: State) -> [Action] {
@@ -232,8 +227,6 @@ struct CantStop: LookaheadReducer {
   func reduce(into state: inout State, action: Action) -> [Log] {
     var logs = [Log]()
     switch action {
-    case .playAgain:
-      state = State()
     case .claimVictory:
       state.ended = true
       if state.player == .player1 {
