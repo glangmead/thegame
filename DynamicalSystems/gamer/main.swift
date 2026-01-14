@@ -56,7 +56,7 @@ struct GamerTool: ParsableCommand {
 }
 
 struct GameRunner<
-  State: GameState & CustomStringConvertible & TabbedText,
+  State: GameState & TextTableAble & CustomStringConvertible,
   Action: Hashable & Equatable & CustomStringConvertible
 >{
   private var numTrials: Int = 0
@@ -77,7 +77,7 @@ struct GameRunner<
     interactive: Bool,
     logFile: String,
     showAIHints: Bool,
-    colwidths: [Int] = [15, 10, 10, 10, 10, 10, 3, 20, 10, 10, 10, 10, 10, 10, 10, 10]
+    colwidths: [Int] = [10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
   ){
     self.reducer = reducer
     self.numTrials = numTrials
@@ -90,6 +90,7 @@ struct GameRunner<
   }
   
   mutating func run() throws {
+    var stdout = StandardOutput()
     if numTrials > 0 {
       interactive = false
     }
@@ -100,15 +101,7 @@ struct GameRunner<
     var numGames = 0
     while(!done) {
       // print state
-      for stateLine in state.asText() {
-        var formattedLine = ""
-        for (index, piece) in stateLine.enumerated() {
-          formattedLine.append(piece.padding(toLength: colwidths[index], withPad: " ", startingAt: 0))
-        }
-        if interactive {
-          print(formattedLine)
-        }
-      }
+      state.printTable(to: &stdout)
       if interactive {
         print("")
       }

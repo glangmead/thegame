@@ -26,6 +26,7 @@ extension CantStop: StatePredicates {
     // TODO: force-query w/ extension Dictionary { subscript(force key: Key) -> Value {} } like in https://stackoverflow.com/questions/59793783/force-swift-dictionary-to-return-a-non-optional-or-assert
     var position = [Piece: Position]()
     var dice = [Die: DSix]()
+    var rolledThisTurn = false
     var assignedDicePair: Column
     var player: Player
     var players: [Player] // which players are playing
@@ -170,6 +171,7 @@ extension CantStop: StatePredicates {
       while !players.contains(player) {
         player = player.next()
       }
+      rolledThisTurn = false
     }
     
     mutating func clearWhite() {

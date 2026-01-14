@@ -167,9 +167,15 @@ struct CantStop: LookaheadReducer {
       condition: { state in
         !state.winAchieved() &&
         state.rolledDice().count < 4 &&
+        state.rolledThisTurn &&
         moveRule.actions(state).isEmpty
       },
       actions: { _ in [.rollDice, .pass] }
+    )
+    
+    let rollRule = Rule(
+      condition: { !$0.rolledThisTurn },
+      actions: { _ in [.rollDice] }
     )
     
     let victoryRule = Rule(
@@ -190,7 +196,7 @@ struct CantStop: LookaheadReducer {
       actions: { _ in [.bust] }
     )
 
-    return [victoryRule, passRule, bustRule, append(moveRule, moveRule)]
+    return [victoryRule, passRule, bustRule, append(moveRule, moveRule), rollRule]
   }
     
   func allowedActions(state: State) -> [Action] {
@@ -225,7 +231,7 @@ struct CantStop: LookaheadReducer {
   }
   
   func reduce(into state: inout State, action: Action) -> [Log] {
-    var logs = [Log]()
+    let logs = [Log]()
     switch action {
     case .claimVictory:
       state.ended = true
@@ -246,6 +252,7 @@ struct CantStop: LookaheadReducer {
       for die in Die.allCases {
         state.dice[die] = DSix.allFaces().randomElement()
       }
+      state.rolledThisTurn = true
     case .forceRoll(let ds):
       state.dice[Die.die1] = ds[0]
       state.dice[Die.die2] = ds[1]

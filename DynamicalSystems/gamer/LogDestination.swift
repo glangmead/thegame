@@ -1,5 +1,9 @@
 import Foundation
 
+protocol TextTableAble {
+  func printTable<Target>(to: inout Target) where Target: TextOutputStream
+}
+
 final class LogDestination: TextOutputStream {
   private let path: String
   init(path: String) {
@@ -15,4 +19,11 @@ final class LogDestination: TextOutputStream {
       fileHandle.write(data)
     }
   }
+}
+
+public struct StandardOutput: TextOutputStream {
+  public mutating func write(_ string: String) {
+    print(string, terminator: "")
+  }
+  public init() {}
 }

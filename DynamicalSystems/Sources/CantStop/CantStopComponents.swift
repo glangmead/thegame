@@ -17,7 +17,7 @@ extension CantStop: GameComponents {
     case two = 2, three, four, five, six, seven, eight, nine, ten, eleven, twelve
     
     var name: String {
-      String(describing: self)
+      "\(rawValue)"
     }
   }
   
@@ -75,7 +75,7 @@ extension CantStop: GameComponents {
     Column.allCases.filter({$0 != Column.none}).map { col in Position(col: col, row: colHeights()[col] ?? 0) }
   }
   
-  enum Player: Hashable, Equatable, CaseIterable, Cyclic {
+  enum Player: Hashable, Equatable, CaseIterable, Cyclic, CustomStringConvertible {
     case player1, player2, player3, player4
     
     var name: String {
@@ -88,6 +88,19 @@ extension CantStop: GameComponents {
         return "Player 3"
       case .player4:
         return "Player 4"
+      }
+    }
+    
+    var description: String {
+      switch self {
+      case .player1:
+        "1"
+      case .player2:
+        "2"
+      case .player3:
+        "3"
+      case .player4:
+        "4"
       }
     }
     
@@ -128,7 +141,7 @@ extension CantStop: GameComponents {
     case white1  = 1,  white2, white3
   }
   
-  enum Piece: CaseIterable, Equatable, Hashable {
+  enum Piece: CaseIterable, Equatable, Hashable, CustomStringConvertible {
     case white(WhitePiece)
     case placeholder(Player, Column)
     
@@ -142,6 +155,15 @@ extension CantStop: GameComponents {
     static var allCases: [Piece] {
       return WhitePiece.allCases.map { Piece.white($0) }
       + Player.allCases.flatMap { placeholders(for: $0) }
+    }
+    
+    var description: String {
+      switch self {
+      case .white(_):
+        "w"
+      case .placeholder(let player, _):
+        player.description
+      }
     }
     
     var name: String {
