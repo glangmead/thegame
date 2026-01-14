@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		9B1F01492EB8055B00C5110F /* Gen in Frameworks */ = {isa = PBXBuildFile; productRef = 9B1F01482EB8055B00C5110F /* Gen */; };
+		9B49DE2F2F17312B007E0D92 /* TextTable in Frameworks */ = {isa = PBXBuildFile; productRef = 9B49DE2E2F17312B007E0D92 /* TextTable */; };
+		9B49DE312F173140007E0D92 /* TextTable in Frameworks */ = {isa = PBXBuildFile; productRef = 9B49DE302F173140007E0D92 /* TextTable */; };
 		9B6E9DE52EF4BB0200FF4F48 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = 9B6E9DE42EF4BB0200FF4F48 /* ArgumentParser */; };
 		9B7ABDBF2EE0E65800F0FD43 /* Gen in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7ABDBE2EE0E65800F0FD43 /* Gen */; };
 		9B7ABDC12EE0E65B00F0FD43 /* Overture in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7ABDC02EE0E65B00F0FD43 /* Overture */; };
@@ -136,6 +138,7 @@
 			files = (
 				9B1F01492EB8055B00C5110F /* Gen in Frameworks */,
 				9B8CDCE12EA6BCA200BE059C /* Overture in Frameworks */,
+				9B49DE312F173140007E0D92 /* TextTable in Frameworks */,
 				9BB9EBD22E9431ED00163BC3 /* ComposableArchitecture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -161,6 +164,7 @@
 				9B7ABDC12EE0E65B00F0FD43 /* Overture in Frameworks */,
 				9B7ABDBF2EE0E65800F0FD43 /* Gen in Frameworks */,
 				9B6E9DE52EF4BB0200FF4F48 /* ArgumentParser in Frameworks */,
+				9B49DE2F2F17312B007E0D92 /* TextTable in Frameworks */,
 				9B7ABDC32EE0E65E00F0FD43 /* ComposableArchitecture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -222,6 +226,7 @@
 				9BB9EBD12E9431ED00163BC3 /* ComposableArchitecture */,
 				9B8CDCE02EA6BCA200BE059C /* Overture */,
 				9B1F01482EB8055B00C5110F /* Gen */,
+				9B49DE302F173140007E0D92 /* TextTable */,
 			);
 			productName = DynamicalSystems;
 			productReference = 9B3138722E63462B00D3AE6D /* DynamicalSystems.app */;
@@ -294,6 +299,7 @@
 				9B7ABDC02EE0E65B00F0FD43 /* Overture */,
 				9B7ABDC22EE0E65E00F0FD43 /* ComposableArchitecture */,
 				9B6E9DE42EF4BB0200FF4F48 /* ArgumentParser */,
+				9B49DE2E2F17312B007E0D92 /* TextTable */,
 			);
 			productName = gamer;
 			productReference = 9B7ABDA82EE0E5E700F0FD43 /* gamer */;
@@ -339,6 +345,7 @@
 				9B8CDCDF2EA6BCA200BE059C /* XCRemoteSwiftPackageReference "swift-overture" */,
 				9B1F01472EB8055B00C5110F /* XCRemoteSwiftPackageReference "swift-gen" */,
 				9B6E9DE32EF4BB0200FF4F48 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
+				9B49DE2D2F17312B007E0D92 /* XCRemoteSwiftPackageReference "TextTable" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9B3138732E63462B00D3AE6D /* Products */;
@@ -772,6 +779,14 @@
 				minimumVersion = 1.22.2;
 			};
 		};
+		9B49DE2D2F17312B007E0D92 /* XCRemoteSwiftPackageReference "TextTable" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/cfilipov/TextTable";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
 		9B6E9DE32EF4BB0200FF4F48 /* XCRemoteSwiftPackageReference "swift-argument-parser" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-argument-parser.git";
@@ -795,6 +810,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9B1F01472EB8055B00C5110F /* XCRemoteSwiftPackageReference "swift-gen" */;
 			productName = Gen;
+		};
+		9B49DE2E2F17312B007E0D92 /* TextTable */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B49DE2D2F17312B007E0D92 /* XCRemoteSwiftPackageReference "TextTable" */;
+			productName = TextTable;
+		};
+		9B49DE302F173140007E0D92 /* TextTable */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B49DE2D2F17312B007E0D92 /* XCRemoteSwiftPackageReference "TextTable" */;
+			productName = TextTable;
 		};
 		9B6E9DE42EF4BB0200FF4F48 /* ArgumentParser */ = {
 			isa = XCSwiftPackageProductDependency;

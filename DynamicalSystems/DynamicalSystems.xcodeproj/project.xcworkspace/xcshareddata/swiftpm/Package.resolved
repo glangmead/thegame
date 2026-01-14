@@ -1,5 +1,5 @@
 {
-  "originHash" : "603b2de8116bf9238c7399d51e731574ab757f37e37bb49beeb34b919085dc50",
+  "originHash" : "1dacc616c01b7992f857b3b51c4b4d0db03b78f648b0eeb4a5f00fe9fc2a1903",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -143,6 +143,15 @@
       "state" : {
         "revision" : "f99ae8aa18f0cf0d53481901f88a0991dc3bd4a2",
         "version" : "601.0.1"
+      }
+    },
+    {
+      "identity" : "texttable",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/cfilipov/TextTable",
+      "state" : {
+        "branch" : "master",
+        "revision" : "e03289289155b4e7aa565e32862f9cb42140596a"
       }
     },
     {
