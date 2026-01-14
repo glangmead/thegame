@@ -32,8 +32,8 @@ extension BattleCard: StatePredicates {
     var weather: Weather = .fog
     var weatherCleared: Bool = false
     var ended: Bool = false
-    var endedInVictory: Bool = false
-    var endedInDefeat: Bool = false
+    var endedInVictoryFor = [Player]()
+    var endedInDefeatFor = [Player]()
     var position: [Piece: Position] = [:]
     func piecesIn(_ pos: Position) -> [Piece] {
       var pieces: [Piece] = []
@@ -122,9 +122,9 @@ extension BattleCard: StatePredicates {
         result.append("\(xxxCorps)\(allyStrength)\(germanStrength)\(control) ")
       }
       var ended = ""
-      if endedInDefeat {
+      if endedInDefeatFor.isNonEmpty {
         ended = "❌"
-      } else if endedInVictory {
+      } else if endedInVictoryFor.isNonEmpty {
         ended = "✅"
       }
       result += ended

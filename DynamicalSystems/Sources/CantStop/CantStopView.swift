@@ -12,7 +12,6 @@ import SwiftUI
 struct CantStopView: View {
   var store: StoreOf<CantStop>
   var scene: SKScene
-  var aiPlayer: CantStopRandomPlayer
   let aiMoveStr = "*"
   let notAIMoveStr = ""
   
@@ -22,8 +21,6 @@ struct CantStopView: View {
       store: SharedReader(value: store),
       size: CGSize(width: 400, height: 300)
     )
-    // TODO: Where can I find a CantStop()
-    self.aiPlayer = CantStopRandomPlayer(state: store.state, game: CantStop())
   }
   
   var body: some View {

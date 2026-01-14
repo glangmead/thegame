@@ -63,13 +63,11 @@
 				"Battle Card/BCComponents.swift",
 				"Battle Card/BCEngine.swift",
 				"Battle Card/BCState.swift",
-				CantStop/CantStopAI.swift,
 				CantStop/CantStopComponents.swift,
 				CantStop/CantStopEngine.swift,
 				CantStop/CantStopState.swift,
 				Game.swift,
 				Lens.swift,
-				MCTS.swift,
 				OpenLoopMCTS.swift,
 				Pair.swift,
 				RawComparable.swift,
@@ -79,7 +77,6 @@
 		9B8CDCD22EA2BC5D00BE059C /* Exceptions for "Sources" folder in "DynamicalSystemsTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				CantStop/CantStopAI.swift,
 				CantStop/CantStopComponents.swift,
 				CantStop/CantStopEngine.swift,
 				CantStop/CantStopScene.swift,

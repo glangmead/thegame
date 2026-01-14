@@ -8,6 +8,17 @@
 import ComposableArchitecture
 import Foundation
 
+extension BinaryFloatingPoint {
+  func near(_ other: Self, epsilon: Self = 0.0001) -> Bool {
+    return abs(self - other) < epsilon
+  }
+}
+
+protocol AnytimePlayer {
+  associatedtype Action: Hashable
+  func recommendation(iters: Int, numRollouts: Int) -> [Action:(Float, Float)]
+}
+
 // A node that records only the action that was taken; the state is maintained by the client
 // e.g., the client may create a root state, then create nodes for all the legal actions.
 // The client then selects one of those actions and applies its reducer to create a new state
@@ -155,10 +166,9 @@ class OpenLoopMCTS<
       let _ = reducer.reduce(into: &stateCopy, action: randoAction)
       depth += 1
     }
-    // TODO: generalize to > 1 player
-    if stateCopy.endedInVictory {
+    if stateCopy.endedInVictoryFor.contains(where: {$0 == state.player}) {
       return 1.0
-    } else if stateCopy.endedInDefeat {
+    } else if stateCopy.endedInDefeatFor.contains(where: {$0 == state.player}) {
       return 0
     } else {
       fatalError()

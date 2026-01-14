@@ -546,12 +546,12 @@ struct BattleCard: LookaheadReducer {
       state.turnNumber += 1
     case .claimVictory:
       state.ended = true
-      state.endedInVictory = true
-      state.endedInDefeat = false
+      state.endedInVictoryFor = [state.player]
+      state.endedInDefeatFor = []
     case .declareLoss:
       state.ended = true
-      state.endedInDefeat = true
-      state.endedInVictory = false
+      state.endedInDefeatFor = [state.player]
+      state.endedInVictoryFor = []
     case let .addLog(str):
       logs.append(Log(msg: str))
     case let .sequence(actions):

@@ -42,7 +42,7 @@ protocol GameComponents {
   associatedtype Phase
   associatedtype Piece: Hashable
   associatedtype PiecePosition
-  associatedtype Player
+  associatedtype Player: Equatable
   associatedtype Position
 }
 
@@ -55,8 +55,8 @@ protocol GameState: GameComponents, Equatable {
   var player: Player { get set }
   var players: [Player] { get set }
   var ended: Bool { get set }
-  var endedInVictory: Bool { get set }
-  var endedInDefeat: Bool { get set }
+  var endedInVictoryFor: [Player] { get set }
+  var endedInDefeatFor: [Player] { get set }
   var position: [Piece: Position] { get set }
 }
 
