@@ -373,10 +373,10 @@ struct BattleCard: LookaheadReducer {
         return [Action]()
       }
     }
-    if allRules.contains(where: {$0 == Action.declareLoss}) {
+    if allRules.contains(Action.declareLoss) {
       return [Action.declareLoss]
     }
-    if allRules.contains(where: {$0 == Action.claimVictory}) {
+    if allRules.contains(Action.claimVictory) {
       return [Action.claimVictory]
     }
     return allRules

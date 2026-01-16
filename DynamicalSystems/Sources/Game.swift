@@ -40,9 +40,9 @@ import Foundation
 
 protocol GameComponents {
   associatedtype Phase
-  associatedtype Piece: Hashable
+  associatedtype Piece: Equatable, Hashable
   associatedtype PiecePosition
-  associatedtype Player: Equatable
+  associatedtype Player: Equatable, Hashable
   associatedtype Position
 }
 
@@ -181,4 +181,9 @@ struct TwoParamCRT<T, U, V> {
 
 struct ThreeParamCRT<T, U, V, W> {
   var result: (_ tee: T, _ you: U, _ vee: V) -> W
+}
+
+protocol AnytimePlayer {
+  associatedtype Action: Hashable
+  func recommendation(iters: Int, numRollouts: Int) -> [Action:(Float, Float)]
 }

@@ -114,10 +114,10 @@ struct GameRunner<
         }
       } else {
         numGames += 1
-        if state.endedInDefeatFor.contains(where: {$0 == player}) {
+        if state.endedInDefeatFor.contains(player) {
           numLosses += 1
         }
-        if state.endedInVictoryFor.contains(where: {$0 == player}) {
+        if state.endedInVictoryFor.contains(player) {
           numWins += 1
         }
         let battingAverage = Float(numWins) / Float(numGames)

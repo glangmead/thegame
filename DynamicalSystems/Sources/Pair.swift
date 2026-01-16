@@ -35,3 +35,8 @@ func pairs<T>(of list: Array<T>) -> [Pair<T>] {
   return pairs
 }
 
+extension BinaryFloatingPoint {
+  func near(_ other: Self, epsilon: Self = 0.0001) -> Bool {
+    return abs(self - other) < epsilon
+  }
+}
