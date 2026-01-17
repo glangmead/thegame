@@ -102,8 +102,8 @@ struct GameRunner<
     var numGames = 0
     while(!done) {
       // print state
-      state.printTable(to: &stdout)
       if interactive {
+        state.printTable(to: &stdout)
         print("")
       }
       
@@ -124,6 +124,7 @@ struct GameRunner<
         if numGames >= numTrials {
           done = true
         }
+        state.printTable(to: &stdout)
         print("\(numWins)\t\(numLosses)\t\(battingAverage.formatted(.number.precision(.significantDigits(4))))\t\(numMCTSIters)\t\(numRollouts)")
         state = reducer.newState()
       }

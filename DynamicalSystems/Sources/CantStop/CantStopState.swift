@@ -166,11 +166,12 @@ extension CantStop: StatePredicates {
     // MARK: - mutating
     
     mutating func advancePlayer() {
-      player = player.next()
+      var putativeNextPlayer = player.next()
       // advance until we get to the next player actually playing in this game
-      while !players.contains(player) {
-        player = player.next()
+      while !players.contains(putativeNextPlayer) {
+        putativeNextPlayer = putativeNextPlayer.next()
       }
+      player = putativeNextPlayer
       rolledThisTurn = false
     }
     

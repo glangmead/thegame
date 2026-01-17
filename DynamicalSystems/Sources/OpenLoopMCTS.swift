@@ -232,8 +232,9 @@ class OpenLoopMCTS<
       
       // backprop the win/loss value
       for player in rootState.players {
-        let expandedNode = (expandedNodes[player]) ?? (selectedNodes[player]!)
-        expandedNode.recordRolloutValue(winners: state.endedInVictoryFor, losers: state.endedInDefeatFor)
+        if let expandedNode = (expandedNodes[player]) ?? (selectedNodes[player]) {
+          expandedNode.recordRolloutValue(winners: state.endedInVictoryFor, losers: state.endedInDefeatFor)
+        }
       }
       // update our return data
       for action in rootNodes[rootState.player]!.children.keys {
