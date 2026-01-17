@@ -145,7 +145,7 @@ struct BattleCard: LookaheadReducer {
       case .declareLoss:
         return "Declare loss."
       case .sequence(let actions):
-        let name = actions.compactMap { $0.name.isEmpty ? nil : $0.name }
+        let name = actions.compactMap { action in "\(action)" }
           .joined(separator: "; ")
         return "\(name)"
       }
@@ -432,7 +432,7 @@ struct BattleCard: LookaheadReducer {
       let penalty = airdropPenalty(roll)
       state.strength[ally] = DSix.minus(state.strength[ally]!, penalty)
       state.alliesToAirdrop.removeAll(where: {$0 == ally})
-      logs.append(Log(msg: "Airdrop roll for \(ally.name) was \(roll.rawValue): -\(penalty.rawValue) to strength"))
+      logs.append(Log(msg: "Airdrop roll for \(ally) was \(roll): -\(penalty) to strength"))
     case .rollForAttack(let army):
       let german = state.opponentFacing(piece: army)!
       let armyStrength = state.strength[army]!
@@ -480,13 +480,13 @@ struct BattleCard: LookaheadReducer {
         switch germanArmy {
         case .germanArnhem, .germanEindhoven, .germanGrave:
           state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
-          logs.append(Log(msg:"+1 to \(germanArmy.name)"))
+          logs.append(Log(msg:"+1 to \(germanArmy)"))
         case .germanNijmegen:
           if state.control[4] == .germans {
             state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
-            logs.append(Log(msg:"+1 to \(germanArmy.name)"))
+            logs.append(Log(msg:"+1 to \(germanArmy)"))
           } else {
-            logs.append(Log(msg:"+0 to \(germanArmy.name) (Allies control Arnhem)"))
+            logs.append(Log(msg:"+0 to \(germanArmy) (Allies control Arnhem)"))
           }
         default:
           ()
@@ -504,7 +504,7 @@ struct BattleCard: LookaheadReducer {
     case .advanceAllies(let ally):
       if case let .onTrack(startingCity) = state.position[ally] {
         let destCity = Position.onTrack(startingCity + 1)
-        logs.append(Log(msg: "Advancing \(ally.name) to \(destCity.name)"))
+        logs.append(Log(msg: "Advancing \(ally) to \(destCity)"))
         // make the move
         if let destAlly = state.allyIn(pos: destCity) {
           // moving piece just sums itself into the strength of its neighbor
@@ -522,7 +522,7 @@ struct BattleCard: LookaheadReducer {
         state.position[.thirtycorps] = destCity
         // remove the german army in this city
         state.removePiece(state.germanIn(pos: destCity)!)
-        logs.append(Log(msg: "Advancing \(Piece.thirtycorps.name) to \(destCity.name)"))
+        logs.append(Log(msg: "Advancing \(Piece.thirtycorps) to \(destCity)"))
       }
     case .roll1stAirborne:
       // if d6 leq turn number and if fog, increase strength of All1, set to clear

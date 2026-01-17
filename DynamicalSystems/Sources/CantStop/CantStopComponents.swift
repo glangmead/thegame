@@ -12,11 +12,11 @@ extension CantStop: GameComponents {
   ///
   /// Board positions/spaces/values (including values of singletons such as "the phase")
   ///
-  enum Column: Int, CaseIterable, Equatable, Hashable, RawComparable {
+  enum Column: Int, CaseIterable, Equatable, Hashable, RawComparable, CustomStringConvertible {
     case none = 0
     case two = 2, three, four, five, six, seven, eight, nine, ten, eleven, twelve
     
-    var name: String {
+    var description: String {
       "\(rawValue)"
     }
   }
@@ -63,11 +63,11 @@ extension CantStop: GameComponents {
   //     HexGrid
   // Site: place on the graph or track
 
-  struct Position: Hashable, Equatable {
+  struct Position: Hashable, Equatable, CustomStringConvertible {
     var col: Column
     var row: Int
-    var name: String {
-      "\(col.name)\(row)"
+    var description: String {
+      "\(col)\(row)"
     }
   }
   
@@ -77,19 +77,6 @@ extension CantStop: GameComponents {
   
   enum Player: Hashable, Equatable, CaseIterable, Cyclic, CustomStringConvertible {
     case player1, player2, player3, player4
-    
-    var name: String {
-      switch self {
-      case .player1:
-        return "Player 1"
-      case .player2:
-        return "Player 2"
-      case .player3:
-        return "Player 3"
-      case .player4:
-        return "Player 4"
-      }
-    }
     
     var description: String {
       switch self {
@@ -118,11 +105,11 @@ extension CantStop: GameComponents {
     }
   }
   
-  enum Phase: Hashable, Equatable, Cyclic {
-    case notRolled
-    case rolled
-    var name: String {
-      return String(describing: self)
+  enum Phase: String, Hashable, Equatable, Cyclic, CustomStringConvertible {
+    case notRolled = "Not rolled"
+    case rolled = "Rolled"
+    var description: String {
+      rawValue
     }
     func next() -> Phase {
       switch self {
@@ -165,37 +152,28 @@ extension CantStop: GameComponents {
         player.description
       }
     }
-    
-    var name: String {
-      switch self {
-      case .white(let w):
-        String(describing: w)
-      case let .placeholder(player, _):
-        "\(player.name)" // omit col because it's visible elsewhere
-      }
-    }
   }
   
-  enum Die: Int, CaseIterable, Equatable, Hashable, RawComparable {
+  enum Die: Int, CaseIterable, Equatable, Hashable, RawComparable, CustomStringConvertible {
     case die1 = 1, die2, die3, die4
-    var name: String {
-      String(describing: self)
+    var description: String {
+      "\(rawValue)"
     }
   }
   
-  struct PiecePosition: Hashable, Equatable {
+  struct PiecePosition: Hashable, Equatable, CustomStringConvertible {
     var piece: Piece
     var position: Position
-    var name: String {
-      "\(piece.name): \(position.name)"
+    var description: String {
+      "\(piece): \(position)"
     }
   }
   
-  struct DieValue: Hashable, Equatable {
+  struct DieValue: Hashable, Equatable, CustomStringConvertible {
     var die: Die
     var value: DSix
-    var name: String {
-      "\(die.name): \(value.name)"
+    var description: String {
+      "\(die): \(value)"
     }
   }
   

@@ -69,9 +69,12 @@ struct BattleCardComponents: GameComponents {
     case solo
   }
   
-  enum Weather: Equatable, Hashable {
-    case fog
-    case clear
+  enum Weather: String, Equatable, Hashable, CustomStringConvertible {
+    case fog = "Fog"
+    case clear = "Clear"
+    var description: String {
+      rawValue
+    }
   }
   
   enum Phase: Equatable, Hashable {
@@ -105,7 +108,7 @@ struct BattleCardComponents: GameComponents {
   // The german pieces have associated Int value that line up semantically with the Ints in var track,
   // so you can do let city = track.names[Piece.germanGrave.rawValue]. This is only for the Germans because they are
   // semantically attached to constant cities. The allied pieces are mobile.
-  enum Piece: Int, Equatable, Hashable, CaseIterable {
+  enum Piece: Int, Equatable, Hashable, CaseIterable, CustomStringConvertible {
     case thirtycorps = 0
     case germanEindhoven
     case germanGrave
@@ -123,7 +126,7 @@ struct BattleCardComponents: GameComponents {
       [.germanEindhoven, .germanGrave, .germanNijmegen, .germanArnhem]
     }
     
-    var name: String {
+    var description: String {
       switch self {
       case .thirtycorps:
         return "30 Corps"
@@ -157,11 +160,11 @@ struct BattleCardComponents: GameComponents {
     names: ["Belgium", "Eindhoven", "Grave", "Nijmegen", "Arnhem"]
   )
   
-  enum Position: Equatable, Hashable {
+  enum Position: Equatable, Hashable, CustomStringConvertible {
     case offBoard
     case onTrack(TrackPos)
     
-    var name: String {
+    var description: String {
       switch self {
       case .offBoard:
         return "(Off board)"
@@ -171,9 +174,13 @@ struct BattleCardComponents: GameComponents {
     }
   }
   
-  enum Control: String, Equatable, Hashable {
+  enum Control: String, Equatable, Hashable, CustomStringConvertible {
     case allies = "allies"
     case germans = "germans"
+    
+    var description: String {
+      rawValue
+    }
   }
     
   struct PiecePosition: Equatable, Hashable {

@@ -7,14 +7,10 @@
 
 import Foundation
 
-protocol TabbedText {
-  func asText() -> [[String]]
-}
-
 extension BattleCard: StatePredicates {
   typealias StatePredicate = (State) -> Bool
 
-  struct State: Equatable, Sendable, GameState, CustomStringConvertible, CustomDebugStringConvertible, TabbedText {
+  struct State: Equatable, Sendable, GameState, CustomStringConvertible {
     typealias Player        = BattleCardComponents.Player
     typealias Phase         = BattleCardComponents.Phase
     typealias Piece         = BattleCardComponents.Piece
@@ -130,41 +126,5 @@ extension BattleCard: StatePredicates {
       result += ended
       return result
     }
-    
-    var debugDescription: String {
-      description
-    }
-
-    func asText() -> [[String]] {
-      var text = [[String]]()
-      let track = BattleCardComponents().track
-      text.append(["Turn \(turnNumber) (\(weather))"])
-      for cityIndex in (0..<track.length).reversed() {
-        let city = Position.onTrack(cityIndex)
-        var cityText = [track.names[cityIndex]]
-        
-        var allyText = "none"
-        var allyStrength = " "
-        if let ally = allyIn(pos: city) {
-          allyText = ally.name
-          allyStrength = "\(strength[ally]!.rawValue)"
-        }
-        cityText.append(allyText)
-        cityText.append(allyStrength)
-        cityText.append(piecesIn(city).contains(.thirtycorps) ? "XXXCorps" : " ")
-        var germanText = "none"
-        var germanStrength = " "
-        if let german = germanIn(pos: city) {
-          germanText = "vs German"
-          germanStrength = "\(strength[german]!.rawValue)"
-        }
-        cityText.append(germanText)
-        cityText.append(germanStrength)
-        cityText.append(control[cityIndex]?.rawValue ?? "")
-        text.append(cityText)
-      }
-      return text
-    }
-
   }
 }

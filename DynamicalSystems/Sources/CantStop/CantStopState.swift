@@ -13,7 +13,7 @@ extension CantStop: StatePredicates {
   // The pi type of the family, i.e. a type of sections of the family.
   // In that light, members like player: Player are maps from the unit type to Player.
   @ObservableState
-  struct State: Equatable, Hashable, Sendable, GameState, CustomStringConvertible, CustomDebugStringConvertible, TabbedText {
+  struct State: Equatable, Hashable, Sendable, GameState, CustomStringConvertible, CustomDebugStringConvertible {
     typealias Player = CantStop.Player
     typealias Phase = CantStop.Phase
     typealias Piece = CantStop.Piece
@@ -145,7 +145,7 @@ extension CantStop: StatePredicates {
       var text = [[String]]()
       for col in Column.allCases.filter({$0 != Column.none}) {
         var colTexts = [String]()
-        colTexts.append(col.name)
+        colTexts.append("\(col)")
         for row in 0..<colHeights()[col]! {
           let pieces = piecesAt([Position(col: col, row: row)])
           colTexts.append("\(pieces)")
