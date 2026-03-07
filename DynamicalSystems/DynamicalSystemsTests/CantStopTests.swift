@@ -15,9 +15,9 @@ struct CantStopTests {
     var state = CantStop.State()
     state.dice[.die1] = .one
     state.dice[.die2] = .two
-    state.dice[.die3] = CantStop.DSix.none
-    state.dice[.die4] = CantStop.DSix.none
-    #expect(CantStop.allowedActions(state: state) == [
+    state.dice[.die3] = DSix.none
+    state.dice[.die4] = DSix.none
+    #expect(CantStop().allowedActions(state: state) == [
       CantStop.Action.sequence([
         .assignDicePair(Pair<CantStop.Die>(fst: .die1, snd: .die2)),
         .progressColumn(.three)
@@ -44,16 +44,16 @@ struct CantStopTests {
     
     // sending a .sequence creates indirection, hence store.receives right after
     await store.send(.sequence([.assignDicePair(Pair<CantStop.Die>(fst: .die1, snd: .die2)), .progressColumn(.eight)])) {
-      $0.dice[.die1] = CantStop.DSix.none
-      $0.dice[.die2] = CantStop.DSix.none
+      $0.dice[.die1] = DSix.none
+      $0.dice[.die2] = DSix.none
       $0.assignedDicePair = CantStop.Column.eight
       $0.assignedDicePair = CantStop.Column.none
       $0.position[.white(.white1)] = CantStop.Position(col: .eight, row: 1)
     }
     
     await store.send(.assignDicePair(Pair<CantStop.Die>(fst: .die3, snd: .die4))) {
-      $0.dice[.die3] = CantStop.DSix.none
-      $0.dice[.die4] = CantStop.DSix.none
+      $0.dice[.die3] = DSix.none
+      $0.dice[.die4] = DSix.none
       $0.assignedDicePair = .eight
     }
     

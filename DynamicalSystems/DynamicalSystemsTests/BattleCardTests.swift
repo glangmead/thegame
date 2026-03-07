@@ -15,4 +15,5 @@ struct BattleCardTests {
     let store = TestStore(initialState: BattleCard.State()) {
       BattleCard()
     }
+  }
 }

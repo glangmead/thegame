@@ -69,11 +69,21 @@
 		9B8CDCD22EA2BC5D00BE059C /* Exceptions for "Sources" folder in "DynamicalSystemsTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				"Battle Card/BCComponents.swift",
+				"Battle Card/BCEngine.swift",
+				"Battle Card/BCState.swift",
+				"Battle Card/BCView.swift",
 				CantStop/CantStopComponents.swift,
 				CantStop/CantStopEngine.swift,
 				CantStop/CantStopScene.swift,
 				CantStop/CantStopState.swift,
 				CantStop/CantStopView.swift,
+				Framework/BudgetedPhasePage.swift,
+				Framework/ComposedGame.swift,
+				Framework/ForEachPage.swift,
+				Framework/GameRule.swift,
+				Framework/HistoryTracking.swift,
+				Framework/RulePage.swift,
 				Game.swift,
 				Lens.swift,
 				Pair.swift,

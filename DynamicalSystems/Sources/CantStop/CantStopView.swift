@@ -28,20 +28,19 @@ struct CantStopView: View {
       SpriteView(scene: scene)
         .frame(width: 400, height: 300)
       Form {
-        ForEach(CantStop().allowedActions(state: store.state), id: \.self) { action in
+        ForEach(store.withState { CantStop().allowedActions(state: $0) }, id: \.self) { action in
           Button("\(action.name)") {
-//          Button("\(action.name) \(aiPlayer.chooseAction(state: store.state, game: CantStop()) == action ? aiMoveStr : notAIMoveStr)") {
             store.send(action)
           }
         }
       }
-      .navigationTitle("\(store.state.name): \(store.state.player.name)")
+      .navigationTitle("\(store.name): \(store.player)")
       .navigationBarTitleDisplayMode(.inline)
     }
     Button("Recheck rules") {
-      let _ = CantStop().allowedActions(state: store.state)
+      _ = store.withState { CantStop().allowedActions(state: $0) }
     }
-    Text("\(CantStop().allowedActions(state: store.state).count) actions available")
+    Text("\(store.withState { CantStop().allowedActions(state: $0) }.count) actions available")
     
   }
 }
