@@ -18,7 +18,8 @@ struct RulePage<State, Action: Hashable> {
 
     /// Applies this page's action to state. Returns nil if the action
     /// doesn't belong to this page (dispatch continues to the next page).
-    let reduce: (inout State, Action) -> [Log]?
+    /// On success, returns logs and follow-up actions to dispatch.
+    let reduce: (inout State, Action) -> ([Log], [Action])?
 }
 
 extension RulePage {

@@ -28,7 +28,7 @@ struct ForEachPage<State: HistoryTracking, Item: Hashable> {
     /// Extract the item being processed from an action (nil = not my action).
     let itemFrom: (State.Action) -> Item?
 
-    /// The action to emit when all items are done.
+    /// The action to emit as a follow-up when all items are done.
     let transitionAction: State.Action
 
     /// Identifies the action that marks entry into this phase (used as the
@@ -36,8 +36,8 @@ struct ForEachPage<State: HistoryTracking, Item: Hashable> {
     let isPhaseEntry: (State.Action) -> Bool
 
     /// Domain logic: how this action changes state. Returns nil if not
-    /// this page's action.
-    let reduce: (inout State, State.Action) -> [Log]?
+    /// this page's action. On success, returns logs and follow-up actions.
+    let reduce: (inout State, State.Action) -> ([Log], [State.Action])?
 }
 
 extension ForEachPage {
@@ -53,6 +53,9 @@ extension ForEachPage {
     }
 
     /// Convert to a RulePage for use with `oapply`.
+    ///
+    /// When the last item is processed, the transition action is automatically
+    /// appended as a follow-up — no separate rule needed.
     func asRulePage() -> RulePage<State, State.Action> {
         let page = self
         return RulePage(
@@ -65,15 +68,16 @@ extension ForEachPage {
                     actions: { state in
                         page.remaining(state).flatMap { page.actionsFor(state, $0) }
                     }
-                ),
-                GameRule(
-                    condition: { state in
-                        page.isActive(state) && page.remaining(state).isEmpty
-                    },
-                    actions: { _ in [page.transitionAction] }
                 )
             ],
-            reduce: page.reduce
+            reduce: { state, action in
+                guard let (logs, followUps) = page.reduce(&state, action) else { return nil }
+                var allFollowUps = followUps
+                if page.remaining(state).isEmpty {
+                    allFollowUps.append(page.transitionAction)
+                }
+                return (logs, allFollowUps)
+            }
         )
     }
 }

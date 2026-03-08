@@ -103,6 +103,8 @@ struct BattleCard: LookaheadReducer {
     case advanceTurn
     case claimVictory
     case declareLoss
+    case skipAdvance
+    case skipReinforce1st
     case addLog(String)
     case sequence([Action])
     
@@ -144,6 +146,10 @@ struct BattleCard: LookaheadReducer {
         return "Declare victory!"
       case .declareLoss:
         return "Declare loss."
+      case .skipAdvance:
+        return "Can't advance"
+      case .skipReinforce1st:
+        return "Skip 1st reinforcement"
       case .sequence(let actions):
         let name = actions.compactMap { action in "\(action)" }
           .joined(separator: "; ")
@@ -553,6 +559,10 @@ struct BattleCard: LookaheadReducer {
       state.ended = true
       state.endedInDefeatFor = [state.player]
       state.endedInVictoryFor = []
+    case .skipAdvance:
+      logs.append(Log(msg: "Can't advance into German control"))
+    case .skipReinforce1st:
+      logs.append(Log(msg: "Unable to reinforce 1st."))
     case let .addLog(str):
       logs.append(Log(msg: str))
     case let .sequence(actions):

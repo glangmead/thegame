@@ -50,8 +50,8 @@ struct ComposedGame<State: HistoryTracking> where State.Action: Hashable {
 
         // Dispatch to the first page that handles this action
         for page in (priorities + pages) {
-            if let logs = page.reduce(&state, action) {
-                return logs
+            if let (logs, followUps) = page.reduce(&state, action) {
+                return logs + followUps.flatMap { reduce(into: &state, action: $0) }
             }
         }
         return []

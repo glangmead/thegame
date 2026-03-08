@@ -38,7 +38,7 @@ struct BudgetedPhasePage<State: HistoryTracking, Item: Hashable> {
     let passAction: State.Action?
 
     let isPhaseEntry: (State.Action) -> Bool
-    let reduce: (inout State, State.Action) -> [Log]?
+    let reduce: (inout State, State.Action) -> ([Log], [State.Action])?
 }
 
 extension BudgetedPhasePage {
@@ -73,6 +73,9 @@ extension BudgetedPhasePage {
     }
 
     /// Convert to a RulePage for use with `oapply`.
+    ///
+    /// When the budget is exhausted, the transition action is automatically
+    /// appended as a follow-up — no separate rule needed.
     func asRulePage() -> RulePage<State, State.Action> {
         let page = self
         return RulePage(
@@ -95,16 +98,16 @@ extension BudgetedPhasePage {
                         }
                         return actions
                     }
-                ),
-                // Transition when budget is exhausted
-                GameRule(
-                    condition: { state in
-                        page.isActive(state) && page.budgetExhausted(state)
-                    },
-                    actions: { _ in [page.transitionAction] }
                 )
             ],
-            reduce: page.reduce
+            reduce: { state, action in
+                guard let (logs, followUps) = page.reduce(&state, action) else { return nil }
+                var allFollowUps = followUps
+                if page.budgetExhausted(state) {
+                    allFollowUps.append(page.transitionAction)
+                }
+                return (logs, allFollowUps)
+            }
         )
     }
 }

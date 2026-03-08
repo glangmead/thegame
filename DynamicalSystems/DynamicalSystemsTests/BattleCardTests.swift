@@ -77,9 +77,8 @@ struct BattleCardTests {
     var state = BattleCard.State()
     let page = BCPages.setupPage()
 
-    // Phase defaults to .setup, so setup rules should fire
     let actions = page.allowedActions(state: state)
-    #expect(actions == [.sequence([.initialize, .setPhase(.airdrop)])])
+    #expect(actions == [.initialize])
 
     _ = page.reduce(&state, .initialize)
 
@@ -161,6 +160,7 @@ struct BattleCardTests {
     state.control[4] = .allies
 
     let page = BCPages.reinforceGermansPage()
+    state.history.append(.reinforceGermans(.germanNijmegen))
     _ = page.reduce(&state, .reinforceGermans(.germanNijmegen))
     #expect(state.strength[.germanNijmegen] == .one)
   }
@@ -179,14 +179,12 @@ struct BattleCardTests {
     _ = page.reduce(&state, .reinforceGermans(.germanGrave))
     state.history.append(.reinforceGermans(.germanNijmegen))
     _ = page.reduce(&state, .reinforceGermans(.germanNijmegen))
+
+    // Last item — should return transition follow-up
     state.history.append(.reinforceGermans(.germanArnhem))
-    _ = page.reduce(&state, .reinforceGermans(.germanArnhem))
-
-    #expect(page.remaining(state).isEmpty)
-
-    // ForEachPage should now offer the transition action
-    let actions = page.asRulePage().allowedActions(state: state)
-    #expect(actions == [.setPhase(.advance)])
+    let result = page.asRulePage().reduce(&state, .reinforceGermans(.germanArnhem))
+    #expect(result != nil)
+    #expect(result!.1 == [.setPhase(.advance)])
   }
 
   // MARK: - Advance
@@ -201,11 +199,14 @@ struct BattleCardTests {
     state.control[1] = .allies
 
     let page = BCPages.advanceAllyPage()
-    _ = page.reduce(&state, .advance30Corps)
+    let result = page.reduce(&state, .advance30Corps)
 
     #expect(state.position[.thirtycorps] == .onTrack(1))
     #expect(state.position[.germanEindhoven] == .offBoard)
     #expect(!state.germansOnBoard.contains(.germanEindhoven))
+    // Follow-up should transition to weather
+    #expect(result != nil)
+    #expect(result!.1 == [.setPhase(.rollForWeather)])
   }
 
   @Test
@@ -241,6 +242,22 @@ struct BattleCardTests {
     #expect(state.position[.allied101st] == .offBoard)
     #expect(!state.alliesOnBoard.contains(.allied101st))
     #expect(state.strength[.allied82nd] == .five)
+  }
+
+  @Test
+  func testSkipAdvance() async {
+    var state = BattleCard.State()
+    let game = BattleCard()
+    _ = game.reduce(into: &state, action: .sequence([.initialize, .setPhase(.advance)]))
+
+    let page = BCPages.advanceAllyPage()
+    let actions = page.allowedActions(state: state)
+    #expect(actions.contains(.skipAdvance))
+
+    let result = page.reduce(&state, .skipAdvance)
+    #expect(result != nil)
+    #expect(result!.0 == [Log(msg: "Can't advance into German control")])
+    #expect(result!.1 == [.setPhase(.rollForWeather)])
   }
 
   // MARK: - Victory / Loss
@@ -296,6 +313,6 @@ struct BattleCardTests {
     let game = BCPages.game()
     let state = game.newState()
     let actions = game.allowedActions(state: state)
-    #expect(actions == [.sequence([.initialize, .setPhase(.airdrop)])])
+    #expect(actions == [.initialize])
   }
 }

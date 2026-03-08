@@ -68,7 +68,7 @@ struct RulePageTests {
             reduce: { state, action in
                 if case .collect(let item) = action {
                     state.collected.append(item)
-                    return [Log(msg: "Collected \(item)")]
+                    return ([Log(msg: "Collected \(item)")], [])
                 }
                 return nil
             }
@@ -88,15 +88,15 @@ struct RulePageTests {
             reduce: { state, action in
                 if case .collect(let item) = action {
                     state.collected.append(item)
-                    return [Log(msg: "Collected \(item)")]
+                    return ([Log(msg: "Collected \(item)")], [])
                 }
                 return nil
             }
         )
 
         var state = TestState()
-        let logs = page.reduce(&state, .collect("X"))
-        #expect(logs == [Log(msg: "Collected X")])
+        let result = page.reduce(&state, .collect("X"))
+        #expect(result?.0 == [Log(msg: "Collected X")])
         #expect(state.collected == ["X"])
     }
 
@@ -105,7 +105,7 @@ struct RulePageTests {
             name: "Collect",
             rules: [],
             reduce: { _, action in
-                if case .collect = action { return [Log(msg: "ok")] }
+                if case .collect = action { return ([Log(msg: "ok")], []) }
                 return nil
             }
         )
@@ -137,7 +137,7 @@ struct ForEachPageTests {
             reduce: { state, action in
                 if case .collect(let item) = action {
                     state.collected.append(item)
-                    return [Log(msg: "Collected \(item)")]
+                    return ([Log(msg: "Collected \(item)")], [])
                 }
                 return nil
             }
@@ -189,16 +189,14 @@ struct ForEachPageTests {
         var state = TestState()
         state.history = [.setPhase(.collect)]
 
-        let actions = page.rules.flatMap {
-            $0.condition(state) ? $0.actions(state) : []
-        }
+        let actions = page.allowedActions(state: state)
         #expect(actions.contains(.collect("A")))
         #expect(actions.contains(.collect("B")))
         #expect(actions.contains(.collect("C")))
         #expect(!actions.contains(.setPhase(.score)))
     }
 
-    @Test func rulesOfferTransitionWhenAllDone() {
+    @Test func transitionIsFollowUpWhenAllDone() {
         let forEach = Self.makeCollectPage()
         let page = forEach.asRulePage()
 
@@ -207,13 +205,27 @@ struct ForEachPageTests {
             .setPhase(.collect),
             .collect("A"),
             .collect("B"),
-            .collect("C")
+            .collect("C"),
         ]
 
-        let actions = page.rules.flatMap {
-            $0.condition(state) ? $0.actions(state) : []
-        }
-        #expect(actions == [.setPhase(.score)])
+        // Collecting the last item should return the transition as a follow-up
+        let result = page.reduce(&state, .collect("C"))
+        #expect(result != nil)
+        let (_, followUps) = result!
+        #expect(followUps == [.setPhase(.score)])
+    }
+
+    @Test func noFollowUpWhenItemsRemain() {
+        let forEach = Self.makeCollectPage()
+        let page = forEach.asRulePage()
+
+        var state = TestState()
+        state.history = [.setPhase(.collect)]
+
+        let result = page.reduce(&state, .collect("A"))
+        #expect(result != nil)
+        let (_, followUps) = result!
+        #expect(followUps.isEmpty)
     }
 
     @Test func rulesInactiveInWrongPhase() {
@@ -224,9 +236,7 @@ struct ForEachPageTests {
         state.phase = .done
         state.history = [.setPhase(.done)]
 
-        let actions = page.rules.flatMap {
-            $0.condition(state) ? $0.actions(state) : []
-        }
+        let actions = page.allowedActions(state: state)
         #expect(actions.isEmpty)
     }
 }
@@ -257,7 +267,7 @@ struct BudgetedPhasePageTests {
             reduce: { state, action in
                 if case .collect(let item) = action {
                     state.collected.append(item)
-                    return [Log(msg: "Collected \(item)")]
+                    return ([Log(msg: "Collected \(item)")], [])
                 }
                 return nil
             }
@@ -271,19 +281,17 @@ struct BudgetedPhasePageTests {
         var state = TestState()
         state.history = [.setPhase(.collect)]
 
-        var actions = page.rules.flatMap {
-            $0.condition(state) ? $0.actions(state) : []
-        }
+        let actions = page.allowedActions(state: state)
         #expect(actions.count == 4)
 
+        // Collecting all items should produce transition follow-up
         state.history = [
             .setPhase(.collect),
             .collect("A"), .collect("B"), .collect("C"), .collect("D")
         ]
-        actions = page.rules.flatMap {
-            $0.condition(state) ? $0.actions(state) : []
-        }
-        #expect(actions == [.setPhase(.score)])
+        let result = page.reduce(&state, .collect("D"))
+        #expect(result != nil)
+        #expect(result!.1 == [.setPhase(.score)])
     }
 
     @Test func budgetExactlyLimitsActions() {
@@ -293,19 +301,17 @@ struct BudgetedPhasePageTests {
         var state = TestState()
         state.history = [.setPhase(.collect)]
 
-        var actions = page.rules.flatMap {
-            $0.condition(state) ? $0.actions(state) : []
-        }
+        let actions = page.allowedActions(state: state)
         #expect(actions.count == 4)
 
+        // After 2 actions, budget exhausted → transition follow-up
         state.history = [
             .setPhase(.collect),
             .collect("A"), .collect("B")
         ]
-        actions = page.rules.flatMap {
-            $0.condition(state) ? $0.actions(state) : []
-        }
-        #expect(actions == [.setPhase(.score)])
+        let result = page.reduce(&state, .collect("B"))
+        #expect(result != nil)
+        #expect(result!.1 == [.setPhase(.score)])
     }
 
     @Test func budgetAtMostOffersPassAfterFirstAction() {
@@ -318,26 +324,22 @@ struct BudgetedPhasePageTests {
         var state = TestState()
         state.history = [.setPhase(.collect)]
 
-        var actions = page.rules.flatMap {
-            $0.condition(state) ? $0.actions(state) : []
-        }
+        var actions = page.allowedActions(state: state)
         #expect(!actions.contains(.setPhase(.score)))
         #expect(actions.count == 4)
 
         state.history = [.setPhase(.collect), .collect("A")]
-        actions = page.rules.flatMap {
-            $0.condition(state) ? $0.actions(state) : []
-        }
+        actions = page.allowedActions(state: state)
         #expect(actions.contains(.setPhase(.score)))
         #expect(actions.contains(.collect("B")))
 
+        // After 3 actions, budget exhausted → transition follow-up
         state.history = [
             .setPhase(.collect),
             .collect("A"), .collect("B"), .collect("C")
         ]
-        actions = page.rules.flatMap {
-            $0.condition(state) ? $0.actions(state) : []
-        }
-        #expect(actions == [.setPhase(.score)])
+        let result = page.reduce(&state, .collect("C"))
+        #expect(result != nil)
+        #expect(result!.1 == [.setPhase(.score)])
     }
 }

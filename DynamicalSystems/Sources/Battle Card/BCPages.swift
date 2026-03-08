@@ -14,7 +14,7 @@ enum BCPages {
       rules: [
         GameRule(
           condition: { $0.phase == .setup },
-          actions: { _ in return [BattleCard.Action.sequence([.initialize, .setPhase(.airdrop)])] }
+          actions: { _ in [.initialize] }
         )
       ],
       reduce: { state, action in
@@ -42,7 +42,7 @@ enum BCPages {
         state.control[3] = .germans
         state.control[4] = .germans
         state.weather = .fog
-        return []
+        return ([], [.setPhase(.airdrop)])
       }
     )
   }
@@ -57,12 +57,7 @@ enum BCPages {
             state.cityPastXXXCorps != nil &&
             state.control[state.cityPastXXXCorps!] == .allies
           },
-          actions: { _ in [
-            BattleCard.Action.sequence([
-              BattleCard.Action.advance30Corps,
-              BattleCard.Action.setPhase(.rollForWeather)
-            ])
-          ] }
+          actions: { _ in [.advance30Corps] }
         ),
         GameRule(
           condition: { state in
@@ -71,12 +66,7 @@ enum BCPages {
           actions: { state in
             let corpsPos = state.position[.thirtycorps]!
             if let ally = state.allyIn(pos: corpsPos) {
-              return [
-                BattleCard.Action.sequence([
-                  BattleCard.Action.advanceAllies(ally),
-                  BattleCard.Action.setPhase(.rollForWeather)
-                ])
-              ]
+              return [.advanceAllies(ally)]
             }
             return []
           }
@@ -87,12 +77,7 @@ enum BCPages {
             state.cityPastXXXCorps != nil &&
             state.control[state.cityPastXXXCorps!] == .germans
           },
-          actions: { _ in [
-            BattleCard.Action.sequence([
-              BattleCard.Action.addLog("Can't advance into German control"),
-              BattleCard.Action.setPhase(.rollForWeather)
-            ])
-          ]}
+          actions: { _ in [.skipAdvance] }
         )
       ],
       reduce: { state, action in
@@ -102,29 +87,27 @@ enum BCPages {
           if case let .onTrack(startingCity) = state.position[ally] {
             let destCity = BattleCard.Position.onTrack(startingCity + 1)
             logs.append(Log(msg: "Advancing \(ally) to \(destCity)"))
-            // make the move
             if let destAlly = state.allyIn(pos: destCity) {
-              // moving piece just sums itself into the strength of its neighbor
               state.strength[destAlly] = DSix.sum(state.strength[ally]!, state.strength[destAlly]!)
-              // remove the piece that moved
               state.removePiece(ally)
             } else {
-              // just move the piece
               state.position[ally]! = destCity
             }
           }
+          return (logs, [.setPhase(.rollForWeather)])
         case .advance30Corps:
           if case let .onTrack(city) = state.position[.thirtycorps] {
             let destCity = BattleCard.Position.onTrack(city + 1)
             state.position[.thirtycorps] = destCity
-            // remove the german army in this city
             state.removePiece(state.germanIn(pos: destCity)!)
             logs.append(Log(msg: "Advancing \(BattleCard.Piece.thirtycorps) to \(destCity)"))
           }
+          return (logs, [.setPhase(.rollForWeather)])
+        case .skipAdvance:
+          return ([Log(msg: "Can't advance into German control")], [.setPhase(.rollForWeather)])
         default:
           return nil
         }
-        return logs
       }
     )
   }
@@ -135,32 +118,27 @@ enum BCPages {
       rules: [
         GameRule(
           condition: { $0.phase == .rollForWeather },
-          actions: { _ in [
-            BattleCard.Action.sequence([
-              BattleCard.Action.roll1stAirborne,
-              BattleCard.Action.setPhase(.reinforce1st)
-            ])
-          ]}
+          actions: { _ in [.roll1stAirborne] }
         )
       ],
       reduce: { state, action in
         guard action == .roll1stAirborne else { return nil }
         var logs = [Log]()
-        // if d6 leq turn number and if fog, increase strength of All1, set to clear
         if state.weather == .fog {
-          logs.append(Log(msg:"Rolling to see if the fog clears:"))
+          logs.append(Log(msg: "Rolling to see if the fog clears:"))
           if DSix.greater(DSix(rawValue: state.turnNumber)!, DSix.roll()) {
-            logs.append(Log(msg:"🌤️ Yes, weather clear!"))
+            logs.append(Log(msg: "🌤️ Yes, weather clear!"))
             state.weather = .clear
             state.weatherCleared = true
           } else {
-            logs.append(Log(msg:"☁️ No, still foggy."))
+            logs.append(Log(msg: "☁️ No, still foggy."))
           }
         }
-        return logs
+        return (logs, [.setPhase(.reinforce1st)])
       }
     )
   }
+
   static func reinforce1stPage() -> RulePage<BattleCard.State, BattleCard.Action> {
     RulePage(
       name: "Reinforce 1st",
@@ -169,35 +147,28 @@ enum BCPages {
           condition: { $0.phase == .reinforce1st },
           actions: { state in
             if state.weatherCleared {
-              [BattleCard.Action.sequence([
-                BattleCard.Action.perform1stAirborneReinforcement,
-                BattleCard.Action.advanceTurn,
-                BattleCard.Action.setPhase(.battle)])]
+              [.perform1stAirborneReinforcement]
             } else {
-              [BattleCard.Action.sequence([
-                BattleCard.Action.addLog("Unable to reinforce 1st."),
-                BattleCard.Action.advanceTurn,
-                BattleCard.Action.setPhase(.battle)])]
+              [.skipReinforce1st]
             }
           }
         )
       ],
       reduce: { state, action in
-        var logs = [Log]()
         switch action {
         case .perform1stAirborneReinforcement:
-          logs.append(Log(msg:"Dropping reinforcements for 1st."))
           state.strength[.allied1st] = DSix.sum(DSix.one, state.strength[.allied1st]!)
-          return logs
+          return ([Log(msg: "Dropping reinforcements for 1st.")], [.advanceTurn, .setPhase(.battle)])
+        case .skipReinforce1st:
+          return ([Log(msg: "Unable to reinforce 1st.")], [.advanceTurn, .setPhase(.battle)])
         case .advanceTurn:
-          logs.append(Log(msg:"Next turn."))
           state.alliesToAttack = state.alliesOnBoard.filter { state.opponentFacing(piece: $0) != nil }
           state.germansToReinforce = state.germansOnBoard
           state.turnNumber += 1
+          return ([Log(msg: "Next turn.")], [])
         default:
           return nil
         }
-        return logs
       }
     )
   }
@@ -209,7 +180,7 @@ enum BCPages {
       items: { state in state.germansOnBoard },
       actionsFor: { _, piece in [.reinforceGermans(piece)] },
       itemFrom: { action in
-        if case .reinforceGermans (let german) = action { return german }
+        if case .reinforceGermans(let german) = action { return german }
         return nil
       },
       transitionAction: .setPhase(.advance),
@@ -224,13 +195,13 @@ enum BCPages {
           switch germanArmy {
           case .germanArnhem, .germanEindhoven, .germanGrave:
             state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
-            logs.append(Log(msg:"+1 to \(germanArmy)"))
+            logs.append(Log(msg: "+1 to \(germanArmy)"))
           case .germanNijmegen:
             if state.control[4] == .germans {
               state.strength[germanArmy]! = DSix.sum(state.strength[germanArmy]!, DSix.one)
-              logs.append(Log(msg:"+1 to \(germanArmy)"))
+              logs.append(Log(msg: "+1 to \(germanArmy)"))
             } else {
-              logs.append(Log(msg:"+0 to \(germanArmy) (Allies control Arnhem)"))
+              logs.append(Log(msg: "+0 to \(germanArmy) (Allies control Arnhem)"))
             }
           default:
             ()
@@ -243,13 +214,13 @@ enum BCPages {
               state.control[city] = BattleCard.Control.germans
             }
           }
-          state.germansToReinforce.removeAll(where: {$0 == germanArmy})
+          state.germansToReinforce.removeAll(where: { $0 == germanArmy })
         }
-        return logs
+        return (logs, [])
       }
     )
   }
-  
+
   static func battlePage() -> ForEachPage<BattleCard.State, BattleCard.Piece> {
     ForEachPage(
       name: "Battle",
@@ -257,7 +228,7 @@ enum BCPages {
       items: { state in
         state.alliesOnBoard.filter { state.opponentFacing(piece: $0) != nil }
       },
-      actionsFor: { state, piece in
+      actionsFor: { _, piece in
         [.rollForAttack(piece), .rollForDefend(piece)]
       },
       itemFrom: { action in
@@ -296,7 +267,7 @@ enum BCPages {
               }
             }
           }
-          state.alliesToAttack.removeAll(where: {$0 == army})
+          state.alliesToAttack.removeAll(where: { $0 == army })
         case .rollForDefend(let army):
           let german = state.opponentFacing(piece: army)!
           let armyStrength = state.strength[army]!
@@ -317,15 +288,15 @@ enum BCPages {
               }
             }
           }
-          state.alliesToAttack.removeAll(where: {$0 == army})
+          state.alliesToAttack.removeAll(where: { $0 == army })
         default:
           return nil
         }
-        return logs
+        return (logs, [])
       }
     )
   }
-  
+
   static func airdropPage() -> ForEachPage<BattleCard.State, BattleCard.Piece> {
     ForEachPage(
       name: "Airdrop",
@@ -333,7 +304,7 @@ enum BCPages {
       items: { _ in BattleCardComponents.Piece.allies() },
       actionsFor: { _, ally in [.airdrop(ally)] },
       itemFrom: { action in
-        if case .airdrop (let ally) = action { return ally }
+        if case .airdrop(let ally) = action { return ally }
         return nil
       },
       transitionAction: .setPhase(.battle),
@@ -346,12 +317,12 @@ enum BCPages {
         let roll = DSix.roll()
         let penalty = BattleCard().airdropPenalty(roll)
         state.strength[ally] = DSix.minus(state.strength[ally]!, penalty)
-        state.alliesToAirdrop.removeAll(where: {$0 == ally})
-        return [Log(msg: "Airdrop roll for \(ally) was \(roll): -\(penalty) to strength")]
+        state.alliesToAirdrop.removeAll(where: { $0 == ally })
+        return ([Log(msg: "Airdrop roll for \(ally) was \(roll): -\(penalty) to strength")], [])
       }
     )
   }
-  
+
   static func victoryPage() -> RulePage<BattleCard.State, BattleCard.Action> {
     RulePage(
       name: "Victory",
@@ -365,11 +336,11 @@ enum BCPages {
         guard case .claimVictory = action else { return nil }
         state.ended = true
         state.endedInVictoryFor = [state.player]
-        return [Log(msg: "Victory!")]
+        return ([Log(msg: "Victory!")], [])
       }
     )
   }
-  
+
   static func lossPage() -> RulePage<BattleCard.State, BattleCard.Action> {
     RulePage(
       name: "Loss",
@@ -380,7 +351,7 @@ enum BCPages {
         ),
         GameRule(
           condition: { state in
-            state.alliesOnBoard.compactMap({state.strength[$0]}).anySatisfy({$0 == DSix.none})
+            state.alliesOnBoard.compactMap({ state.strength[$0] }).anySatisfy({ $0 == DSix.none })
           },
           actions: { _ in [BattleCard.Action.declareLoss] }
         )
@@ -390,11 +361,11 @@ enum BCPages {
         state.ended = true
         state.endedInDefeatFor = [state.player]
         state.endedInVictoryFor = []
-        return [Log(msg: "Defeat!")]
+        return ([Log(msg: "Defeat!")], [])
       }
     )
   }
-  
+
   static func game() -> ComposedGame<BattleCard.State> {
     oapply(
       pages: [

@@ -28,7 +28,7 @@ struct ComposedGameTests {
             reduce: { state, action in
                 if case .collect(let item) = action {
                     state.collected.append(item)
-                    return [Log(msg: "Collected \(item)")]
+                    return ([Log(msg: "Collected \(item)")], [])
                 }
                 return nil
             }
@@ -47,7 +47,7 @@ struct ComposedGameTests {
             reduce: { state, action in
                 if case .scoreItems = action {
                     state.score = state.collected.count * 10
-                    return [Log(msg: "Scored \(state.score) points")]
+                    return ([Log(msg: "Scored \(state.score) points")], [.setPhase(.done)])
                 }
                 return nil
             }
@@ -66,7 +66,7 @@ struct ComposedGameTests {
             reduce: { state, action in
                 if case .endGame = action {
                     state.ended = true
-                    return [Log(msg: "Game over")]
+                    return ([Log(msg: "Game over")], [])
                 }
                 return nil
             }
@@ -109,7 +109,7 @@ struct ComposedGameTests {
         #expect(actions.contains(.collect("C")))
     }
 
-    @Test func transitionAfterAllCollected() {
+    @Test func autoTransitionAfterAllCollected() {
         let game = Self.makeToyGame()
         var state = game.newState()
 
@@ -117,20 +117,10 @@ struct ComposedGameTests {
         _ = game.reduce(into: &state, action: .collect("B"))
         _ = game.reduce(into: &state, action: .collect("C"))
 
-        let actions = game.allowedActions(state: state)
-        #expect(actions == [.setPhase(.score)])
-    }
-
-    @Test func phaseTransitionUpdatesPhase() {
-        let game = Self.makeToyGame()
-        var state = game.newState()
-
-        _ = game.reduce(into: &state, action: .collect("A"))
-        _ = game.reduce(into: &state, action: .collect("B"))
-        _ = game.reduce(into: &state, action: .collect("C"))
-        _ = game.reduce(into: &state, action: .setPhase(.score))
-
+        // Phase should auto-transition to .score via follow-up
         #expect(state.phase == .score)
+        let actions = game.allowedActions(state: state)
+        #expect(actions == [.scoreItems])
     }
 
     @Test func scorePhaseOffersScoring() {
@@ -140,7 +130,6 @@ struct ComposedGameTests {
         _ = game.reduce(into: &state, action: .collect("A"))
         _ = game.reduce(into: &state, action: .collect("B"))
         _ = game.reduce(into: &state, action: .collect("C"))
-        _ = game.reduce(into: &state, action: .setPhase(.score))
 
         let actions = game.allowedActions(state: state)
         #expect(actions == [.scoreItems])
@@ -154,15 +143,13 @@ struct ComposedGameTests {
         _ = game.reduce(into: &state, action: .collect("A"))
         _ = game.reduce(into: &state, action: .collect("C"))
         #expect(state.collected == ["B", "A", "C"])
-
-        _ = game.reduce(into: &state, action: .setPhase(.score))
         #expect(state.phase == .score)
 
         let logs = game.reduce(into: &state, action: .scoreItems)
         #expect(state.score == 30)
-        #expect(logs == [Log(msg: "Scored 30 points")])
+        #expect(logs.contains(Log(msg: "Scored 30 points")))
+        #expect(state.phase == .done)
 
-        _ = game.reduce(into: &state, action: .setPhase(.done))
         _ = game.reduce(into: &state, action: .endGame)
         #expect(state.ended)
         #expect(game.allowedActions(state: state).isEmpty)
@@ -201,7 +188,7 @@ struct ComposedGameTests {
             reduce: { state, action in
                 if case .endGame = action {
                     state.ended = true
-                    return [Log(msg: "Emergency end")]
+                    return ([Log(msg: "Emergency end")], [])
                 }
                 return nil
             }
