@@ -6,6 +6,8 @@
 //
 
 import Testing
+import Foundation
+import CoreGraphics
 
 @MainActor
 struct CantStopPagesTests {
@@ -357,5 +359,51 @@ struct CantStopPagesTests {
     _ = game.reduce(into: &state, action: .pass)
     #expect(state.player == .player2)
     #expect(state.phase == .notRolled)
+  }
+
+  // MARK: - Graph
+
+  @Test
+  func testCantStopGraph() {
+    let graph = CantStopGraph.board()
+    let heights = [3, 5, 7, 9, 11, 13, 11, 9, 7, 5, 3]
+
+    // Should have sites for all columns plus 3 off-board trays
+    let totalBoardSites = heights.reduce(0, +)
+    #expect(graph.sites.count == totalBoardSites + 3)
+
+    // Column 7 should have 13 sites
+    let col7Track = graph.tracks["col7"]!
+    #expect(col7Track.count == 13)
+
+    // Navigation works
+    let bottom = col7Track[0]
+    let top = col7Track[12]
+    #expect(graph.site(bottom).top?.id == top)
+    #expect(graph.site(bottom).next?.next?.id == col7Track[2])
+  }
+
+  @Test
+  func testCantStopGraphSiteIDLookup() {
+    let graph = CantStopGraph.board()
+    let site = CantStopGraph.siteID(in: graph, col: 7, row: 0)
+    #expect(site == graph.tracks["col7"]![0])
+
+    let tray = CantStopGraph.traySite(in: graph, named: CantStopGraph.whiteTray)
+    #expect(tray != nil)
+  }
+
+  @Test
+  func testCantStopSceneConfig() throws {
+    let config = CantStopSceneConfig.config()
+    guard case .container("cantstop", let children) = config else {
+      Issue.record("Expected root container")
+      return
+    }
+    #expect(children.count >= 2)
+
+    let data = try JSONEncoder().encode(config)
+    let decoded = try JSONDecoder().decode(SceneConfig.self, from: data)
+    #expect(decoded == config)
   }
 }
