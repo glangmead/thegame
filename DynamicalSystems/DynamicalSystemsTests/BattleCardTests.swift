@@ -6,6 +6,8 @@
 //
 
 import Testing
+import Foundation
+import CoreGraphics
 
 @MainActor
 struct BattleCardTests {
@@ -302,5 +304,36 @@ struct BattleCardTests {
     let state = game.newState()
     let actions = game.allowedActions(state: state)
     #expect(actions == [.initialize])
+  }
+
+  // MARK: - Graph
+
+  @Test
+  func testBattleCardGraph() {
+    let graph = BCGraph.board()
+
+    // Three tracks
+    #expect(graph.tracks["allied"]?.count == 4)
+    #expect(graph.tracks["road"]?.count == 5)
+    #expect(graph.tracks["german"]?.count == 4)
+
+    // Cross-track adjacency at Eindhoven
+    let alliedEindhoven = graph.tracks["allied"]![0]
+    let germanEindhoven = graph.tracks["german"]![0]
+    #expect(graph.sites[alliedEindhoven]?.adjacency[.custom("german")] == germanEindhoven)
+    #expect(graph.sites[germanEindhoven]?.adjacency[.custom("allied")] == alliedEindhoven)
+
+    // Road track navigation: Belgium -> Eindhoven
+    let belgium = graph.tracks["road"]![0]
+    let roadEindhoven = graph.tracks["road"]![1]
+    #expect(graph.site(belgium).next?.id == roadEindhoven)
+  }
+
+  @Test
+  func testBattleCardSceneConfig() throws {
+    let config = BCSceneConfig.config()
+    let data = try JSONEncoder().encode(config)
+    let decoded = try JSONDecoder().decode(SceneConfig.self, from: data)
+    #expect(decoded == config)
   }
 }
