@@ -449,4 +449,67 @@ struct SiteGraphTests {
         let germanSite1 = graph.tracks["german"]![1]
         #expect(cursor.adjacent(.custom("german"))?.next?.id == germanSite1)
     }
+
+    @Test
+    func testPieceAndPieceValue() {
+        let token = GamePiece(id: 0, kind: .token)
+        let die = GamePiece(id: 1, kind: .die(sides: 6))
+
+        let s0 = SiteID(0)
+        let s1 = SiteID(1)
+
+        var section: GameSection = [:]
+        section[token] = .at(s0)
+        section[die] = .dieShowing(face: 4, at: s1)
+
+        #expect(section[token] == .at(s0))
+        #expect(section[die] == .dieShowing(face: 4, at: s1))
+        #expect(section[token]?.site == s0)
+        #expect(section[die]?.site == s1)
+    }
+
+    @Test
+    func testSectionPiecesAt() {
+        let p0 = GamePiece(id: 0, kind: .token, owner: PlayerID(0))
+        let p1 = GamePiece(id: 1, kind: .token, owner: PlayerID(1))
+        let p2 = GamePiece(id: 2, kind: .die(sides: 6), owner: PlayerID(0))
+        let s0 = SiteID(0)
+        let s1 = SiteID(1)
+
+        let section: GameSection = [
+            p0: .at(s0),
+            p1: .at(s0),
+            p2: .dieShowing(face: 3, at: s1),
+        ]
+
+        #expect(section.piecesAt(s0).count == 2)
+        #expect(section.piecesAt(s1).count == 1)
+        #expect(section.piecesAt(SiteID(99)).isEmpty)
+        #expect(section.pieceAt(s1) == p2)
+    }
+
+    @Test
+    func testGraphAwareSectionQuery() {
+        // Simulate BattleCard: 2-city board with allied/german tracks
+        let graph = SiteGraph.parallelTracks(
+            names: ["allied", "german"],
+            length: 2,
+            crossDirections: true
+        )
+        let alliedSite0 = graph.tracks["allied"]![0]
+        let germanSite0 = graph.tracks["german"]![0]
+
+        let ally = GamePiece(id: 0, kind: .die(sides: 6), owner: PlayerID(0))
+        let german = GamePiece(id: 1, kind: .die(sides: 6), owner: PlayerID(1))
+
+        let section: GameSection = [
+            ally: .dieShowing(face: 5, at: alliedSite0),
+            german: .dieShowing(face: 2, at: germanSite0),
+        ]
+
+        // Find piece across the custom direction from ally's site (opponentFacing pattern)
+        let oppositeSite = graph.site(alliedSite0).adjacent(.custom("german"))!.id
+        let opponent = section.pieceAt(oppositeSite)
+        #expect(opponent == german)
+    }
 }

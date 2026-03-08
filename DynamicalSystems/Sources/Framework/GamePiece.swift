@@ -1,0 +1,47 @@
+//
+//  GamePiece.swift
+//  DynamicalSystems
+//
+//  Created by Greg Langmead on 3/8/26.
+//
+
+import Foundation
+
+/// A game piece — element of the base space of the state bundle.
+/// Named `GamePiece` to avoid collision with existing game-specific `Piece` types
+/// during the migration period.
+struct GamePiece: Hashable, Codable, Equatable, Identifiable {
+    let id: Int
+    var kind: PieceKind
+    var owner: PlayerID?
+
+    enum PieceKind: Codable, Equatable, Hashable {
+        case token
+        case die(sides: Int)
+        case card
+    }
+}
+
+/// A player identifier, decoupled from game-specific player enums.
+struct PlayerID: Hashable, Codable, Equatable, CustomStringConvertible {
+    let raw: Int
+    init(_ raw: Int) { self.raw = raw }
+    var description: String { "player(\(raw))" }
+}
+
+/// The fiber value for a piece — its position and type-specific state.
+/// Which case is inhabited is determined by the base point's PieceKind.
+enum PieceValue: Codable, Equatable, Hashable {
+    case at(SiteID)
+    case dieShowing(face: Int, at: SiteID?)
+    case cardState(name: String, faceUp: Bool, at: SiteID?)
+
+    /// The site this piece occupies, regardless of kind.
+    var site: SiteID? {
+        switch self {
+        case .at(let s): return s
+        case .dieShowing(_, let s): return s
+        case .cardState(_, _, let s): return s
+        }
+    }
+}
