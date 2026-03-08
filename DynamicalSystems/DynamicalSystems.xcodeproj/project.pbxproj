@@ -97,6 +97,7 @@
 				Framework/RulePage.swift,
 				Game.swift,
 				Lens.swift,
+				OpenLoopMCTS.swift,
 				Pair.swift,
 				RawComparable.swift,
 			);
