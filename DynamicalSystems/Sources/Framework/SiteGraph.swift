@@ -1,10 +1,18 @@
+//
+//  SiteGraph.swift
+//  DynamicalSystems
+//
+//  Created by Greg Langmead on 3/8/26.
+//
+
 import Foundation
 import CoreGraphics
 
-enum Direction: String, Codable, Equatable, Hashable, CaseIterable {
+enum Direction: Codable, Equatable, Hashable {
     case next, previous, top, bottom
     case north, south, east, west
     case northeast, northwest, southeast, southwest
+    case custom(String)
 
     var opposite: Direction {
         switch self {
@@ -20,6 +28,7 @@ enum Direction: String, Codable, Equatable, Hashable, CaseIterable {
         case .southwest: return .northeast
         case .northwest: return .southeast
         case .southeast: return .northwest
+        case .custom(let name): return .custom(name)
         }
     }
 }
@@ -109,6 +118,58 @@ extension SiteGraph {
             }
 
             graph.tracks["col\(colIndex)"] = trackSites
+        }
+
+        return graph
+    }
+
+    /// Creates parallel named tracks of equal length with optional cross-track adjacency.
+    /// When `crossDirections` is true, each site gets `.custom(trackName)` adjacency
+    /// to the corresponding site on every other track.
+    static func parallelTracks(
+        names: [String],
+        length: Int,
+        crossDirections: Bool = false,
+        spacing: CGFloat = 40,
+        trackSpacing: CGFloat = 40
+    ) -> SiteGraph {
+        var graph = SiteGraph()
+        var trackSites: [[SiteID]] = []
+
+        for (trackIndex, name) in names.enumerated() {
+            var sites: [SiteID] = []
+            for row in 0..<length {
+                let pos = CGPoint(
+                    x: CGFloat(trackIndex) * trackSpacing,
+                    y: CGFloat(row) * spacing
+                )
+                let id = graph.addSite(position: pos, tags: [name])
+                sites.append(id)
+            }
+
+            for i in 0..<(sites.count - 1) {
+                graph.connect(sites[i], to: sites[i + 1], direction: .next)
+            }
+
+            if let first = sites.first, let last = sites.last, sites.count > 1 {
+                graph.sites[first]?.adjacency[.top] = last
+                graph.sites[last]?.adjacency[.bottom] = first
+            }
+
+            graph.tracks[name] = sites
+            trackSites.append(sites)
+        }
+
+        if crossDirections {
+            for row in 0..<length {
+                for (i, _) in names.enumerated() {
+                    for (j, jName) in names.enumerated() where i != j {
+                        let from = trackSites[i][row]
+                        let to = trackSites[j][row]
+                        graph.sites[from]?.adjacency[.custom(jName)] = to
+                    }
+                }
+            }
         }
 
         return graph

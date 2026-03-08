@@ -347,7 +347,6 @@ struct BudgetedPhasePageTests {
 
 // MARK: - SiteGraph Tests
 
-@MainActor
 struct SiteGraphTests {
     @Test
     func testDirectionOpposites() {
@@ -407,5 +406,47 @@ struct SiteGraphTests {
         let col0Top = graph.tracks["col0"]![2]
         #expect(graph.site(col0Bottom).top?.id == col0Top)
         #expect(graph.site(col0Top).bottom?.id == col0Bottom)
+    }
+
+    @Test
+    func testCrossTrackAdjacency() {
+        let graph = SiteGraph.parallelTracks(
+            names: ["allied", "road", "german"],
+            length: 3,
+            crossDirections: true
+        )
+
+        #expect(graph.tracks.count == 3)
+        #expect(graph.tracks["allied"]?.count == 3)
+        #expect(graph.tracks["road"]?.count == 3)
+        #expect(graph.tracks["german"]?.count == 3)
+
+        let alliedSite0 = graph.tracks["allied"]![0]
+        let roadSite0 = graph.tracks["road"]![0]
+        let germanSite0 = graph.tracks["german"]![0]
+
+        #expect(graph.sites[alliedSite0]?.adjacency[.custom("road")] == roadSite0)
+        #expect(graph.sites[alliedSite0]?.adjacency[.custom("german")] == germanSite0)
+        #expect(graph.sites[germanSite0]?.adjacency[.custom("allied")] == alliedSite0)
+
+        let alliedSite1 = graph.tracks["allied"]![1]
+        #expect(graph.site(alliedSite0).next?.id == alliedSite1)
+    }
+
+    @Test
+    func testSiteCursorCustomDirection() {
+        let graph = SiteGraph.parallelTracks(
+            names: ["allied", "road", "german"],
+            length: 2,
+            crossDirections: true
+        )
+        let alliedSite0 = graph.tracks["allied"]![0]
+        let germanSite0 = graph.tracks["german"]![0]
+
+        let cursor = graph.site(alliedSite0)
+        #expect(cursor.adjacent(.custom("german"))?.id == germanSite0)
+
+        let germanSite1 = graph.tracks["german"]![1]
+        #expect(cursor.adjacent(.custom("german"))?.next?.id == germanSite1)
     }
 }
