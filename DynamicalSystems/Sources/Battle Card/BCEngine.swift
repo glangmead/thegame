@@ -399,6 +399,7 @@ struct BattleCard: LookaheadReducer {
   // such I/O is obviously what they mean by Effect!
   func reduce(into state: inout State, action: Action) -> [Log] {
     var logs = [Log]()
+    state.history.append(action)
     switch action {
     case .initialize:
       state.player = .solo

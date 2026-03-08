@@ -10,7 +10,8 @@ import Foundation
 extension BattleCard: StatePredicates {
   typealias StatePredicate = (State) -> Bool
 
-  struct State: Equatable, Sendable, GameState, CustomStringConvertible {
+  struct State: HistoryTracking, Equatable, Sendable, GameState, CustomStringConvertible {
+
     typealias Player        = BattleCardComponents.Player
     typealias Phase         = BattleCardComponents.Phase
     typealias Piece         = BattleCardComponents.Piece
@@ -22,6 +23,7 @@ extension BattleCard: StatePredicates {
       "Battle Card: Market Garden"
     }
 
+    var history = [BattleCard.Action]()
     var player: Player = .solo
     var players: [Player] = [.solo]
     var phase: Phase = .setup

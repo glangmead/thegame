@@ -20,3 +20,9 @@ struct RulePage<State, Action: Hashable> {
     /// doesn't belong to this page (dispatch continues to the next page).
     let reduce: (inout State, Action) -> [Log]?
 }
+
+extension RulePage {
+  func allowedActions(state: State) -> [Action] {
+    rules.flatMap { $0.condition(state) ? $0.actions(state) : [] }
+  }
+}

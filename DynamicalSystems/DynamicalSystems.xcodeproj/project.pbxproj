@@ -54,6 +54,7 @@
 				"Array+uniques.swift",
 				"Battle Card/BCComponents.swift",
 				"Battle Card/BCEngine.swift",
+				"Battle Card/BCPages.swift",
 				"Battle Card/BCState.swift",
 				CantStop/CantStopComponents.swift,
 				CantStop/CantStopEngine.swift,
@@ -71,6 +72,7 @@
 			membershipExceptions = (
 				"Battle Card/BCComponents.swift",
 				"Battle Card/BCEngine.swift",
+				"Battle Card/BCPages.swift",
 				"Battle Card/BCState.swift",
 				"Battle Card/BCView.swift",
 				CantStop/CantStopComponents.swift,
@@ -113,11 +115,6 @@
 		9B3138822E63462C00D3AE6D /* DynamicalSystemsTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = DynamicalSystemsTests;
-			sourceTree = "<group>";
-		};
-		9B31388C2E63462C00D3AE6D /* DynamicalSystemsUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = DynamicalSystemsUITests;
 			sourceTree = "<group>";
 		};
 		9B7ABDA92EE0E5E700F0FD43 /* gamer */ = {
@@ -169,7 +166,6 @@
 			children = (
 				9BB9EBEB2E95AF9700163BC3 /* REPL.playground */,
 				9B3138822E63462C00D3AE6D /* DynamicalSystemsTests */,
-				9B31388C2E63462C00D3AE6D /* DynamicalSystemsUITests */,
 				9B7ABDA92EE0E5E700F0FD43 /* gamer */,
 				9BB9EBD02E9431ED00163BC3 /* Frameworks */,
 				9B3138732E63462B00D3AE6D /* Products */,
