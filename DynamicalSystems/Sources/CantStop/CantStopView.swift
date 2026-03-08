@@ -5,48 +5,56 @@
 //  Created by Greg Langmead on 10/21/25.
 //
 
-import ComposableArchitecture
 import SpriteKit
 import SwiftUI
 
 struct CantStopView: View {
-  var store: StoreOf<CantStop>
-  var scene: SKScene
-  let aiMoveStr = "*"
-  let notAIMoveStr = ""
-  
-  init(store: StoreOf<CantStop>) {
-    self.store = store
-    self.scene = CantStopScene(
-      store: SharedReader(value: store),
-      size: CGSize(width: 400, height: 300)
-    )
-  }
-  
-  var body: some View {
-    NavigationStack {
-      SpriteView(scene: scene)
-        .frame(width: 400, height: 300)
-      Form {
-        ForEach(store.withState { CantStop().allowedActions(state: $0) }, id: \.self) { action in
-          Button("\(action.name)") {
-            store.send(action)
-          }
+    @State private var model: GameModel<CantStop.State, CantStop.Action>
+    private let scene: GameScene<CantStop.State, CantStop.Action>
+    private let graph: SiteGraph
+    private let pieces: [GamePiece]
+
+    init() {
+        let graph = CantStopGraph.board()
+        let game = CantStopPages.game()
+        let model = GameModel(game: game, graph: graph)
+        let config = CantStopSceneConfig.config()
+        let scene = GameScene(
+            model: model,
+            config: config,
+            size: CGSize(width: 600, height: 500)
+        )
+        let pieces = CantStopPieceAdapter.pieces()
+
+        self._model = State(initialValue: model)
+        self.scene = scene
+        self.graph = graph
+        self.pieces = pieces
+
+        // Initial sync
+        let section = CantStopPieceAdapter.section(from: model.state, graph: graph)
+        scene.syncState(pieces: pieces, section: section)
+    }
+
+    var body: some View {
+        NavigationStack {
+            SpriteView(scene: scene)
+                .frame(width: 600, height: 500)
+            Form {
+                ForEach(model.allowedActions, id: \.self) { action in
+                    Button(action.description) {
+                        model.perform(action)
+                        let section = CantStopPieceAdapter.section(from: model.state, graph: graph)
+                        scene.syncState(pieces: pieces, section: section)
+                    }
+                }
+            }
+            .navigationTitle("\(model.state.name): \(model.state.player)")
+            .navigationBarTitleDisplayMode(.inline)
         }
-      }
-      .navigationTitle("\(store.name): \(store.player)")
-      .navigationBarTitleDisplayMode(.inline)
     }
-    Button("Recheck rules") {
-      _ = store.withState { CantStop().allowedActions(state: $0) }
-    }
-    Text("\(store.withState { CantStop().allowedActions(state: $0) }.count) actions available")
-    
-  }
 }
 
 #Preview("F My Luck") {
-  CantStopView(store: Store(initialState: CantStop.State()) {
-    CantStop()
-  })
+    CantStopView()
 }
