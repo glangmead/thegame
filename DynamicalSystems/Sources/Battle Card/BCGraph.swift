@@ -83,3 +83,64 @@ struct BCGraph {
         }
     }
 }
+
+// MARK: - BCPieceAdapter
+
+struct BCPieceAdapter {
+    /// GamePiece IDs match BattleCardComponents.Piece.rawValue
+    static func pieces() -> [GamePiece] {
+        BattleCardComponents.Piece.allCases.map { piece in
+            let owner: PlayerID?
+            if BattleCardComponents.Piece.allies().contains(piece) || piece == .thirtycorps {
+                owner = PlayerID(0)  // allies
+            } else {
+                owner = PlayerID(1)  // germans
+            }
+            return GamePiece(id: piece.rawValue, kind: .die(sides: 6), owner: owner)
+        }
+    }
+
+    /// Map BattleCard state to a GameSection.
+    static func section(from state: BattleCard.State, graph: SiteGraph) -> GameSection {
+        var section: GameSection = [:]
+        let pieces = pieces()
+
+        for bcPiece in BattleCardComponents.Piece.allCases {
+            guard let gp = pieces.first(where: { $0.id == bcPiece.rawValue }) else { continue }
+            let face = state.strength[bcPiece]?.rawValue ?? 0
+
+            guard let pos = state.position[bcPiece] else { continue }
+
+            switch pos {
+            case .offBoard:
+                let removedSite = graph.sites.values.first { $0.tags.contains(BCGraph.removed) }?.id
+                section[gp] = .dieShowing(face: face, at: removedSite)
+
+            case .onTrack(let cityIndex):
+                let siteID: SiteID?
+                if BattleCardComponents.Piece.allies().contains(bcPiece) {
+                    // Allied pieces on allied track (no Belgium, so index = cityIndex - 1)
+                    let trackIndex = cityIndex - 1
+                    siteID = graph.tracks["allied"]?[safe: trackIndex]
+                } else if bcPiece == .thirtycorps {
+                    // 30 Corps on road track (direct index)
+                    siteID = graph.tracks["road"]?[safe: cityIndex]
+                } else {
+                    // German pieces on german track (no Belgium, so index = cityIndex - 1)
+                    let trackIndex = cityIndex - 1
+                    siteID = graph.tracks["german"]?[safe: trackIndex]
+                }
+                section[gp] = .dieShowing(face: face, at: siteID)
+            }
+        }
+
+        return section
+    }
+}
+
+// Safe array subscript
+extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
+}
