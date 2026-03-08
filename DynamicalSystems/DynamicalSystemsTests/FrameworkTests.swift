@@ -5,6 +5,7 @@
 //  Created by Greg Langmead on 3/7/26.
 //
 
+import CoreGraphics
 import Testing
 
 // MARK: - Test Types
@@ -341,5 +342,70 @@ struct BudgetedPhasePageTests {
         let result = page.reduce(&state, .collect("C"))
         #expect(result != nil)
         #expect(result!.1 == [.setPhase(.score)])
+    }
+}
+
+// MARK: - SiteGraph Tests
+
+@MainActor
+struct SiteGraphTests {
+    @Test
+    func testDirectionOpposites() {
+        #expect(Direction.next.opposite == .previous)
+        #expect(Direction.previous.opposite == .next)
+        #expect(Direction.top.opposite == .bottom)
+        #expect(Direction.north.opposite == .south)
+        #expect(Direction.northwest.opposite == .southeast)
+    }
+
+    @Test
+    func testSiteGraphBasic() {
+        let s0 = SiteID(0)
+        let s1 = SiteID(1)
+        var graph = SiteGraph()
+        graph.addSite(id: s0, position: CGPoint(x: 0, y: 0))
+        graph.addSite(id: s1, position: CGPoint(x: 1, y: 0))
+        graph.connect(s0, to: s1, direction: .next)
+
+        #expect(graph.sites.count == 2)
+        #expect(graph.sites[s0]?.adjacency[.next] == s1)
+        #expect(graph.sites[s1]?.adjacency[.previous] == s0)
+    }
+
+    @Test
+    func testSiteCursor() {
+        var graph = SiteGraph()
+        let s0 = graph.addSite(position: CGPoint(x: 0, y: 0))
+        let s1 = graph.addSite(position: CGPoint(x: 0, y: 1))
+        let s2 = graph.addSite(position: CGPoint(x: 0, y: 2))
+        graph.connect(s0, to: s1, direction: .next)
+        graph.connect(s1, to: s2, direction: .next)
+
+        let cursor = graph.site(s0)
+        #expect(cursor.next?.id == s1)
+        #expect(cursor.next?.next?.id == s2)
+        #expect(cursor.next?.next?.next == nil)
+        #expect(cursor.next?.next?.previous?.id == s1)
+        #expect(graph.site(s2).top == nil)
+    }
+
+    @Test
+    func testColumnarGenerator() {
+        let graph = SiteGraph.columnar(heights: [3, 2])
+
+        #expect(graph.sites.count == 5)
+        #expect(graph.tracks.count == 2)
+        #expect(graph.tracks["col0"]?.count == 3)
+        #expect(graph.tracks["col1"]?.count == 2)
+
+        let col0Bottom = graph.tracks["col0"]![0]
+        let cursor = graph.site(col0Bottom)
+        #expect(cursor.next != nil)
+        #expect(cursor.next?.next != nil)
+        #expect(cursor.next?.next?.next == nil)
+
+        let col0Top = graph.tracks["col0"]![2]
+        #expect(graph.site(col0Bottom).top?.id == col0Top)
+        #expect(graph.site(col0Top).bottom?.id == col0Bottom)
     }
 }
