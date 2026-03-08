@@ -162,8 +162,6 @@ enum BCPages {
         case .skipReinforce1st:
           return ([Log(msg: "Unable to reinforce 1st.")], [.advanceTurn, .setPhase(.battle)])
         case .advanceTurn:
-          state.alliesToAttack = state.alliesOnBoard.filter { state.opponentFacing(piece: $0) != nil }
-          state.germansToReinforce = state.germansOnBoard
           state.turnNumber += 1
           return ([Log(msg: "Next turn.")], [])
         default:
@@ -214,7 +212,6 @@ enum BCPages {
               state.control[city] = BattleCard.Control.germans
             }
           }
-          state.germansToReinforce.removeAll(where: { $0 == germanArmy })
         }
         return (logs, [])
       }
@@ -267,7 +264,6 @@ enum BCPages {
               }
             }
           }
-          state.alliesToAttack.removeAll(where: { $0 == army })
         case .rollForDefend(let army):
           let german = state.opponentFacing(piece: army)!
           let armyStrength = state.strength[army]!
@@ -288,7 +284,6 @@ enum BCPages {
               }
             }
           }
-          state.alliesToAttack.removeAll(where: { $0 == army })
         default:
           return nil
         }
@@ -317,7 +312,6 @@ enum BCPages {
         let roll = DSix.roll()
         let penalty = BattleCard().airdropPenalty(roll)
         state.strength[ally] = DSix.minus(state.strength[ally]!, penalty)
-        state.alliesToAirdrop.removeAll(where: { $0 == ally })
         return ([Log(msg: "Airdrop roll for \(ally) was \(roll): -\(penalty) to strength")], [])
       }
     )

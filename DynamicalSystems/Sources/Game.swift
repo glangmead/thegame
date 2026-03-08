@@ -60,12 +60,17 @@ protocol GameState: GameComponents, Equatable {
   var position: [Piece: Position] { get set }
 }
 
-protocol LookaheadReducer<State, Action>: Reducer {
-  associatedtype Rule
+protocol PlayableGame<State, Action> {
+  associatedtype State
+  associatedtype Action
   func newState() -> State
-  func rules() -> [Rule]
   func allowedActions(state: State) -> [Action]
   func reduce(into: inout State, action: Action) -> [Log]
+}
+
+protocol LookaheadReducer<State, Action>: Reducer, PlayableGame {
+  associatedtype Rule
+  func rules() -> [Rule]
 }
 
 struct Log: Hashable, Equatable, Sendable {
@@ -75,7 +80,7 @@ struct Log: Hashable, Equatable, Sendable {
 protocol ComputerPlayer<State, Action> {
   associatedtype State
   associatedtype Action
-  func chooseAction(state: State, game: any LookaheadReducer<State, Action>) -> Action
+  func chooseAction(state: State, game: any PlayableGame<State, Action>) -> Action
 }
 
 struct Track: Equatable, Hashable {

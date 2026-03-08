@@ -1,0 +1,37 @@
+{
+  "configurations" : [
+    {
+      "id" : "BDBB7F0E-DF1D-4871-BDA5-7D8BDFB3CE15",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:DynamicalSystems.xcodeproj",
+      "identifier" : "9B3138712E63462B00D3AE6D",
+      "name" : "DynamicalSystems"
+    }
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:DynamicalSystems.xcodeproj",
+        "identifier" : "9B31387E2E63462C00D3AE6D",
+        "name" : "DynamicalSystemsTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:DynamicalSystems.xcodeproj",
+        "identifier" : "9B3138882E63462C00D3AE6D",
+        "name" : "DynamicalSystemsUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

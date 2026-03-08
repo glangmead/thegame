@@ -50,11 +50,6 @@ extension BattleCard: StatePredicates {
     var alliesOnBoard = Piece.allies()
     var germansOnBoard = Piece.germans()
 
-    var alliesToAirdrop = Piece.allies()
-
-    var alliesToAttack = Piece.allies()
-    var germansToReinforce = Piece.germans()
-
     var loggedActions = [Log]()
     
     func allyIn(pos: Position) -> Piece? {
@@ -92,9 +87,6 @@ extension BattleCard: StatePredicates {
     }
     
     mutating func removePiece(_ piece: Piece) {
-      germansToReinforce.removeAll(where: { $0 == piece })
-      alliesToAttack.removeAll(where: { $0 == piece })
-      alliesToAirdrop.removeAll(where: { $0 == piece })
       germansOnBoard.removeAll(where: {$0 == piece})
       alliesOnBoard.removeAll(where: {$0 == piece})
       position[piece] = Position.offBoard

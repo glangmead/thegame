@@ -8,15 +8,3 @@
 import ComposableArchitecture
 import SwiftUI
 
-struct BattleCardView: View {
-  let store: StoreOf<BattleCard>
-  
-  var body: some View {
-  }
-}
-
-#Preview("Battle Card Market Garden") {
-  BattleCardView(store: Store(initialState: BattleCard.State()) {
-    BattleCard()
-  })
-}

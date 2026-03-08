@@ -5,18 +5,32 @@
 //  Created by Greg Langmead on 11/3/25.
 //
 
-import ComposableArchitecture
 import Testing
 
 @MainActor
 struct BattleCardTests {
+
+  /// Helper: creates an initialized state and jumps to the given phase.
+  /// Uses the composed game to run .initialize (which sets up the board),
+  /// then directly sets the phase and history entry for the target phase.
+  private static func initializedState(
+    phase: BattleCard.Phase
+  ) -> BattleCard.State {
+    let game = BCPages.game()
+    var state = game.newState()
+    _ = game.reduce(into: &state, action: .initialize)
+    // .initialize auto-transitions to .airdrop via follow-up.
+    // Override to the desired phase for the test.
+    state.phase = phase
+    state.history.append(.setPhase(phase))
+    return state
+  }
+
   // MARK: - Airdrop
 
   @Test
   func testAirdrop() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize, .setPhase(.airdrop)]))
+    var state = Self.initializedState(phase: .airdrop)
 
     let airdropPage = BCPages.airdropPage()
     let alliesToAirdrop = airdropPage.remaining(state)
@@ -32,9 +46,7 @@ struct BattleCardTests {
 
   @Test
   func testAttack() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize, .setPhase(.battle)]))
+    var state = Self.initializedState(phase: .battle)
 
     let battlePage = BCPages.battlePage()
     #expect(battlePage.remaining(state).count == 3)
@@ -52,9 +64,7 @@ struct BattleCardTests {
 
   @Test
   func testDefend() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize, .setPhase(.battle)]))
+    var state = Self.initializedState(phase: .battle)
 
     let battlePage = BCPages.battlePage()
     #expect(battlePage.remaining(state).count == 3)
@@ -113,9 +123,7 @@ struct BattleCardTests {
 
   @Test
   func testReinforceGermansRemaining() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize, .setPhase(.reinforceGermans)]))
+    var state = Self.initializedState(phase: .reinforceGermans)
 
     let page = BCPages.reinforceGermansPage()
     #expect(page.remaining(state).count == 4)
@@ -128,9 +136,7 @@ struct BattleCardTests {
 
   @Test
   func testReinforceGermansStrength() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize, .setPhase(.reinforceGermans)]))
+    var state = Self.initializedState(phase: .reinforceGermans)
 
     let page = BCPages.reinforceGermansPage()
 
@@ -152,9 +158,7 @@ struct BattleCardTests {
 
   @Test
   func testReinforceGermansNijmegenNoBonus() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize, .setPhase(.reinforceGermans)]))
+    var state = Self.initializedState(phase: .reinforceGermans)
 
     // Allies control Arnhem → Nijmegen gets no reinforcement
     state.control[4] = .allies
@@ -167,9 +171,7 @@ struct BattleCardTests {
 
   @Test
   func testReinforceGermansTransition() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize, .setPhase(.reinforceGermans)]))
+    var state = Self.initializedState(phase: .reinforceGermans)
 
     let page = BCPages.reinforceGermansPage()
 
@@ -191,9 +193,7 @@ struct BattleCardTests {
 
   @Test
   func testAdvance30Corps() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize, .setPhase(.advance)]))
+    var state = Self.initializedState(phase: .advance)
 
     // Allies control Eindhoven → 30 Corps can advance
     state.control[1] = .allies
@@ -211,9 +211,7 @@ struct BattleCardTests {
 
   @Test
   func testAdvanceAllies() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize, .setPhase(.advance)]))
+    var state = Self.initializedState(phase: .advance)
 
     // Move 101st to Belgium (city 0) alongside 30 Corps
     state.position[.allied101st] = .onTrack(0)
@@ -227,9 +225,7 @@ struct BattleCardTests {
 
   @Test
   func testAdvanceAlliesMerge() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize, .setPhase(.advance)]))
+    var state = Self.initializedState(phase: .advance)
 
     // 101st at city 1, 82nd at city 2 — advance 101st onto 82nd
     state.strength[.allied101st] = .two
@@ -246,9 +242,7 @@ struct BattleCardTests {
 
   @Test
   func testSkipAdvance() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize, .setPhase(.advance)]))
+    var state = Self.initializedState(phase: .advance)
 
     let page = BCPages.advanceAllyPage()
     let actions = page.allowedActions(state: state)
@@ -264,9 +258,7 @@ struct BattleCardTests {
 
   @Test
   func testVictoryCondition() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize]))
+    var state = Self.initializedState(phase: .airdrop)
 
     state.position[.thirtycorps] = .onTrack(4)
 
@@ -280,9 +272,7 @@ struct BattleCardTests {
 
   @Test
   func testLossTurnLimit() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize]))
+    var state = Self.initializedState(phase: .airdrop)
 
     state.turnNumber = 7
 
@@ -296,9 +286,7 @@ struct BattleCardTests {
 
   @Test
   func testLossAllyDestroyed() async {
-    var state = BattleCard.State()
-    let game = BattleCard()
-    _ = game.reduce(into: &state, action: .sequence([.initialize]))
+    var state = Self.initializedState(phase: .airdrop)
 
     state.strength[.allied1st] = DSix.none
 

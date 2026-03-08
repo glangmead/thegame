@@ -98,9 +98,9 @@ class OpenLoopMCTS<
   
   var rootState: State
   var rootNodes = [State.Player:ActionNode<Action,State.Player>]()
-  var reducer: any LookaheadReducer<State, Action>
+  var reducer: any PlayableGame<State, Action>
   
-  init(state: State, reducer: any LookaheadReducer<State, Action>) {
+  init(state: State, reducer: any PlayableGame<State, Action>) {
     self.rootState = state
     self.reducer = reducer
     for player in state.players {

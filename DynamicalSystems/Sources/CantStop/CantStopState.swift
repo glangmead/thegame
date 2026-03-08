@@ -13,7 +13,8 @@ extension CantStop: StatePredicates {
   // The pi type of the family, i.e. a type of sections of the family.
   // In that light, members like player: Player are maps from the unit type to Player.
   @ObservableState
-  struct State: Equatable, Hashable, Sendable, GameState, CustomStringConvertible, CustomDebugStringConvertible {
+  struct State: HistoryTracking, Equatable, Hashable, Sendable, GameState, CustomStringConvertible, CustomDebugStringConvertible {
+    
     typealias Player = CantStop.Player
     typealias Phase = CantStop.Phase
     typealias Piece = CantStop.Piece
@@ -25,6 +26,7 @@ extension CantStop: StatePredicates {
     }
     // TODO: force-query w/ extension Dictionary { subscript(force key: Key) -> Value {} } like in https://stackoverflow.com/questions/59793783/force-swift-dictionary-to-return-a-non-optional-or-assert
     var position = [Piece: Position]()
+    var phase: CantStop.Phase = .notRolled
     var dice = [Die: DSix]()
     var rolledThisTurn = false
     var assignedDicePair: Column
@@ -34,7 +36,8 @@ extension CantStop: StatePredicates {
     var endedInVictoryFor = [Player]()
     var endedInDefeatFor = [Player]()
     var loggedActions = [Log]()
-
+    var history: [Action] = []
+    
     var description: String {
       ""
     }

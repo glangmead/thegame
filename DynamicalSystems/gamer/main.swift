@@ -30,7 +30,7 @@ struct GamerTool: ParsableCommand {
       switch game {
       case .CantStop:
         var gameRunner = GameRunner<CantStop.State, CantStop.Action>(
-          reducer: CantStop(),
+          reducer: CantStopPages.game(),
           numTrials: numTrials,
           numMCTSIters: numMCTSIters,
           numRollouts: numRollouts,
@@ -41,7 +41,7 @@ struct GamerTool: ParsableCommand {
         try gameRunner.run()
       case .BattleCard:
         var gameRunner = GameRunner<BattleCard.State, BattleCard.Action>(
-          reducer: BattleCard(),
+          reducer: BCPages.game(),
           numTrials: numTrials,
           numMCTSIters: numMCTSIters,
           numRollouts: numRollouts,
@@ -65,12 +65,12 @@ struct GameRunner<
   private var interactive: Bool = true
   private var logFile: String = ""
   private var showAIHints: Bool = false
-  private var reducer: any LookaheadReducer<State, Action>
+  private var reducer: any PlayableGame<State, Action>
   
   var colwidths: [Int]
 
   init(
-    reducer: some LookaheadReducer<State, Action>,
+    reducer: some PlayableGame<State, Action>,
     numTrials: Int,
     numMCTSIters: Int,
     numRollouts: Int,
