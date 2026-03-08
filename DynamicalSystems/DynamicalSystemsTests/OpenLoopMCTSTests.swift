@@ -1,0 +1,120 @@
+//
+//  OpenLoopMCTSTests.swift
+//  DynamicalSystems
+//
+//  Created by Greg Langmead on 3/8/26.
+//
+
+import Testing
+
+@MainActor
+struct OpenLoopMCTSTests {
+
+  // MARK: - CantStop MCTS
+
+  @Test
+  func testCantStopMCTSRecommendation() {
+    let game = CantStopPages.game()
+    var state = game.newState()
+    // Roll dice so MCTS has something to think about
+    _ = game.reduce(into: &state, action: .rollDice)
+
+    let mcts = OpenLoopMCTS(state: state, reducer: game)
+    let results = mcts.recommendation(iters: 10, numRollouts: 1)
+    #expect(!results.isEmpty)
+    // Every recommended action should have been visited
+    for (_, valCount) in results {
+      #expect(valCount.1 > 0)
+    }
+  }
+
+  @Test
+  func testCantStopMCTSRecommendationOnTerminalState() {
+    let game = CantStopPages.game()
+    var state = game.newState()
+    state.ended = true
+    state.endedInVictoryFor = [.player1]
+
+    let mcts = OpenLoopMCTS(state: state, reducer: game)
+    let results = mcts.recommendation(iters: 10, numRollouts: 1)
+    #expect(results.isEmpty)
+  }
+
+  @Test
+  func testCantStopFullGameMCTS() {
+    let game = CantStopPages.game()
+    var state = game.newState()
+    let maxTurns = 5000
+
+    var turns = 0
+    while !state.ended && turns < maxTurns {
+      let mcts = OpenLoopMCTS(state: state, reducer: game)
+      let results = mcts.recommendation(iters: 5, numRollouts: 1)
+
+      let ratio: ((Float, Float)) -> Float = { valCount in
+        valCount.0 / (valCount.1 > 0 ? valCount.1 : 1)
+      }
+      let bestValue = results.values.map({ ratio($0) }).max() ?? 0
+      let bestAction = results.keys.filter { action in
+        ratio(results[action]!).near(bestValue)
+      }.randomElement()
+
+      guard let action = bestAction else {
+        Issue.record("No action available at turn \(turns), state: \(state)")
+        return
+      }
+
+      _ = game.reduce(into: &state, action: action)
+      turns += 1
+    }
+
+    #expect(state.ended, "Game should have ended within \(maxTurns) turns")
+    #expect(!state.endedInVictoryFor.isEmpty || !state.endedInDefeatFor.isEmpty)
+  }
+
+  // MARK: - BattleCard MCTS
+
+  @Test
+  func testBattleCardMCTSRecommendation() {
+    let game = BCPages.game()
+    let state = game.newState()
+
+    let mcts = OpenLoopMCTS(state: state, reducer: game)
+    let results = mcts.recommendation(iters: 10, numRollouts: 1)
+    #expect(!results.isEmpty)
+    // Initial state should recommend .initialize
+    #expect(results.keys.contains(.initialize))
+  }
+
+  @Test
+  func testBattleCardFullGameMCTS() {
+    let game = BCPages.game()
+    var state = game.newState()
+    let maxTurns = 5000
+
+    var turns = 0
+    while !state.ended && turns < maxTurns {
+      let mcts = OpenLoopMCTS(state: state, reducer: game)
+      let results = mcts.recommendation(iters: 5, numRollouts: 1)
+
+      let ratio: ((Float, Float)) -> Float = { valCount in
+        valCount.0 / (valCount.1 > 0 ? valCount.1 : 1)
+      }
+      let bestValue = results.values.map({ ratio($0) }).max() ?? 0
+      let bestAction = results.keys.filter { action in
+        ratio(results[action]!).near(bestValue)
+      }.randomElement()
+
+      guard let action = bestAction else {
+        Issue.record("No action available at turn \(turns), state: \(state)")
+        return
+      }
+
+      _ = game.reduce(into: &state, action: action)
+      turns += 1
+    }
+
+    #expect(state.ended, "Game should have ended within \(maxTurns) turns")
+    #expect(!state.endedInVictoryFor.isEmpty || !state.endedInDefeatFor.isEmpty)
+  }
+}
