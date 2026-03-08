@@ -6,6 +6,7 @@
 //
 
 import CoreGraphics
+import Foundation
 import Testing
 
 // MARK: - Test Types
@@ -511,5 +512,18 @@ struct SiteGraphTests {
         let oppositeSite = graph.site(alliedSite0).adjacent(.custom("german"))!.id
         let opponent = section.pieceAt(oppositeSite)
         #expect(opponent == german)
+    }
+
+    @Test
+    func testSceneConfigCodable() throws {
+        let config: SceneConfig = .container("cantstop", [
+            .board(.columnar(heights: [3, 5, 7]), style: StyleConfig(stroke: "black")),
+            .container("dice", [.die(.labeledSquare)]),
+            .piece(.circle, color: .byPlayer),
+        ])
+
+        let data = try JSONEncoder().encode(config)
+        let decoded = try JSONDecoder().decode(SceneConfig.self, from: data)
+        #expect(decoded == config)
     }
 }
