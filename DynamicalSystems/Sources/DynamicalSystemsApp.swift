@@ -11,7 +11,17 @@ import SwiftUI
 struct DynamicalSystemsApp: App {
     var body: some Scene {
         WindowGroup {
-            CantStopView()
+            NavigationStack {
+                List {
+                    NavigationLink("Can't Stop") {
+                        CantStopView()
+                    }
+                    NavigationLink("Battle Card: Market Garden") {
+                        BCView()
+                    }
+                }
+                .navigationTitle("Games")
+            }
         }
     }
 }
