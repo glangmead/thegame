@@ -346,6 +346,43 @@ struct BudgetedPhasePageTests {
     }
 }
 
+// MARK: - GameModel Test Types
+
+private struct TrivialState: GameState, CustomStringConvertible {
+    typealias Phase = Int
+    typealias Piece = Int
+    typealias PiecePosition = Int
+    typealias Player = Int
+    typealias Position = Int
+
+    var name: String { "Trivial" }
+    var player: Int = 0
+    var players: [Int] = [0]
+    var ended: Bool = false
+    var endedInVictoryFor: [Int] = []
+    var endedInDefeatFor: [Int] = []
+    var position: [Int: Int] = [:]
+    var stepCount: Int = 0
+    var description: String { "step=\(stepCount)" }
+}
+
+private enum TrivialAction: Hashable, CustomStringConvertible {
+    case step
+    var description: String { "step" }
+}
+
+private struct TrivialGame: PlayableGame {
+    func newState() -> TrivialState { TrivialState() }
+    func allowedActions(state: TrivialState) -> [TrivialAction] {
+        state.ended ? [] : [.step]
+    }
+    func reduce(into state: inout TrivialState, action: TrivialAction) -> [Log] {
+        state.stepCount += 1
+        if state.stepCount >= 3 { state.ended = true }
+        return []
+    }
+}
+
 // MARK: - SiteGraph Tests
 
 struct SiteGraphTests {
@@ -525,5 +562,23 @@ struct SiteGraphTests {
         let data = try JSONEncoder().encode(config)
         let decoded = try JSONDecoder().decode(SceneConfig.self, from: data)
         #expect(decoded == config)
+    }
+
+    @Test
+    func testGameModelBasic() {
+        let graph = SiteGraph.columnar(heights: [3])
+        let game = TrivialGame()
+        let model = GameModel(game: game, graph: graph)
+
+        #expect(!model.state.ended)
+        #expect(model.allowedActions.count == 1)
+
+        model.perform(.step)
+        #expect(model.state.stepCount == 1)
+
+        model.perform(.step)
+        model.perform(.step)
+        #expect(model.state.ended)
+        #expect(model.allowedActions.isEmpty)
     }
 }
