@@ -15,7 +15,7 @@ struct CantStopSceneConfig {
                 style: StyleConfig(stroke: "black", lineWidth: 1)
             ),
             .container("dice", [.die(.labeledSquare)]),
-            .piece(.circle, color: .byPlayer),
+            .piece(.circle, color: .byPlayer)
         ])
     }
 }

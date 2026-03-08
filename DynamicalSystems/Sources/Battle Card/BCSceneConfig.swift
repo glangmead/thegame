@@ -14,7 +14,7 @@ struct BCSceneConfig {
                 .columnar(heights: [4, 5, 4]),
                 style: StyleConfig(stroke: "black", lineWidth: 1)
             ),
-            .die(.labeledSquare),
+            .die(.labeledSquare)
         ])
     }
 }

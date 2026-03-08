@@ -564,7 +564,7 @@ struct SiteGraphTests {
         #expect(decoded == config)
     }
 
-    @Test
+    @Test @MainActor
     func testGameModelBasic() {
         let graph = SiteGraph.columnar(heights: [3])
         let game = TrivialGame()

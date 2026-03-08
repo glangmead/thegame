@@ -35,6 +35,12 @@ struct BCView: View {
         scene.syncState(pieces: pieces, section: section)
     }
 
+    private func performAction(_ action: BattleCard.Action) {
+        model.perform(action)
+        let section = BCPieceAdapter.section(from: model.state, graph: graph)
+        scene.syncState(pieces: pieces, section: section)
+    }
+
     var body: some View {
         NavigationStack {
             SpriteView(scene: scene)
@@ -42,9 +48,7 @@ struct BCView: View {
             Form {
                 ForEach(model.allowedActions, id: \.self) { action in
                     Button(action.description) {
-                        model.perform(action)
-                        let section = BCPieceAdapter.section(from: model.state, graph: graph)
-                        scene.syncState(pieces: pieces, section: section)
+                        performAction(action)
                     }
                 }
             }

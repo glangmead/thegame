@@ -22,6 +22,7 @@ enum SceneConfig: Codable, Equatable {
     indirect case board(SceneConfig, style: StyleConfig?)
 
     // Layout overrides
+    // swiftlint:disable:next identifier_name
     indirect case positioned(SceneConfig, x: Float, y: Float)
     indirect case scaled(SceneConfig, factor: Float)
 }

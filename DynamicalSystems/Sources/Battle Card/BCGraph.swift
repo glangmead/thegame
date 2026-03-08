@@ -23,8 +23,8 @@ struct BCGraph {
 
         // Road track (5 cities including Belgium)
         var roadSites: [SiteID] = []
-        for (i, city) in roadCities.enumerated() {
-            let pos = CGPoint(x: 1 * cellSize, y: CGFloat(i) * cellSize)
+        for (cityIndex, city) in roadCities.enumerated() {
+            let pos = CGPoint(x: 1 * cellSize, y: CGFloat(cityIndex) * cellSize)
             let id = graph.addSite(position: pos, tags: ["road", city.lowercased()])
             roadSites.append(id)
         }
@@ -33,8 +33,8 @@ struct BCGraph {
 
         // Allied track (4 cities, no Belgium)
         var alliedSites: [SiteID] = []
-        for (i, city) in alliedCities.enumerated() {
-            let pos = CGPoint(x: 0 * cellSize, y: CGFloat(i + 1) * cellSize)
+        for (cityIndex, city) in alliedCities.enumerated() {
+            let pos = CGPoint(x: 0 * cellSize, y: CGFloat(cityIndex + 1) * cellSize)
             let id = graph.addSite(position: pos, tags: ["allied", city.lowercased()])
             alliedSites.append(id)
         }
@@ -43,8 +43,8 @@ struct BCGraph {
 
         // German track (4 cities, no Belgium)
         var germanSites: [SiteID] = []
-        for (i, city) in germanCities.enumerated() {
-            let pos = CGPoint(x: 2 * cellSize, y: CGFloat(i + 1) * cellSize)
+        for (cityIndex, city) in germanCities.enumerated() {
+            let pos = CGPoint(x: 2 * cellSize, y: CGFloat(cityIndex + 1) * cellSize)
             let id = graph.addSite(position: pos, tags: ["german", city.lowercased()])
             germanSites.append(id)
         }
@@ -52,17 +52,17 @@ struct BCGraph {
         graph.tracks["german"] = germanSites
 
         // Cross-track adjacency at each shared city (Eindhoven, Grave, Nijmegen, Arnhem)
-        for i in 0..<4 {
-            let roadIndex = i + 1  // skip Belgium on road track
+        for cityIndex in 0..<4 {
+            let roadIndex = cityIndex + 1  // skip Belgium on road track
             // Allied <-> Road
-            graph.sites[alliedSites[i]]?.adjacency[.custom("road")] = roadSites[roadIndex]
-            graph.sites[roadSites[roadIndex]]?.adjacency[.custom("allied")] = alliedSites[i]
+            graph.sites[alliedSites[cityIndex]]?.adjacency[.custom("road")] = roadSites[roadIndex]
+            graph.sites[roadSites[roadIndex]]?.adjacency[.custom("allied")] = alliedSites[cityIndex]
             // Allied <-> German
-            graph.sites[alliedSites[i]]?.adjacency[.custom("german")] = germanSites[i]
-            graph.sites[germanSites[i]]?.adjacency[.custom("allied")] = alliedSites[i]
+            graph.sites[alliedSites[cityIndex]]?.adjacency[.custom("german")] = germanSites[cityIndex]
+            graph.sites[germanSites[cityIndex]]?.adjacency[.custom("allied")] = alliedSites[cityIndex]
             // Road <-> German
-            graph.sites[roadSites[roadIndex]]?.adjacency[.custom("german")] = germanSites[i]
-            graph.sites[germanSites[i]]?.adjacency[.custom("road")] = roadSites[roadIndex]
+            graph.sites[roadSites[roadIndex]]?.adjacency[.custom("german")] = germanSites[cityIndex]
+            graph.sites[germanSites[cityIndex]]?.adjacency[.custom("road")] = roadSites[roadIndex]
         }
 
         // Off-board sites
@@ -74,8 +74,8 @@ struct BCGraph {
     }
 
     private static func connectTrack(_ graph: inout SiteGraph, sites: [SiteID]) {
-        for i in 0..<(sites.count - 1) {
-            graph.connect(sites[i], to: sites[i + 1], direction: .next)
+        for index in 0..<(sites.count - 1) {
+            graph.connect(sites[index], to: sites[index + 1], direction: .next)
         }
         if let first = sites.first, let last = sites.last, sites.count > 1 {
             graph.sites[first]?.adjacency[.top] = last
@@ -106,7 +106,7 @@ struct BCPieceAdapter {
         let pieces = pieces()
 
         for bcPiece in BattleCardComponents.Piece.allCases {
-            guard let gp = pieces.first(where: { $0.id == bcPiece.rawValue }) else { continue }
+            guard let piece = pieces.first(where: { $0.id == bcPiece.rawValue }) else { continue }
             let face = state.strength[bcPiece]?.rawValue ?? 0
 
             guard let pos = state.position[bcPiece] else { continue }
@@ -114,7 +114,7 @@ struct BCPieceAdapter {
             switch pos {
             case .offBoard:
                 let removedSite = graph.sites.values.first { $0.tags.contains(BCGraph.removed) }?.id
-                section[gp] = .dieShowing(face: face, at: removedSite)
+                section[piece] = .dieShowing(face: face, at: removedSite)
 
             case .onTrack(let cityIndex):
                 let siteID: SiteID?
@@ -130,7 +130,7 @@ struct BCPieceAdapter {
                     let trackIndex = cityIndex - 1
                     siteID = graph.tracks["german"]?[safe: trackIndex]
                 }
-                section[gp] = .dieShowing(face: face, at: siteID)
+                section[piece] = .dieShowing(face: face, at: siteID)
             }
         }
 

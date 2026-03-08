@@ -63,6 +63,7 @@ struct SiteGraph: Codable, Equatable {
         return siteID
     }
 
+    // swiftlint:disable:next identifier_name
     mutating func connect(_ from: SiteID, to: SiteID, direction: Direction) {
         sites[from]?.adjacency[direction] = to
         sites[to]?.adjacency[direction.opposite] = from
@@ -108,8 +109,8 @@ extension SiteGraph {
                 trackSites.append(id)
             }
 
-            for i in 0..<(trackSites.count - 1) {
-                graph.connect(trackSites[i], to: trackSites[i + 1], direction: .next)
+            for index in 0..<(trackSites.count - 1) {
+                graph.connect(trackSites[index], to: trackSites[index + 1], direction: .next)
             }
 
             if let first = trackSites.first, let last = trackSites.last, trackSites.count > 1 {
@@ -147,8 +148,8 @@ extension SiteGraph {
                 sites.append(id)
             }
 
-            for i in 0..<(sites.count - 1) {
-                graph.connect(sites[i], to: sites[i + 1], direction: .next)
+            for index in 0..<(sites.count - 1) {
+                graph.connect(sites[index], to: sites[index + 1], direction: .next)
             }
 
             if let first = sites.first, let last = sites.last, sites.count > 1 {
@@ -162,11 +163,11 @@ extension SiteGraph {
 
         if crossDirections {
             for row in 0..<length {
-                for (i, _) in names.enumerated() {
-                    for (j, jName) in names.enumerated() where i != j {
-                        let from = trackSites[i][row]
-                        let to = trackSites[j][row]
-                        graph.sites[from]?.adjacency[.custom(jName)] = to
+                for fromTrack in names.indices {
+                    for (toTrack, toName) in names.enumerated() where fromTrack != toTrack {
+                        let from = trackSites[fromTrack][row]
+                        let target = trackSites[toTrack][row]
+                        graph.sites[from]?.adjacency[.custom(toName)] = target
                     }
                 }
             }

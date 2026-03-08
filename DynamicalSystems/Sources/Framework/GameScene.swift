@@ -64,6 +64,7 @@ class GameScene<
             // Component config is declarative — pieces are created during syncState
             return parent
 
+        // swiftlint:disable:next identifier_name
         case .positioned(let inner, let x, let y):
             let wrapper = SKNode()
             wrapper.position = CGPoint(x: CGFloat(x), y: CGFloat(y))
@@ -152,6 +153,7 @@ class GameScene<
         return colors[owner.raw % colors.count]
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func colorFromString(_ name: String?) -> SKColor? {
         guard let name else { return nil }
         switch name.lowercased() {
@@ -172,8 +174,9 @@ class GameScene<
 
     // MARK: - State sync
 
-    /// Synchronize all piece nodes with current game state.
-    /// Iterates the full section unconditionally, moving/updating all pieces via SKAction.
+    // Synchronize all piece nodes with current game state.
+    // Iterates the full section unconditionally, moving/updating all pieces via SKAction.
+    // swiftlint:disable:next cyclomatic_complexity
     func syncState(pieces: [GamePiece], section: GameSection) {
         let animDuration: TimeInterval = 0.2
 

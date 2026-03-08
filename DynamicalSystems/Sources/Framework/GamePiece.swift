@@ -32,16 +32,17 @@ struct PlayerID: Hashable, Codable, Equatable, CustomStringConvertible {
 /// The fiber value for a piece — its position and type-specific state.
 /// Which case is inhabited is determined by the base point's PieceKind.
 enum PieceValue: Codable, Equatable, Hashable {
+    // swiftlint:disable:next identifier_name
     case at(SiteID)
-    case dieShowing(face: Int, at: SiteID?)
-    case cardState(name: String, faceUp: Bool, at: SiteID?)
+    case dieShowing(face: Int, at: SiteID?) // swiftlint:disable:this identifier_name
+    case cardState(name: String, faceUp: Bool, at: SiteID?) // swiftlint:disable:this identifier_name
 
     /// The site this piece occupies, regardless of kind.
     var site: SiteID? {
         switch self {
-        case .at(let s): return s
-        case .dieShowing(_, let s): return s
-        case .cardState(_, _, let s): return s
+        case .at(let siteID): return siteID
+        case .dieShowing(_, let siteID): return siteID
+        case .cardState(_, _, let siteID): return siteID
         }
     }
 }

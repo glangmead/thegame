@@ -38,8 +38,8 @@ struct CantStopGraph {
             }
 
             // Connect sequential
-            for i in 0..<(trackSites.count - 1) {
-                graph.connect(trackSites[i], to: trackSites[i + 1], direction: .next)
+            for index in 0..<(trackSites.count - 1) {
+                graph.connect(trackSites[index], to: trackSites[index + 1], direction: .next)
             }
 
             // Top/bottom shortcuts
@@ -79,7 +79,7 @@ struct CantStopPieceAdapter {
     /// Dice: 200 + die index
     static func gamePieceID(for piece: CantStop.Piece) -> Int {
         switch piece {
-        case .white(let w): return w.rawValue  // 1, 2, 3
+        case .white(let whitePiece): return whitePiece.rawValue  // 1, 2, 3
         case .placeholder(let player, let col):
             let playerIndex: Int
             switch player {
@@ -106,8 +106,8 @@ struct CantStopPieceAdapter {
         var result: [GamePiece] = []
 
         // White pieces (tokens, no owner)
-        for w in CantStop.WhitePiece.allCases {
-            result.append(GamePiece(id: w.rawValue, kind: .token, owner: nil))
+        for whitePiece in CantStop.WhitePiece.allCases {
+            result.append(GamePiece(id: whitePiece.rawValue, kind: .token, owner: nil))
         }
 
         // Player placeholders (tokens, owned)
@@ -120,8 +120,8 @@ struct CantStopPieceAdapter {
         }
 
         // Dice
-        for (i, _) in CantStop.Die.allCases.enumerated() {
-            result.append(GamePiece(id: 200 + i, kind: .die(sides: 6), owner: nil))
+        for dieIndex in CantStop.Die.allCases.indices {
+            result.append(GamePiece(id: 200 + dieIndex, kind: .die(sides: 6), owner: nil))
         }
 
         return result
@@ -139,7 +139,7 @@ struct CantStopPieceAdapter {
             case .white: owner = nil
             case .placeholder(let player, _): owner = playerID(for: player)
             }
-            let gp = GamePiece(id: gpID, kind: .token, owner: owner)
+            let gamePiece = GamePiece(id: gpID, kind: .token, owner: owner)
 
             if pos.col == .none {
                 // Off-board — use tray site
@@ -149,21 +149,21 @@ struct CantStopPieceAdapter {
                 case .placeholder: trayName = CantStopGraph.placeholderTray
                 }
                 if let traySite = CantStopGraph.traySite(in: graph, named: trayName) {
-                    section[gp] = .at(traySite)
+                    section[gamePiece] = .at(traySite)
                 }
             } else {
                 if let siteID = CantStopGraph.siteID(in: graph, col: pos.col.rawValue, row: pos.row) {
-                    section[gp] = .at(siteID)
+                    section[gamePiece] = .at(siteID)
                 }
             }
         }
 
         // Map dice
-        for (i, die) in CantStop.Die.allCases.enumerated() {
+        for (dieIndex, die) in CantStop.Die.allCases.enumerated() {
             let face = state.dice[die]?.rawValue ?? 0
             let diceSite = CantStopGraph.traySite(in: graph, named: CantStopGraph.diceTray)
-            let gp = GamePiece(id: 200 + i, kind: .die(sides: 6), owner: nil)
-            section[gp] = .dieShowing(face: face, at: diceSite)
+            let piece = GamePiece(id: 200 + dieIndex, kind: .die(sides: 6), owner: nil)
+            section[piece] = .dieShowing(face: face, at: diceSite)
         }
 
         return section
