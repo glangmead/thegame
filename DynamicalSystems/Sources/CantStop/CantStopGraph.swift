@@ -51,10 +51,11 @@ struct CantStopGraph {
             graph.tracks["col\(colNum)"] = trackSites
         }
 
-        // Off-board tray sites
-        _ = graph.addSite(position: CGPoint(x: 0, y: -cellSize), tags: [whiteTray])
-        _ = graph.addSite(position: CGPoint(x: 0, y: -2 * cellSize), tags: [placeholderTray])
-        _ = graph.addSite(position: CGPoint(x: 0, y: -3 * cellSize), tags: [diceTray])
+        // Off-board tray sites (above the board)
+        let maxY = CGFloat(12) * cellSize  // tallest column height
+        _ = graph.addSite(position: CGPoint(x: cellSize * 3, y: maxY + cellSize * 2), tags: [whiteTray])
+        _ = graph.addSite(position: CGPoint(x: cellSize * 6, y: maxY + cellSize * 2), tags: [placeholderTray])
+        _ = graph.addSite(position: CGPoint(x: cellSize * 9, y: maxY + cellSize * 2), tags: [diceTray])
 
         return graph
     }

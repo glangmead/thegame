@@ -23,7 +23,7 @@ struct CantStopView: View {
         let scene = GameScene(
             model: model,
             config: config,
-            size: CGSize(width: 350, height: 380),
+            size: CGSize(width: 350, height: 400),
             cellSize: 20
         )
         scene.scaleMode = .aspectFit
@@ -42,7 +42,7 @@ struct CantStopView: View {
         VStack(spacing: 0) {
             SpriteView(scene: scene)
                 .frame(maxWidth: .infinity)
-                .aspectRatio(350.0 / 380.0, contentMode: .fit)
+                .aspectRatio(350.0 / 400.0, contentMode: .fit)
             List {
                 ForEach(cachedActions, id: \.self) { action in
                     Button(action.description) {
