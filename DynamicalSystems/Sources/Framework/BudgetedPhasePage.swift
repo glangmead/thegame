@@ -90,9 +90,11 @@ extension BudgetedPhasePage {
                         var actions = page.remaining(state).flatMap {
                             page.actionsFor(state, $0)
                         }
-                        // For .atMost budgets, offer pass after at least one action
+                        // For .atMost budgets, offer pass when:
+                        // - at least one action was taken, OR
+                        // - no items remain (nothing to do, skip the phase)
                         if case .atMost = page.budget,
-                           page.actionsTaken(state) > 0,
+                           (page.actionsTaken(state) > 0 || page.remaining(state).isEmpty),
                            let pass = page.passAction {
                             actions.append(pass)
                         }
@@ -103,7 +105,7 @@ extension BudgetedPhasePage {
             reduce: { state, action in
                 guard let (logs, followUps) = page.reduce(&state, action) else { return nil }
                 var allFollowUps = followUps
-                if page.budgetExhausted(state) {
+                if page.budgetExhausted(state) || page.remaining(state).isEmpty {
                     allFollowUps.append(page.transitionAction)
                 }
                 return (logs, allFollowUps)

@@ -13,6 +13,7 @@ GamerTool.main()
 enum Games: String, Codable, ExpressibleByArgument {
   case CantStop = "CantStop"
   case BattleCard = "BattleCard"
+  case BCMC = "MalayanCampaign"
 }
 
 struct GamerTool: ParsableCommand {
@@ -41,6 +42,17 @@ struct GamerTool: ParsableCommand {
       case .BattleCard:
         var gameRunner = GameRunner<BattleCard.State, BattleCard.Action>(
           reducer: BCPages.game(),
+          numTrials: numTrials,
+          numMCTSIters: numMCTSIters,
+          numRollouts: numRollouts,
+          interactive: interactive,
+          logFile: logFile,
+          showAIHints: showAIHints
+        )
+        try gameRunner.run()
+      case .BCMC:
+        var gameRunner = GameRunner<MalayanCampaign.State, MalayanCampaign.Action>(
+          reducer: MCPages.game(),
           numTrials: numTrials,
           numMCTSIters: numMCTSIters,
           numRollouts: numRollouts,

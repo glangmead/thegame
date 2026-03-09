@@ -41,13 +41,13 @@ extension BattleCard.State: TextTableAble {
     return cities
   }
   
-  func printTable<Target>(to: inout Target) where Target : TextOutputStream {
+  func printTable<Target>(to: inout Target) where Target: TextOutputStream {
     let turnTable = TextTable<BattleCard.State> { state in
       [Column(title: "Turn", value: state.turnNumber),
        Column(title: "Weather", value: state.weather)]
     }
-    turnTable.print([self])
-    
+    if let s = turnTable.string(for: [self]) { Swift.print(s, to: &to) }
+
     let mapTable = TextTable<CityReport> { city in
       [
         Column(title: "City", value: city.city),
@@ -59,6 +59,6 @@ extension BattleCard.State: TextTableAble {
         Column(title: "Control", value: city.control ?? "none")
       ]
     }
-    mapTable.print(reports)
+    if let s = mapTable.string(for: reports) { Swift.print(s, to: &to) }
   }
 }

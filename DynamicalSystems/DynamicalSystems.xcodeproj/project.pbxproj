@@ -12,6 +12,7 @@
 		9B6E9DE52EF4BB0200FF4F48 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = 9B6E9DE42EF4BB0200FF4F48 /* ArgumentParser */; };
 		9B7ABDC12EE0E65B00F0FD43 /* Overture in Frameworks */ = {isa = PBXBuildFile; productRef = 9B7ABDC02EE0E65B00F0FD43 /* Overture */; };
 		9B8CDCE12EA6BCA200BE059C /* Overture in Frameworks */ = {isa = PBXBuildFile; productRef = 9B8CDCE02EA6BCA200BE059C /* Overture */; };
+		9BTEST0012F5DA00000000001 /* TextTable in Frameworks */ = {isa = PBXBuildFile; productRef = 9BTEST0012F5DA00000000002 /* TextTable */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -55,12 +56,14 @@
 				"Battle Card/BCPages.swift",
 				"Battle Card/BCSceneConfig.swift",
 				"Battle Card/BCState.swift",
+				"Battle Card/BCText.swift",
 				CantStop/CantStopComponents.swift,
 				CantStop/CantStopEngine.swift,
 				CantStop/CantStopGraph.swift,
 				CantStop/CantStopPages.swift,
 				CantStop/CantStopSceneConfig.swift,
 				CantStop/CantStopState.swift,
+				CantStop/CantStopText.swift,
 				Framework/BudgetedPhasePage.swift,
 				Framework/ComposedGame.swift,
 				Framework/ForEachPage.swift,
@@ -72,8 +75,16 @@
 				Framework/RulePage.swift,
 				Framework/SceneConfig.swift,
 				Framework/SiteGraph.swift,
+				Framework/TextTableAble.swift,
 				Game.swift,
 				Lens.swift,
+				"Malayan Campaign/MCComponents.swift",
+				"Malayan Campaign/MCEngine.swift",
+				"Malayan Campaign/MCGraph.swift",
+				"Malayan Campaign/MCPages.swift",
+				"Malayan Campaign/MCSceneConfig.swift",
+				"Malayan Campaign/MCState.swift",
+				"Malayan Campaign/MCText.swift",
 				OpenLoopMCTS.swift,
 				Pair.swift,
 				RawComparable.swift,
@@ -89,6 +100,7 @@
 				"Battle Card/BCPages.swift",
 				"Battle Card/BCSceneConfig.swift",
 				"Battle Card/BCState.swift",
+				"Battle Card/BCText.swift",
 				"Battle Card/BCView.swift",
 				CantStop/CantStopComponents.swift,
 				CantStop/CantStopEngine.swift,
@@ -96,6 +108,7 @@
 				CantStop/CantStopPages.swift,
 				CantStop/CantStopSceneConfig.swift,
 				CantStop/CantStopState.swift,
+				CantStop/CantStopText.swift,
 				CantStop/CantStopView.swift,
 				Framework/BudgetedPhasePage.swift,
 				Framework/ComposedGame.swift,
@@ -109,8 +122,17 @@
 				Framework/RulePage.swift,
 				Framework/SceneConfig.swift,
 				Framework/SiteGraph.swift,
+				Framework/TextTableAble.swift,
 				Game.swift,
 				Lens.swift,
+				"Malayan Campaign/MCComponents.swift",
+				"Malayan Campaign/MCEngine.swift",
+				"Malayan Campaign/MCGraph.swift",
+				"Malayan Campaign/MCPages.swift",
+				"Malayan Campaign/MCSceneConfig.swift",
+				"Malayan Campaign/MCState.swift",
+				"Malayan Campaign/MCText.swift",
+				"Malayan Campaign/MCView.swift",
 				OpenLoopMCTS.swift,
 				Pair.swift,
 				RawComparable.swift,
@@ -165,6 +187,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9BTEST0012F5DA00000000001 /* TextTable in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,6 +279,7 @@
 			);
 			name = DynamicalSystemsTests;
 			packageProductDependencies = (
+				9BTEST0012F5DA00000000002 /* TextTable */,
 			);
 			productName = DynamicalSystemsTests;
 			productReference = 9B31387F2E63462C00D3AE6D /* DynamicalSystemsTests.xctest */;
@@ -728,6 +752,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9B8CDCDF2EA6BCA200BE059C /* XCRemoteSwiftPackageReference "swift-overture" */;
 			productName = Overture;
+		};
+		9BTEST0012F5DA00000000002 /* TextTable */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B49DE2D2F17312B007E0D92 /* XCRemoteSwiftPackageReference "TextTable" */;
+			productName = TextTable;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

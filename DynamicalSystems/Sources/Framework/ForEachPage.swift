@@ -68,6 +68,15 @@ extension ForEachPage {
                     actions: { state in
                         page.remaining(state).flatMap { page.actionsFor(state, $0) }
                     }
+                ),
+                // Auto-transition when active but no items to process
+                GameRule(
+                    condition: { state in
+                        page.isActive(state) && page.remaining(state).isEmpty
+                    },
+                    actions: { _ in
+                        [page.transitionAction]
+                    }
                 )
             ],
             reduce: { state, action in

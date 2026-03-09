@@ -52,6 +52,6 @@ extension CantStop.State: TextTableAble {
         Column(title: "",  value: colDisplay.positions[row-1])
       }
     }
-    colTextTable.print(display.cols)
+    if let s = colTextTable.string(for: display.cols) { Swift.print(s, to: &to) }
   }
 }

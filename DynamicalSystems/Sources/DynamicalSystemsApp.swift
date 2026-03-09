@@ -19,6 +19,9 @@ struct DynamicalSystemsApp: App {
                     NavigationLink("Battle Card: Market Garden") {
                         BCView()
                     }
+                    NavigationLink("Battle Card: Malayan Campaign") {
+                        MCView()
+                    }
                 }
                 .navigationTitle("Games")
             }
