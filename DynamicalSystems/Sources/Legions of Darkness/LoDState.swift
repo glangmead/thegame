@@ -83,10 +83,18 @@ extension LoD {
     /// Whether the bloody battle defender cost has already been paid this turn.
     var bloodyBattlePaidThisTurn: Bool = false
 
+    // MARK: - Slow marker
+
+    /// Which army slot has the Slow marker, if any.
+    var slowedArmy: ArmySlot? = nil
+
     // MARK: - Per-turn tracking
 
     /// Whether the Paladin has used their re-roll this turn.
     var paladinRerollUsed: Bool = false
+
+    /// Whether Inspire's +1 DRM to all rolls is active this turn.
+    var inspireDRMActive: Bool = false
 
     // MARK: - Victory / defeat
 
@@ -134,6 +142,7 @@ extension LoD {
       case armyBrokeBarricade(Track)
       case defenderLoss
       case notOnBoard
+      case slowMarkerRemoved(ArmySlot)
     }
 
     /// Advance a single army slot one space toward the castle (space number decreases).
@@ -141,6 +150,12 @@ extension LoD {
     mutating func advanceArmy(_ slot: ArmySlot, dieRoll: Int? = nil) -> AdvanceResult {
       guard let currentSpace = armyPosition[slot] else {
         return .notOnBoard
+      }
+
+      // Slow spell: remove marker instead of advancing
+      if slowedArmy == slot {
+        slowedArmy = nil
+        return .slowMarkerRemoved(slot)
       }
 
       let track = slot.track
@@ -611,6 +626,143 @@ extension LoD {
       return .success(spell, heroic: heroic)
     }
 
+    // MARK: - Spell Effects (rules 9.2, 9.3)
+
+    // -- Cure Wounds (divine, cost 1) --
+
+    /// Heal wounded heroes. Normal: 1 hero. Heroic (†): up to 2 heroes.
+    mutating func applyCureWounds(heroes: [HeroType]) {
+      for hero in heroes {
+        heroWounded.remove(hero)
+      }
+    }
+
+    // -- Mass Heal (divine, cost 2) --
+
+    /// Gain defenders. Normal: 1 defender. Heroic (†): 2 different defenders.
+    mutating func applyMassHeal(defenders gainTypes: [DefenderType]) {
+      for type in gainTypes {
+        if let current = defenders[type] {
+          defenders[type] = min(current + 1, type.maxValue)
+        }
+      }
+    }
+
+    // -- Inspire (divine, cost 3) --
+
+    /// Raise morale one step and grant +1 DRM to all rolls until end of turn.
+    /// Normal and heroic (†) have the same effect.
+    mutating func applyInspire() {
+      morale = morale.raised()
+      inspireDRMActive = true
+    }
+
+    // -- Raise Dead (divine, cost 4) --
+
+    /// Normal: gain 2 different defenders OR return 1 dead hero.
+    /// Heroic (†): gain 2 different defenders AND/OR return 1 dead hero.
+    mutating func applyRaiseDead(gainDefenders: [DefenderType], returnHero: HeroType?) {
+      for type in gainDefenders {
+        if let current = defenders[type] {
+          defenders[type] = min(current + 1, type.maxValue)
+        }
+      }
+      if let hero = returnHero {
+        heroDead.remove(hero)
+        heroLocation[hero] = .reserves
+      }
+    }
+
+    // -- Fireball (arcane, cost 1) --
+
+    /// Make a +2 magical attack. Heroic (∞): may re-roll.
+    /// Returns the attack result. Caller handles re-roll decision.
+    mutating func applyFireball(
+      on slot: ArmySlot,
+      dieRoll: Int,
+      additionalDRM: Int = 0
+    ) -> AttackResult {
+      return resolveAttack(
+        on: slot,
+        attackType: .ranged,
+        dieRoll: dieRoll,
+        drm: 2 + additionalDRM,
+        isMagical: true
+      )
+    }
+
+    // -- Slow (arcane, cost 2) --
+
+    /// Normal: place Slow marker on one army.
+    /// Heroic (∞): retreat army one space first, then place marker.
+    mutating func applySlow(on slot: ArmySlot, heroic: Bool = false) {
+      if heroic {
+        // Retreat army one space (push back away from castle)
+        if let space = armyPosition[slot] {
+          let track = slot.track
+          armyPosition[slot] = min(space + 1, track.maxSpace)
+        }
+      }
+      slowedArmy = slot
+    }
+
+    // -- Chain Lightning (arcane, cost 3) --
+
+    /// Make 3 magical attacks. Normal: +2, +1, +0 DRMs. Heroic (∞): +3, +2, +1.
+    /// Targets and die rolls provided as parallel arrays.
+    mutating func applyChainLightning(
+      targets: [(slot: ArmySlot, dieRoll: Int)],
+      heroic: Bool = false,
+      additionalDRM: Int = 0
+    ) -> [AttackResult] {
+      let baseDRMs = heroic ? [3, 2, 1] : [2, 1, 0]
+      var results: [AttackResult] = []
+      for (i, target) in targets.prefix(3).enumerated() {
+        let result = resolveAttack(
+          on: target.slot,
+          attackType: .ranged,
+          dieRoll: target.dieRoll,
+          drm: baseDRMs[i] + additionalDRM,
+          isMagical: true
+        )
+        results.append(result)
+      }
+      return results
+    }
+
+    // -- Divine Wrath (divine, cost 3) --
+
+    /// Normal: 1 magical attack with +1 DRM; undead retreat +1.
+    /// Heroic (†): 2 magical attacks (different targets) with +1 DRM; undead retreat +1.
+    mutating func applyDivineWrath(
+      targets: [(slot: ArmySlot, dieRoll: Int)],
+      additionalDRM: Int = 0
+    ) -> [AttackResult] {
+      var results: [AttackResult] = []
+      for target in targets {
+        let result = resolveAttack(
+          on: target.slot,
+          attackType: .ranged,
+          dieRoll: target.dieRoll,
+          drm: 1 + additionalDRM,
+          isMagical: true
+        )
+        // Undead retreat +1 on hit
+        if case .hit(let slot, _, let pushedTo) = result {
+          if let type = armyType[slot], type.isUndead {
+            let track = slot.track
+            armyPosition[slot] = min(pushedTo + 1, track.maxSpace)
+          }
+        }
+        results.append(result)
+      }
+      return results
+    }
+
+    // -- Fortune (arcane, cost 4) --
+    // Fortune manipulates the card deck (look at top 3, reorder, optionally discard 1).
+    // Deferred until deck management is implemented.
+
     // MARK: - Heroic Acts (rule 7.0)
 
     // -- Move Hero (rule 7.1) --
@@ -640,6 +792,7 @@ extension LoD {
     mutating func resetTurnTracking() {
       bloodyBattlePaidThisTurn = false
       paladinRerollUsed = false
+      inspireDRMActive = false
     }
   }
 

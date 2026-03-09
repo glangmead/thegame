@@ -72,6 +72,14 @@ struct LoDComponents: GameComponents {
       case .nightmare: return 5
       }
     }
+
+    /// Whether this army type is undead (relevant for Divine Wrath bonus).
+    var isUndead: Bool {
+      switch self {
+      case .zombie, .skeletalRider, .wraith, .nightmare: return true
+      default: return false
+      }
+    }
   }
 
   /// Each army counter is identified by its track slot.

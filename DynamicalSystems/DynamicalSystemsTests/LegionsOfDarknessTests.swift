@@ -1901,4 +1901,365 @@ struct LegionsOfDarknessTests {
     #expect(success)
     #expect(state.morale == .high)
   }
+
+  // MARK: - Spell Effects
+
+  // -- Cure Wounds --
+
+  @Test
+  func cureWoundsHealsOneHero() {
+    // Normal: heal 1 wounded hero.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.heroWounded.insert(.wizard)
+
+    state.applyCureWounds(heroes: [.wizard])
+    #expect(!state.heroWounded.contains(.wizard))
+  }
+
+  @Test
+  func cureWoundsHeroicHealsTwoHeroes() {
+    // Heroic (†): heal up to 2 wounded heroes.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.heroWounded.insert(.wizard)
+    state.heroWounded.insert(.warrior)
+
+    state.applyCureWounds(heroes: [.wizard, .warrior])
+    #expect(!state.heroWounded.contains(.wizard))
+    #expect(!state.heroWounded.contains(.warrior))
+  }
+
+  // -- Mass Heal --
+
+  @Test
+  func massHealGainsOneDefender() {
+    // Normal: gain 1 defender.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.defenders[.menAtArms] = 1
+
+    state.applyMassHeal(defenders: [.menAtArms])
+    #expect(state.defenders[.menAtArms] == 2)
+  }
+
+  @Test
+  func massHealHeroicGainsTwoDifferent() {
+    // Heroic (†): gain 2 defenders (different types).
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.defenders[.menAtArms] = 1
+    state.defenders[.archers] = 0
+
+    state.applyMassHeal(defenders: [.menAtArms, .archers])
+    #expect(state.defenders[.menAtArms] == 2)
+    #expect(state.defenders[.archers] == 1)
+  }
+
+  @Test
+  func massHealCappedAtMax() {
+    // Defender cannot exceed max value.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    #expect(state.defenders[.menAtArms] == 3) // already at max
+
+    state.applyMassHeal(defenders: [.menAtArms])
+    #expect(state.defenders[.menAtArms] == 3) // still max
+  }
+
+  // -- Inspire --
+
+  @Test
+  func inspireRaisesMoraleAndGrantsDRM() {
+    // Raise morale one step and activate +1 DRM for the turn.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    #expect(state.morale == .normal)
+    #expect(!state.inspireDRMActive)
+
+    state.applyInspire()
+    #expect(state.morale == .high)
+    #expect(state.inspireDRMActive)
+  }
+
+  @Test
+  func inspirePerTurnDRMClearedOnReset() {
+    // Inspire's +1 DRM to all rolls is per-turn only.
+    // The morale raise from Inspire is permanent (not affected by reset).
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.morale = .high // raised by Inspire (permanent)
+    state.inspireDRMActive = true // per-turn bonus
+
+    state.resetTurnTracking()
+    #expect(!state.inspireDRMActive) // DRM cleared
+    #expect(state.morale == .high) // morale stays
+  }
+
+  // -- Raise Dead --
+
+  @Test
+  func raiseDeadGainTwoDefenders() {
+    // Normal option: gain 2 different defenders.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.defenders[.menAtArms] = 1
+    state.defenders[.archers] = 0
+
+    state.applyRaiseDead(gainDefenders: [.menAtArms, .archers], returnHero: nil)
+    #expect(state.defenders[.menAtArms] == 2)
+    #expect(state.defenders[.archers] == 1)
+  }
+
+  @Test
+  func raiseDeadReturnHero() {
+    // Normal option: return a dead hero to reserves.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.heroDead.insert(.wizard)
+    state.heroLocation.removeValue(forKey: .wizard)
+
+    state.applyRaiseDead(gainDefenders: [], returnHero: .wizard)
+    #expect(!state.heroDead.contains(.wizard))
+    #expect(state.heroLocation[.wizard] == .reserves)
+  }
+
+  @Test
+  func raiseDeadHeroicBothOptions() {
+    // Heroic (†): gain 2 defenders AND return a dead hero.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.defenders[.menAtArms] = 1
+    state.defenders[.archers] = 0
+    state.heroDead.insert(.wizard)
+    state.heroLocation.removeValue(forKey: .wizard)
+
+    state.applyRaiseDead(gainDefenders: [.menAtArms, .archers], returnHero: .wizard)
+    #expect(state.defenders[.menAtArms] == 2)
+    #expect(state.defenders[.archers] == 1)
+    #expect(!state.heroDead.contains(.wizard))
+    #expect(state.heroLocation[.wizard] == .reserves)
+  }
+
+  // -- Fireball --
+
+  @Test
+  func fireballHit() {
+    // +2 magical attack. Goblin (2) at East 3. Roll 2 + 2 = 4 > 2 → hit.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.armyPosition[.east] = 3
+
+    let result = state.applyFireball(on: .east, dieRoll: 2)
+    #expect(result == .hit(.east, pushedFrom: 3, pushedTo: 4))
+  }
+
+  @Test
+  func fireballNaturalOneFails() {
+    // Fireball makes an attack roll. Natural 1 on the attack die always fails,
+    // even with Fireball's +2 DRM.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.armyPosition[.gate1] = 2
+
+    let result = state.applyFireball(on: .gate1, dieRoll: 1)
+    #expect(result == .naturalOneFail(.gate1))
+  }
+
+  @Test
+  func fireballIsMagical() {
+    // Fireball is magical → ignores negative DRMs in melee range.
+    // Goblin (2) at East 2 (melee). Roll 3 + 2 (fireball) + (-2 penalty) = 3.
+    // Magical in melee → negative DRM zeroed → effective = 3 + 2 = 5 > 2 → hit.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.armyPosition[.east] = 2
+
+    let result = state.applyFireball(on: .east, dieRoll: 3, additionalDRM: -2)
+    // The additionalDRM of -2 + fireball's +2 = 0, but since magical in melee range
+    // the negative portion is zeroed. So total DRM = max(0, 0) = 0. Roll 3 + 0 = 3 > 2 → hit.
+    // Wait, the fireball DRM of +2 is always positive, and additionalDRM of -2 makes total 0.
+    // Since isMagical and melee range, effectiveDRM = max(0, 0) = 0. 3 + 0 = 3 > 2 → hit.
+    #expect(result == .hit(.east, pushedFrom: 2, pushedTo: 3))
+  }
+
+  // -- Slow --
+
+  @Test
+  func slowPlacesMarker() {
+    // Normal: place Slow marker on army. Army doesn't move.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+
+    state.applySlow(on: .east)
+    #expect(state.slowedArmy == .east)
+  }
+
+  @Test
+  func slowHeroicRetreatsFirst() {
+    // Heroic (∞): retreat army one space, then place marker.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.armyPosition[.east] = 3
+
+    state.applySlow(on: .east, heroic: true)
+    #expect(state.armyPosition[.east] == 4) // retreated from 3 to 4
+    #expect(state.slowedArmy == .east)
+  }
+
+  @Test
+  func slowHeroicRetreatCapped() {
+    // Heroic retreat capped at maxSpace.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    #expect(state.armyPosition[.east] == 6) // already at max
+
+    state.applySlow(on: .east, heroic: true)
+    #expect(state.armyPosition[.east] == 6) // stays at max
+    #expect(state.slowedArmy == .east)
+  }
+
+  @Test
+  func slowedArmySkipsAdvance() {
+    // When a slowed army would advance, remove the marker instead.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.armyPosition[.east] = 3
+    state.slowedArmy = .east
+
+    let result = state.advanceArmy(.east)
+    #expect(result == .slowMarkerRemoved(.east))
+    #expect(state.armyPosition[.east] == 3) // didn't move
+    #expect(state.slowedArmy == nil) // marker removed
+  }
+
+  @Test
+  func slowedArmyThenNormalAdvance() {
+    // After slow marker removed, next advance is normal.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.armyPosition[.east] = 3
+    state.slowedArmy = .east
+
+    _ = state.advanceArmy(.east) // removes marker
+    let result = state.advanceArmy(.east) // normal advance
+    #expect(result == .advanced(.east, from: 3, to: 2))
+  }
+
+  // -- Chain Lightning --
+
+  @Test
+  func chainLightningThreeAttacks() {
+    // Normal: 3 attacks with +2, +1, +0 DRMs.
+    // All targeting Goblin (2) at East 3.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.armyPosition[.east] = 3
+
+    let results = state.applyChainLightning(targets: [
+      (slot: .east, dieRoll: 2), // 2 + 2 = 4 > 2 → hit
+      (slot: .east, dieRoll: 2), // 2 + 1 = 3 > 2 → hit
+      (slot: .east, dieRoll: 2), // 2 + 0 = 2 ≤ 2 → miss
+    ])
+    #expect(results.count == 3)
+    // First hit pushes from 3→4, second from 4→5, third misses
+    #expect(results[2] == .miss(.east))
+  }
+
+  @Test
+  func chainLightningHeroicBetterDRMs() {
+    // Heroic (∞): 3 attacks with +3, +2, +1 DRMs.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.armyPosition[.east] = 3
+
+    let results = state.applyChainLightning(
+      targets: [
+        (slot: .east, dieRoll: 2), // 2 + 3 = 5 > 2 → hit
+        (slot: .east, dieRoll: 2), // 2 + 2 = 4 > 2 → hit
+        (slot: .east, dieRoll: 2), // 2 + 1 = 3 > 2 → hit
+      ],
+      heroic: true
+    )
+    #expect(results.count == 3)
+    // All three should hit
+    for result in results {
+      switch result {
+      case .hit: break // expected
+      default: #expect(Bool(false), "Expected hit")
+      }
+    }
+  }
+
+  // -- Divine Wrath --
+
+  @Test
+  func divineWrathOneAttack() {
+    // Normal: 1 magical attack with +1 DRM. Goblin (2) at East 3.
+    // Roll 3 + 1 = 4 > 2 → hit, pushed to 4.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.armyPosition[.east] = 3
+
+    let results = state.applyDivineWrath(targets: [
+      (slot: .east, dieRoll: 3),
+    ])
+    #expect(results.count == 1)
+    #expect(results[0] == .hit(.east, pushedFrom: 3, pushedTo: 4))
+    // Goblin is not undead → no extra retreat
+    #expect(state.armyPosition[.east] == 4)
+  }
+
+  @Test
+  func divineWrathUndeadExtraRetreat() {
+    // Undead army gets pushed back an extra space.
+    // Set up an undead scenario: zombie (strength 3) on east.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.armyType[.east] = .zombie
+    state.armyPosition[.east] = 3
+
+    let results = state.applyDivineWrath(targets: [
+      (slot: .east, dieRoll: 4), // 4 + 1 = 5 > 3 → hit
+    ])
+    #expect(results.count == 1)
+    // Normal push: 3→4. Undead bonus: 4→5. So army ends at 5.
+    #expect(state.armyPosition[.east] == 5)
+  }
+
+  @Test
+  func divineWrathUndeadRetreatCapped() {
+    // Undead extra retreat capped at maxSpace.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.armyType[.east] = .zombie
+    state.armyPosition[.east] = 5
+
+    let results = state.applyDivineWrath(targets: [
+      (slot: .east, dieRoll: 4), // hit → push 5→6, undead +1 → capped at 6
+    ])
+    #expect(results.count == 1)
+    #expect(state.armyPosition[.east] == 6)
+  }
+
+  @Test
+  func divineWrathHeroicTwoAttacks() {
+    // Heroic (†): 2 attacks on different targets.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.armyPosition[.east] = 3 // Goblin (2)
+    state.armyPosition[.west] = 3 // Goblin (2)
+
+    let results = state.applyDivineWrath(targets: [
+      (slot: .east, dieRoll: 3), // 3 + 1 = 4 > 2 → hit
+      (slot: .west, dieRoll: 3), // 3 + 1 = 4 > 2 → hit
+    ])
+    #expect(results.count == 2)
+    #expect(state.armyPosition[.east] == 4)
+    #expect(state.armyPosition[.west] == 4)
+  }
+
+  @Test
+  func divineWrathMissNoRetreat() {
+    // Miss → no push, no undead bonus.
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.armyType[.east] = .zombie
+    state.armyPosition[.east] = 3
+
+    let results = state.applyDivineWrath(targets: [
+      (slot: .east, dieRoll: 2), // 2 + 1 = 3 ≤ 3 → miss
+    ])
+    #expect(results[0] == .miss(.east))
+    #expect(state.armyPosition[.east] == 3) // unchanged
+  }
+
+  // -- Army type: isUndead --
+
+  @Test
+  func armyTypeUndead() {
+    #expect(!LoD.ArmyType.goblin.isUndead)
+    #expect(!LoD.ArmyType.orc.isUndead)
+    #expect(!LoD.ArmyType.dragon.isUndead)
+    #expect(!LoD.ArmyType.troll.isUndead)
+    #expect(LoD.ArmyType.zombie.isUndead)
+    #expect(LoD.ArmyType.skeletalRider.isUndead)
+    #expect(LoD.ArmyType.wraith.isUndead)
+    #expect(LoD.ArmyType.nightmare.isUndead)
+  }
 }
