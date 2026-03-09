@@ -10,7 +10,8 @@ import SwiftUI
 
 struct BCView: View {
     @State private var model: GameModel<BattleCard.State, BattleCard.Action>
-    private let scene: GameScene<BattleCard.State, BattleCard.Action>
+    @State private var scene: GameScene<BattleCard.State, BattleCard.Action>
+    @State private var cachedActions: [BattleCard.Action] = []
     private let graph: SiteGraph
     private let pieces: [GamePiece]
 
@@ -22,12 +23,13 @@ struct BCView: View {
         let scene = GameScene(
             model: model,
             config: config,
-            size: CGSize(width: 400, height: 400)
+            size: CGSize(width: 250, height: 320)
         )
+        scene.scaleMode = .aspectFit
         let pieces = BCPieceAdapter.pieces()
 
         self._model = State(initialValue: model)
-        self.scene = scene
+        self._scene = State(initialValue: scene)
         self.graph = graph
         self.pieces = pieces
 
@@ -35,26 +37,33 @@ struct BCView: View {
         scene.syncState(pieces: pieces, section: section)
     }
 
-    private func performAction(_ action: BattleCard.Action) {
-        model.perform(action)
-        let section = BCPieceAdapter.section(from: model.state, graph: graph)
-        scene.syncState(pieces: pieces, section: section)
-    }
-
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
             SpriteView(scene: scene)
-                .frame(width: 400, height: 400)
-            Form {
-                ForEach(model.allowedActions, id: \.self) { action in
+                .frame(maxWidth: .infinity)
+                .aspectRatio(250.0 / 320.0, contentMode: .fit)
+            List {
+                ForEach(cachedActions, id: \.self) { action in
                     Button(action.description) {
                         performAction(action)
                     }
                 }
             }
-            .navigationTitle(model.state.name)
-            .navigationBarTitleDisplayMode(.inline)
         }
+        .navigationTitle(model.state.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { refreshActions() }
+    }
+
+    private func performAction(_ action: BattleCard.Action) {
+        model.perform(action)
+        refreshActions()
+        let section = BCPieceAdapter.section(from: model.state, graph: graph)
+        scene.syncState(pieces: pieces, section: section)
+    }
+
+    private func refreshActions() {
+        cachedActions = model.allowedActions
     }
 }
 
