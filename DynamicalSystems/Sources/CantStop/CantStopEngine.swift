@@ -5,9 +5,8 @@
 //  Created by Greg Langmead on 9/5/25.
 //
 
-import ComposableArchitecture
+import Foundation
 
-@Reducer
 struct CantStop {
 
   enum Action: Hashable, Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible {
@@ -62,13 +61,6 @@ struct CantStop {
 
   func allowedActions(state: State) -> [Action] {
     CantStopPages.game().allowedActions(state: state)
-  }
-
-  var body: some Reducer<State, Action> {
-    Reduce { state, action in
-      _ = CantStopPages.game().reduce(into: &state, action: action)
-      return .none
-    }
   }
 
   static func twod6_total(_ dice: Pair<DSix>) -> Column {

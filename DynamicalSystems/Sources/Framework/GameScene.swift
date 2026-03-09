@@ -191,6 +191,11 @@ class GameScene<
             guard let node = pieceNodes[piece.id],
                   let value = section[piece] else { continue }
 
+            // Ensure piece is visible (it may have been faded out when absent from section)
+            if node.alpha < 1 {
+                node.run(SKAction.fadeIn(withDuration: animDuration))
+            }
+
             switch value {
             case .at(let site):
                 if let dest = siteNodes[site] {

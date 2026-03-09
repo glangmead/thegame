@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Gen
 
 extension CantStop: GameComponents {
   ///

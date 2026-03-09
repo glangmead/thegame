@@ -5,14 +5,13 @@
 //  Created by Greg Langmead on 10/21/25.
 //
 
-import ComposableArchitecture
+import Foundation
 
 extension CantStop: StatePredicates {
   typealias StatePredicate = (State) -> Bool // maybe one day a Predicate type
-  
+
   // The pi type of the family, i.e. a type of sections of the family.
   // In that light, members like player: Player are maps from the unit type to Player.
-  @ObservableState
   struct State: HistoryTracking, Equatable, Hashable, Sendable, GameState, CustomStringConvertible, CustomDebugStringConvertible {
     
     typealias Player = CantStop.Player

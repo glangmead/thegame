@@ -5,7 +5,6 @@
 //  Created by Greg Langmead on 10/30/25.
 //
 
-import ComposableArchitecture
 import Foundation
 
 /// Notes from Ludii
@@ -66,11 +65,6 @@ protocol PlayableGame<State, Action> {
   func newState() -> State
   func allowedActions(state: State) -> [Action]
   func reduce(into: inout State, action: Action) -> [Log]
-}
-
-protocol LookaheadReducer<State, Action>: Reducer, PlayableGame {
-  associatedtype Rule
-  func rules() -> [Rule]
 }
 
 struct Log: Hashable, Equatable, Sendable {
