@@ -80,6 +80,14 @@ extension LoD {
     /// Which army slot has the bloody battle marker, if any.
     var bloodyBattleArmy: ArmySlot? = nil
 
+    /// Whether the bloody battle defender cost has already been paid this turn.
+    var bloodyBattlePaidThisTurn: Bool = false
+
+    // MARK: - Per-turn tracking
+
+    /// Whether the Paladin has used their re-roll this turn.
+    var paladinRerollUsed: Bool = false
+
     // MARK: - Victory / defeat
 
     var ended: Bool = false
@@ -257,6 +265,233 @@ extension LoD {
     /// Whether the time marker is on the Final Twilight (victory check).
     var isOnFinalTwilight: Bool {
       timePosition == 15
+    }
+
+    // MARK: - Battle Resolution (rule 8.0)
+
+    enum AttackType: Equatable {
+      case melee
+      case ranged
+    }
+
+    enum AttackResult: Equatable {
+      case hit(ArmySlot, pushedFrom: Int, pushedTo: Int)
+      case miss(ArmySlot)
+      case naturalOneFail(ArmySlot)
+      case targetNotOnBoard
+      case targetNotInMeleeRange
+      case targetNotInRange
+    }
+
+    /// Resolve an attack action against an army.
+    ///
+    /// - Parameters:
+    ///   - slot: Which army to attack.
+    ///   - attackType: `.melee` or `.ranged`.
+    ///   - dieRoll: The natural d6 roll (1–6) before any modifiers.
+    ///   - drm: Total die-roll modifier (hero bonuses, upgrade bonuses, etc.).
+    ///   - isMagical: Whether this is a magical attack (ignores negative DRMs in melee range).
+    /// - Returns: The result of the attack.
+    mutating func resolveAttack(
+      on slot: ArmySlot,
+      attackType: AttackType,
+      dieRoll: Int,
+      drm: Int = 0,
+      isMagical: Bool = false
+    ) -> AttackResult {
+      guard let space = armyPosition[slot] else {
+        return .targetNotOnBoard
+      }
+
+      let track = slot.track
+
+      // Natural 1 always fails (rules_notes: die rolls)
+      if dieRoll == 1 {
+        return .naturalOneFail(slot)
+      }
+
+      // Range validation
+      switch attackType {
+      case .melee:
+        if !track.isMeleeRange(space: space) {
+          return .targetNotInMeleeRange
+        }
+      case .ranged:
+        // Ranged can target any space — but Terror is melee-only (rule 4.2)
+        if track == .terror {
+          return .targetNotInRange
+        }
+      }
+
+      // Apply DRMs
+      var effectiveDRM = drm
+      // Magical attacks in melee range ignore negative DRMs
+      if isMagical && track.isMeleeRange(space: space) {
+        effectiveDRM = max(effectiveDRM, 0)
+      }
+
+      let modifiedRoll = dieRoll + effectiveDRM
+      let strength = armyType[slot]!.strength
+
+      if modifiedRoll > strength {
+        // Hit — push army back one space (away from castle)
+        let newSpace = min(space + 1, track.maxSpace)
+        armyPosition[slot] = newSpace
+        return .hit(slot, pushedFrom: space, pushedTo: newSpace)
+      } else {
+        return .miss(slot)
+      }
+    }
+
+    // MARK: - Heroic Attack (rule 7.0)
+
+    struct HeroicAttackResult: Equatable {
+      let attackResult: AttackResult
+      let heroWounded: Bool
+      let heroKilled: Bool
+    }
+
+    enum HeroicAttackError: Error, Equatable {
+      case heroNotOnTrack
+      case heroOnWrongTrack
+    }
+
+    /// Resolve a heroic attack by a hero against an army (rule 7.3).
+    /// The hero must be assigned to the same track as the target army.
+    /// The hero's combat DRM and attack type are used automatically.
+    /// On natural 1: attack fails AND hero is wounded (unless immune).
+    mutating func resolveHeroicAttack(
+      hero: HeroType,
+      on slot: ArmySlot,
+      dieRoll: Int,
+      additionalDRM: Int = 0
+    ) -> Result<HeroicAttackResult, HeroicAttackError> {
+      // Rule 7.3: hero must be on the same track as the target army
+      guard let location = heroLocation[hero] else {
+        return .failure(.heroNotOnTrack)
+      }
+      guard case .onTrack(let heroTrack) = location, heroTrack == slot.track else {
+        return .failure(.heroOnWrongTrack)
+      }
+
+      let attackType: AttackType = hero.isRangedCombatant ? .ranged : .melee
+      let totalDRM = hero.combatDRM + additionalDRM
+
+      let result = resolveAttack(
+        on: slot,
+        attackType: attackType,
+        dieRoll: dieRoll,
+        drm: totalDRM
+      )
+
+      // Natural 1: wound hero (unless immune)
+      var wounded = false
+      var killed = false
+      if dieRoll == 1 && !hero.isWoundImmuneInCombat {
+        if heroWounded.contains(hero) {
+          // Already wounded → killed
+          heroDead.insert(hero)
+          heroWounded.remove(hero)
+          heroLocation.removeValue(forKey: hero)
+          killed = true
+        } else {
+          heroWounded.insert(hero)
+          wounded = true
+        }
+      }
+
+      return .success(HeroicAttackResult(
+        attackResult: result,
+        heroWounded: wounded,
+        heroKilled: killed
+      ))
+    }
+
+    // MARK: - Hero Wounding
+
+    /// Wound a hero. If already wounded, the hero dies.
+    mutating func woundHero(_ hero: HeroType) {
+      if heroWounded.contains(hero) {
+        heroDead.insert(hero)
+        heroWounded.remove(hero)
+        heroLocation.removeValue(forKey: hero)
+      } else {
+        heroWounded.insert(hero)
+      }
+    }
+
+    // MARK: - Upgrade DRM (rule 6.3)
+
+    /// DRM bonus from an upgrade on a track, for an army at a given space.
+    /// Only applies to armies at space 1.
+    func upgradeDRM(on track: Track, attackType: AttackType) -> Int {
+      guard let upgrade = upgrades[track] else { return 0 }
+      // Upgrades only affect armies at space 1 (per Player Aid)
+      switch upgrade {
+      case .grease, .oil:
+        // +1 DRM to melee or ranged in space 1
+        return 1
+      case .lava:
+        // +2 DRM to melee against army in space 1
+        return attackType == .melee ? 2 : 0
+      case .acid:
+        // Acid gives a free attack, not a DRM bonus
+        return 0
+      }
+    }
+
+    // MARK: - Gate Targeting (rules 4.1.1, 8.1.2)
+
+    /// Which army slot on the Gate track is eligible to be attacked.
+    /// Rule: only the closest (lowest space number). If tied, either can be targeted (player choice, rule 8.1.2).
+    func gateAttackTargets() -> [ArmySlot] {
+      let pos1 = armyPosition[.gate1]
+      let pos2 = armyPosition[.gate2]
+
+      switch (pos1, pos2) {
+      case (nil, nil): return []
+      case (_?, nil): return [.gate1]
+      case (nil, _?): return [.gate2]
+      case (let p1?, let p2?):
+        if p1 < p2 { return [.gate1] }
+        else if p2 < p1 { return [.gate2] }
+        else { return [.gate1, .gate2] } // tied — player chooses
+      }
+    }
+
+    // MARK: - Bloody Battle (Player Aid: Markers)
+
+    /// Check whether an attack against `slot` triggers the bloody battle
+    /// defender cost. Returns true if a defender must be lost.
+    /// Automatically marks the cost as paid for this turn.
+    mutating func checkBloodyBattle(attacking slot: ArmySlot) -> Bool {
+      guard bloodyBattleArmy == slot, !bloodyBattlePaidThisTurn else {
+        return false
+      }
+      bloodyBattlePaidThisTurn = true
+      return true
+    }
+
+    // MARK: - Paladin Re-roll (Player Aid: Paladin — holy)
+
+    /// Whether the Paladin can use their once-per-turn re-roll.
+    var canPaladinReroll: Bool {
+      !paladinRerollUsed
+        && heroLocation[.paladin] != nil
+        && !heroDead.contains(.paladin)
+    }
+
+    /// Mark the Paladin re-roll as used for this turn.
+    mutating func usePaladinReroll() {
+      paladinRerollUsed = true
+    }
+
+    // MARK: - Turn Reset (rule 3.0 step 5 — housekeeping)
+
+    /// Reset per-turn tracking at the start of a new turn.
+    mutating func resetTurnTracking() {
+      bloodyBattlePaidThisTurn = false
+      paladinRerollUsed = false
     }
   }
 

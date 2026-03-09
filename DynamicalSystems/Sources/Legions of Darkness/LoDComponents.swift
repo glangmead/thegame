@@ -39,6 +39,18 @@ struct LoDComponents: GameComponents {
       }
     }
 
+    /// Whether a given space is in melee range (red-tinted on board).
+    /// Melee attacks can only target armies on melee-range spaces.
+    /// Ranged attacks can target any space.
+    func isMeleeRange(space: Int) -> Bool {
+      switch self {
+      case .east, .west: return space >= 1 && space <= 3
+      case .gate: return space >= 1 && space <= 3
+      case .terror: return true // all spaces (rule 4.2)
+      case .sky: return space == 1 // only space 1 (rule 4.3)
+      }
+    }
+
     static var walls: [Track] { [.east, .west, .gate] }
   }
 
@@ -82,6 +94,31 @@ struct LoDComponents: GameComponents {
 
   enum HeroType: String, CaseIterable, Equatable, Hashable {
     case warrior, wizard, ranger, rogue, paladin, cleric
+
+    /// DRM applied during heroic attacks.
+    var combatDRM: Int {
+      switch self {
+      case .warrior: return 2
+      default: return 1
+      }
+    }
+
+    /// Whether this hero makes ranged (vs melee) heroic attacks.
+    var isRangedCombatant: Bool {
+      switch self {
+      case .wizard, .ranger, .cleric: return true
+      case .warrior, .rogue, .paladin: return false
+      }
+    }
+
+    /// Whether this hero is immune to wounding during combat.
+    /// Warrior (armored) and Ranger (agile) per Player Aid.
+    var isWoundImmuneInCombat: Bool {
+      switch self {
+      case .warrior, .ranger: return true
+      default: return false
+      }
+    }
   }
 
   enum HeroLocation: Equatable, Hashable {
