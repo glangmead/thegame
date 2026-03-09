@@ -486,6 +486,154 @@ extension LoD {
       paladinRerollUsed = true
     }
 
+    // MARK: - Actions (rule 6.0)
+
+    // -- Memorize (rule 6.6) --
+
+    /// Face-down arcane spells available to memorize.
+    var faceDownArcaneSpells: [SpellType] {
+      SpellType.arcaneSpells.filter { spellStatus[$0] == .faceDown }
+    }
+
+    /// Memorize action: reveal a face-down arcane spell (mark as known).
+    /// `spell` is the randomly-selected spell (injected for deterministic testing).
+    mutating func memorize(spell: SpellType) -> Bool {
+      guard spell.isArcane, spellStatus[spell] == .faceDown else {
+        return false
+      }
+      spellStatus[spell] = .known
+      return true
+    }
+
+    // -- Pray (rule 6.7) --
+
+    /// Face-down divine spells available to pray for.
+    var faceDownDivineSpells: [SpellType] {
+      SpellType.divineSpells.filter { spellStatus[$0] == .faceDown }
+    }
+
+    /// Pray action: reveal a face-down divine spell (mark as known).
+    /// `spell` is the randomly-selected spell (injected for deterministic testing).
+    mutating func pray(spell: SpellType) -> Bool {
+      guard spell.isDivine, spellStatus[spell] == .faceDown else {
+        return false
+      }
+      spellStatus[spell] = .known
+      return true
+    }
+
+    // -- Chant (rule 6.5) --
+
+    /// Chant action: roll > 3 (with priest DRM) to gain +1 divine energy.
+    /// Natural 1 always fails.
+    mutating func chant(dieRoll: Int, drm: Int = 0) -> Bool {
+      if dieRoll == 1 { return false }
+      let modified = dieRoll + drm
+      if modified > 3 {
+        divineEnergy = min(divineEnergy + 1, 6)
+        return true
+      }
+      return false
+    }
+
+    // -- Build (rule 6.3) --
+
+    enum BuildResult: Equatable {
+      case success(UpgradeType, Track)
+      case rollFailed
+      case trackInvalid
+    }
+
+    /// Build action: roll > build number to place upgrade on a valid wall track.
+    /// Track must be a wall, unbreached, and have no existing upgrade.
+    /// Natural 1 always fails.
+    mutating func build(
+      upgrade: UpgradeType,
+      on track: Track,
+      dieRoll: Int,
+      drm: Int = 0
+    ) -> BuildResult {
+      guard track.isWall, !breaches.contains(track), upgrades[track] == nil else {
+        return .trackInvalid
+      }
+      if dieRoll == 1 { return .rollFailed }
+      let modified = dieRoll + drm
+      if modified > upgrade.buildNumber {
+        upgrades[track] = upgrade
+        return .success(upgrade, track)
+      }
+      return .rollFailed
+    }
+
+    // -- Cast Spell (rule 6.4) --
+
+    enum CastSpellResult: Equatable {
+      case success(SpellType, heroic: Bool)
+      case spellNotKnown
+      case insufficientEnergy
+      case heroicRequiresHero
+    }
+
+    /// Known spells available to cast.
+    var knownSpells: [SpellType] {
+      SpellType.allCases.filter { spellStatus[$0] == .known }
+    }
+
+    /// Whether a spell can be heroically cast.
+    /// Arcane heroic cast requires Wizard alive; divine requires Cleric alive.
+    func canHeroicCast(_ spell: SpellType) -> Bool {
+      if spell.isArcane {
+        return heroLocation[.wizard] != nil && !heroDead.contains(.wizard)
+      } else {
+        return heroLocation[.cleric] != nil && !heroDead.contains(.cleric)
+      }
+    }
+
+    /// Cast a spell: deduct energy, mark as cast.
+    /// If `heroic` is true, the enhanced effect applies (requires Wizard for arcane,
+    /// Cleric for divine). The spell effect itself is handled separately.
+    mutating func castSpell(_ spell: SpellType, heroic: Bool = false) -> CastSpellResult {
+      guard spellStatus[spell] == .known else {
+        return .spellNotKnown
+      }
+      if heroic && !canHeroicCast(spell) {
+        return .heroicRequiresHero
+      }
+      let cost = spell.energyCost
+      if spell.isArcane {
+        guard arcaneEnergy >= cost else { return .insufficientEnergy }
+        arcaneEnergy -= cost
+      } else {
+        guard divineEnergy >= cost else { return .insufficientEnergy }
+        divineEnergy -= cost
+      }
+      spellStatus[spell] = .cast
+      return .success(spell, heroic: heroic)
+    }
+
+    // MARK: - Heroic Acts (rule 7.0)
+
+    // -- Move Hero (rule 7.1) --
+
+    /// Move a hero to a track or back to reserves.
+    mutating func moveHero(_ hero: HeroType, to location: HeroLocation) {
+      heroLocation[hero] = location
+    }
+
+    // -- Rally (rule 7.4) --
+
+    /// Rally heroic act: roll > 4 to raise morale one step.
+    /// Natural 1 always fails.
+    mutating func rally(dieRoll: Int, drm: Int = 0) -> Bool {
+      if dieRoll == 1 { return false }
+      let modified = dieRoll + drm
+      if modified > 4 {
+        morale = morale.raised()
+        return true
+      }
+      return false
+    }
+
     // MARK: - Turn Reset (rule 3.0 step 5 — housekeeping)
 
     /// Reset per-turn tracking at the start of a new turn.
