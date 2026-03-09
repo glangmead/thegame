@@ -44,6 +44,7 @@ struct Site: Codable, Equatable {
     var position: CGPoint
     var adjacency: [Direction: SiteID] = [:]
     var tags: Set<String> = []
+    var label: String?
 }
 
 struct SiteGraph: Codable, Equatable {

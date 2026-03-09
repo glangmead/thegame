@@ -14,6 +14,7 @@ struct GamePiece: Hashable, Codable, Equatable, Identifiable {
     let id: Int
     var kind: PieceKind
     var owner: PlayerID?
+    var label: String?
 
     enum PieceKind: Codable, Equatable, Hashable {
         case token

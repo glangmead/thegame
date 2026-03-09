@@ -86,6 +86,7 @@ class GameScene<
         let strokeColor = colorFromString(style?.stroke) ?? .black
         let fillColor = colorFromString(style?.fill) ?? .clear
         let lineWidth = CGFloat(style?.lineWidth ?? 1)
+        let fontSize = cellSize * 0.35
 
         for siteID in model.graph.sites.keys.sorted(by: { $0.raw < $1.raw }) {
             guard let site = model.graph.sites[siteID] else { continue }
@@ -100,6 +101,18 @@ class GameScene<
             node.name = siteID.description
             parent.addChild(node)
             siteNodes[siteID] = node
+
+            if let label = site.label {
+                let labelNode = SKLabelNode(text: label)
+                labelNode.fontName = "Helvetica"
+                labelNode.fontSize = fontSize
+                labelNode.fontColor = .darkGray
+                labelNode.horizontalAlignmentMode = .center
+                labelNode.verticalAlignmentMode = .top
+                labelNode.position = CGPoint(x: cellSize / 2, y: -2)
+                labelNode.name = "siteLabel_\(siteID.raw)"
+                node.addChild(labelNode)
+            }
         }
     }
 
@@ -113,7 +126,7 @@ class GameScene<
             node.name = "piece_\(piece.id)"
             return node
         case .die:
-            let node = makeDieNode()
+            let node = makeDieNode(label: piece.label, owner: piece.owner)
             node.name = "die_\(piece.id)"
             return node
         case .card:
@@ -128,22 +141,34 @@ class GameScene<
         }
     }
 
-    private func makeDieNode() -> SKNode {
+    private func makeDieNode(label pieceLabel: String?, owner: PlayerID?) -> SKNode {
         let size = cellSize * 0.8
         let node = SKShapeNode(
             rect: CGRect(x: -size / 2, y: -size / 2, width: size, height: size),
             cornerRadius: size * 0.15
         )
-        node.fillColor = .lightGray
+        node.fillColor = colorForOwner(owner)
         node.strokeColor = .black
-        let label = SKLabelNode(text: "")
-        label.name = "dieLabel"
-        label.fontColor = .black
-        label.fontSize = size * 0.5
-        label.fontName = "Helvetica-Bold"
-        label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        node.addChild(label)
+        let faceLabel = SKLabelNode(text: "")
+        faceLabel.name = "dieLabel"
+        faceLabel.fontColor = .white
+        faceLabel.fontSize = size * 0.45
+        faceLabel.fontName = "Helvetica-Bold"
+        faceLabel.verticalAlignmentMode = .center
+        faceLabel.horizontalAlignmentMode = .center
+        faceLabel.position = CGPoint(x: 0, y: size * 0.05)
+        node.addChild(faceLabel)
+        if let pieceLabel {
+            let nameLabel = SKLabelNode(text: pieceLabel)
+            nameLabel.name = "pieceLabel"
+            nameLabel.fontColor = .white
+            nameLabel.fontSize = size * 0.28
+            nameLabel.fontName = "Helvetica"
+            nameLabel.verticalAlignmentMode = .top
+            nameLabel.horizontalAlignmentMode = .center
+            nameLabel.position = CGPoint(x: 0, y: -size * 0.15)
+            node.addChild(nameLabel)
+        }
         return node
     }
 
@@ -177,8 +202,15 @@ class GameScene<
     // Synchronize all piece nodes with current game state.
     // Iterates the full section unconditionally, moving/updating all pieces via SKAction.
     // swiftlint:disable:next cyclomatic_complexity
-    func syncState(pieces: [GamePiece], section: GameSection) {
+    func syncState(pieces: [GamePiece], section: GameSection, siteHighlights: [SiteID: SKColor] = [:]) {
         let animDuration: TimeInterval = 0.2
+
+        // Update site fill colors
+        for (siteID, node) in siteNodes {
+            if let shapeNode = node as? SKShapeNode {
+                shapeNode.fillColor = siteHighlights[siteID] ?? .clear
+            }
+        }
 
         for piece in pieces {
             // Ensure piece node exists

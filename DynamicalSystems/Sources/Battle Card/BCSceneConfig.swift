@@ -8,13 +8,13 @@
 import Foundation
 
 struct BCSceneConfig {
-    static func config() -> SceneConfig {
-        .container("battlecard", [
-            .board(
-                .columnar(heights: [4, 5, 4]),
-                style: StyleConfig(stroke: "black", lineWidth: 1)
-            ),
-            .die(.labeledSquare)
-        ])
-    }
+  static func config() -> SceneConfig {
+    .container("battlecard", [
+      .board(
+        .columnar(heights: [4, 5, 4]),
+        style: StyleConfig(stroke: "black", lineWidth: 1)
+      ),
+      .die(.labeledSquare)
+    ])
+  }
 }

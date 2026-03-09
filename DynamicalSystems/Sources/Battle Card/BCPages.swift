@@ -126,7 +126,9 @@ enum BCPages {
         var logs = [Log]()
         if state.weather == .fog {
           logs.append(Log(msg: "Rolling to see if the fog clears:"))
-          if DSix.greater(DSix(rawValue: state.turnNumber)!, DSix.roll()) {
+          let roll = DSix.roll()
+          logs.append(Log(msg: "Rolled \(roll.rawValue) vs turn \(state.turnNumber)."))
+          if roll.rawValue <= state.turnNumber {
             logs.append(Log(msg: "🌤️ Yes, weather clear!"))
             state.weather = .clear
             state.weatherCleared = true
@@ -146,7 +148,7 @@ enum BCPages {
         GameRule(
           condition: { $0.phase == .reinforce1st },
           actions: { state in
-            if state.weatherCleared {
+            if state.weatherCleared && !state.reinforced1st {
               [.perform1stAirborneReinforcement]
             } else {
               [.skipReinforce1st]
@@ -158,6 +160,7 @@ enum BCPages {
         switch action {
         case .perform1stAirborneReinforcement:
           state.strength[.allied1st] = DSix.sum(DSix.one, state.strength[.allied1st]!)
+          state.reinforced1st = true
           return ([Log(msg: "Dropping reinforcements for 1st.")], [.advanceTurn, .setPhase(.battle)])
         case .skipReinforce1st:
           return ([Log(msg: "Unable to reinforce 1st.")], [.advanceTurn, .setPhase(.battle)])

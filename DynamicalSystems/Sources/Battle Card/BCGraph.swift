@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreGraphics
+import SpriteKit
 
 struct BCGraph {
     // City names
@@ -14,9 +15,6 @@ struct BCGraph {
     static let roadCities = ["Belgium", "Eindhoven", "Grave", "Nijmegen", "Arnhem"]
     static let germanCities = ["Eindhoven", "Grave", "Nijmegen", "Arnhem"]
 
-    // Off-board site tags
-    static let removed = "removed"
-    static let weatherTrack = "weather"
 
     static func board(cellSize: CGFloat = 60) -> SiteGraph {
         var graph = SiteGraph()
@@ -25,8 +23,9 @@ struct BCGraph {
         var roadSites: [SiteID] = []
         for (cityIndex, city) in roadCities.enumerated() {
             let pos = CGPoint(x: 1 * cellSize, y: CGFloat(cityIndex) * cellSize)
-            let id = graph.addSite(position: pos, tags: ["road", city.lowercased()])
-            roadSites.append(id)
+            let siteID = graph.addSite(position: pos, tags: ["road", city.lowercased()])
+            graph.sites[siteID]?.label = city
+            roadSites.append(siteID)
         }
         connectTrack(&graph, sites: roadSites)
         graph.tracks["road"] = roadSites
@@ -65,11 +64,6 @@ struct BCGraph {
             graph.sites[germanSites[cityIndex]]?.adjacency[.custom("road")] = roadSites[roadIndex]
         }
 
-        // Off-board sites
-        _ = graph.addSite(position: CGPoint(x: -cellSize, y: 0), tags: [removed])
-        _ = graph.addSite(position: CGPoint(x: 3 * cellSize, y: 0), tags: [weatherTrack, "fog"])
-        _ = graph.addSite(position: CGPoint(x: 3 * cellSize, y: cellSize), tags: [weatherTrack, "clear"])
-
         return graph
     }
 
@@ -96,7 +90,7 @@ struct BCPieceAdapter {
             } else {
                 owner = PlayerID(1)  // germans
             }
-            return GamePiece(id: piece.rawValue, kind: .die(sides: 6), owner: owner)
+            return GamePiece(id: piece.rawValue, kind: .die(sides: 6), owner: owner, label: piece.shortName)
         }
     }
 
@@ -113,8 +107,7 @@ struct BCPieceAdapter {
 
             switch pos {
             case .offBoard:
-                let removedSite = graph.sites.values.first { $0.tags.contains(BCGraph.removed) }?.id
-                section[piece] = .dieShowing(face: face, at: removedSite)
+                continue
 
             case .onTrack(let cityIndex):
                 let siteID: SiteID?
@@ -135,6 +128,22 @@ struct BCPieceAdapter {
         }
 
         return section
+    }
+
+    /// Map control state to site highlight colors for the road track.
+    static func siteHighlights(from state: BattleCard.State, graph: SiteGraph) -> [SiteID: SKColor] {
+        var highlights: [SiteID: SKColor] = [:]
+        guard let roadTrack = graph.tracks["road"] else { return highlights }
+        for (trackPos, control) in state.control {
+            guard let siteID = roadTrack[safe: trackPos] else { continue }
+            switch control {
+            case .allies:
+                highlights[siteID] = SKColor.blue.withAlphaComponent(0.2)
+            case .germans:
+                highlights[siteID] = SKColor.red.withAlphaComponent(0.2)
+            }
+        }
+        return highlights
     }
 }
 

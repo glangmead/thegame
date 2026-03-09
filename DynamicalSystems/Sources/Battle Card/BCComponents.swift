@@ -146,6 +146,19 @@ struct BattleCardComponents: GameComponents {
         return "1st"
       }
     }
+
+    var shortName: String {
+      switch self {
+      case .thirtycorps: "XXX"
+      case .germanEindhoven: "Edh"
+      case .germanGrave: "Grv"
+      case .germanNijmegen: "Njm"
+      case .germanArnhem: "Arn"
+      case .allied101st: "101"
+      case .allied82nd: "82"
+      case .allied1st: "1st"
+      }
+    }
   }
   
   enum Die: Equatable, Hashable {

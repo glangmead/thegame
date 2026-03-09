@@ -28,7 +28,8 @@ class GameModel<
         game.allowedActions(state: state)
     }
 
-    func perform(_ action: Action) {
-        _ = game.reduce(into: &state, action: action)
+    @discardableResult
+    func perform(_ action: Action) -> [Log] {
+        game.reduce(into: &state, action: action)
     }
 }

@@ -29,6 +29,7 @@ extension BattleCard: StatePredicates {
     var phase: Phase = .setup
     var weather: Weather = .fog
     var weatherCleared: Bool = false
+    var reinforced1st: Bool = false
     var ended: Bool = false
     var endedInVictoryFor = [Player]()
     var endedInDefeatFor = [Player]()
