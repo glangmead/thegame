@@ -85,7 +85,7 @@ extension LoD {
   /// All possible actions in the composed game.
   /// Die rolls and random selections are included as parameters so that
   /// the history log is fully deterministic and replayable.
-  enum Action: Hashable {
+  enum Action: Hashable, CustomStringConvertible {
 
     // -- Card phase --
     case drawCard
@@ -127,5 +127,42 @@ extension LoD {
     // -- Victory / Defeat --
     case claimVictory
     case declareLoss
+
+    var description: String {
+      switch self {
+      case .drawCard: return "Draw Card"
+      case .advanceArmies: return "Advance Armies"
+      case .skipEvent: return "Skip Event"
+      case .resolveEvent(let e):
+        return e.dieRoll > 0 ? "Resolve Event (roll \(e.dieRoll))" : "Resolve Event"
+      case .meleeAttack(let slot, let roll, _, _):
+        return "Melee: \(slot.rawValue.capitalized) (roll \(roll))"
+      case .rangedAttack(let slot, let roll, _, _):
+        return "Ranged: \(slot.rawValue.capitalized) (roll \(roll))"
+      case .buildUpgrade(let upgrade, let track, let roll):
+        return "Build \(upgrade) on \(track.rawValue.capitalized) (roll \(roll))"
+      case .buildBarricade(let track, let roll):
+        return "Barricade \(track.rawValue.capitalized) (roll \(roll))"
+      case .chant(let roll): return "Chant (roll \(roll))"
+      case .memorize(let spell): return "Memorize \(spell)"
+      case .pray(let spell): return "Pray \(spell)"
+      case .questAction(let roll, _): return "Quest (roll \(roll))"
+      case .castSpell(let spell, let heroic, _):
+        return heroic ? "Heroic Cast \(spell)" : "Cast \(spell)"
+      case .rogueMove(let loc): return "Rogue Move → \(loc)"
+      case .passActions: return "Pass Actions"
+      case .moveHero(let hero, let loc): return "Move \(hero.rawValue.capitalized) → \(loc)"
+      case .heroicAttack(let hero, let slot, let roll):
+        return "\(hero.rawValue.capitalized) Attack \(slot.rawValue.capitalized) (roll \(roll))"
+      case .rally(let roll): return "Rally (roll \(roll))"
+      case .questHeroic(let roll, _): return "Heroic Quest (roll \(roll))"
+      case .passHeroics: return "Pass Heroics"
+      case .paladinReroll(let roll): return "Paladin Re-roll (\(roll))"
+      case .declineReroll: return "Decline Re-roll"
+      case .performHousekeeping: return "End Turn"
+      case .claimVictory: return "Victory!"
+      case .declareLoss: return "Defeat"
+      }
+    }
   }
 }

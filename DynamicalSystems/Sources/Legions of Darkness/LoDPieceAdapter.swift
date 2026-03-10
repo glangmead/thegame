@@ -38,6 +38,15 @@ struct LoDPieceAdapter {
 
   // MARK: - Pieces
 
+  private static let armyLabels: [LoD.ArmySlot: String] = [
+    .east: "Gob", .west: "Orc", .gate1: "G1", .gate2: "G2", .sky: "Sky", .terror: "Ter"
+  ]
+
+  private static let heroLabels: [LoD.HeroType: String] = [
+    .warrior: "War", .wizard: "Wiz", .ranger: "Ran",
+    .rogue: "Rog", .paladin: "Pal", .cleric: "Clr"
+  ]
+
   static func pieces() -> [GamePiece] {
     var result: [GamePiece] = []
 
@@ -47,7 +56,7 @@ struct LoDPieceAdapter {
         id: armyBaseID + i,
         kind: .token,
         owner: PlayerID(1),  // Enemy
-        label: "army:\(slot.rawValue)"
+        label: armyLabels[slot] ?? slot.rawValue
       ))
     }
 
@@ -57,20 +66,20 @@ struct LoDPieceAdapter {
         id: heroBaseID + i,
         kind: .token,
         owner: PlayerID(0),  // Player
-        label: "hero:\(hero.rawValue)"
+        label: heroLabels[hero] ?? hero.rawValue
       ))
     }
 
     // Markers
-    result.append(GamePiece(id: moraleID, kind: .token, label: "morale"))
-    result.append(GamePiece(id: timeID, kind: .token, label: "time"))
-    result.append(GamePiece(id: maaMarkerID, kind: .token, label: "def:menAtArms"))
-    result.append(GamePiece(id: archerMarkerID, kind: .token, label: "def:archers"))
-    result.append(GamePiece(id: priestMarkerID, kind: .token, label: "def:priests"))
-    result.append(GamePiece(id: arcaneMarkerID, kind: .token, label: "energy:arcane"))
-    result.append(GamePiece(id: divineMarkerID, kind: .token, label: "energy:divine"))
-    result.append(GamePiece(id: bloodyBattleID, kind: .token, owner: PlayerID(1), label: "bloody"))
-    result.append(GamePiece(id: slowMarkerID, kind: .token, owner: PlayerID(1), label: "slow"))
+    result.append(GamePiece(id: moraleID, kind: .token, label: "Mor"))
+    result.append(GamePiece(id: timeID, kind: .token, label: "T"))
+    result.append(GamePiece(id: maaMarkerID, kind: .token, label: "MaA"))
+    result.append(GamePiece(id: archerMarkerID, kind: .token, label: "Arc"))
+    result.append(GamePiece(id: priestMarkerID, kind: .token, label: "Pri"))
+    result.append(GamePiece(id: arcaneMarkerID, kind: .token, label: "Ark"))
+    result.append(GamePiece(id: divineMarkerID, kind: .token, label: "Div"))
+    result.append(GamePiece(id: bloodyBattleID, kind: .token, owner: PlayerID(1), label: "Bld"))
+    result.append(GamePiece(id: slowMarkerID, kind: .token, owner: PlayerID(1), label: "Slw"))
 
     // Current card
     result.append(GamePiece(id: currentCardID, kind: .card, label: "card"))

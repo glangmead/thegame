@@ -9,7 +9,26 @@ import Foundation
 
 extension LoD {
 
-  struct State: Equatable, Sendable, HistoryTracking {
+  struct State: Equatable, Sendable, HistoryTracking, GameState, CustomStringConvertible {
+
+    // MARK: - GameComponents typealiases
+
+    typealias Player        = LoDComponents.Player
+    typealias Phase         = LoDComponents.Phase
+    typealias Piece         = LoDComponents.Piece
+    typealias Position      = LoDComponents.Position
+    typealias PiecePosition = LoDComponents.PiecePosition
+
+    // MARK: - GameState conformance
+
+    var name: String { "Legions of Darkness" }
+    var player: Player = .solo
+    var players: [Player] = [.solo]
+    var endedInVictoryFor: [Player] = []
+    var endedInDefeatFor: [Player] = []
+    var position: [Piece: Position] = [:]
+
+    var description: String { "LoD Turn \(timePosition) (\(phase.rawValue))" }
 
     // MARK: - Turn structure
 

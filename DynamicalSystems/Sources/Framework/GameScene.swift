@@ -109,7 +109,7 @@ class GameScene<
                 labelNode.fontColor = .darkGray
                 labelNode.horizontalAlignmentMode = .center
                 labelNode.verticalAlignmentMode = .top
-                labelNode.position = CGPoint(x: cellSize / 2, y: -2)
+                labelNode.position = CGPoint(x: cellSize / 2, y: cellSize - 2)
                 labelNode.name = "siteLabel_\(siteID.raw)"
                 node.addChild(labelNode)
             }
@@ -121,9 +121,20 @@ class GameScene<
     func makePieceNode(for piece: GamePiece) -> SKNode {
         switch piece.kind {
         case .token:
-            let node = SKShapeNode(circleOfRadius: cellSize / 2.5)
+            let radius = cellSize / 2.5
+            let node = SKShapeNode(circleOfRadius: radius)
             node.fillColor = colorForOwner(piece.owner)
             node.name = "piece_\(piece.id)"
+            if let label = piece.label {
+                let labelNode = SKLabelNode(text: label)
+                labelNode.fontName = "Helvetica-Bold"
+                labelNode.fontSize = radius * 0.8
+                labelNode.fontColor = .white
+                labelNode.horizontalAlignmentMode = .center
+                labelNode.verticalAlignmentMode = .center
+                labelNode.name = "pieceLabel"
+                node.addChild(labelNode)
+            }
             return node
         case .die:
             let node = makeDieNode(label: piece.label, owner: piece.owner)
@@ -212,6 +223,21 @@ class GameScene<
             }
         }
 
+        // Build a map of site → piece IDs to compute stacking offsets.
+        var sitePieces: [SiteID: [Int]] = [:]
+        for piece in pieces {
+            guard let value = section[piece] else { continue }
+            let site: SiteID?
+            switch value {
+            case .at(let s): site = s
+            case .dieShowing(_, let s): site = s
+            case .cardState(_, _, let s): site = s
+            }
+            if let site {
+                sitePieces[site, default: []].append(piece.id)
+            }
+        }
+
         for piece in pieces {
             // Ensure piece node exists
             if pieceNodes[piece.id] == nil {
@@ -231,9 +257,12 @@ class GameScene<
             switch value {
             case .at(let site):
                 if let dest = siteNodes[site] {
+                    let offset = stackingOffset(
+                        pieceID: piece.id, at: site, sitePieces: sitePieces
+                    )
                     let pos = CGPoint(
-                        x: dest.position.x + cellSize / 2,
-                        y: dest.position.y + cellSize / 2
+                        x: dest.position.x + cellSize / 2 + offset.x,
+                        y: dest.position.y + cellSize / 2 + offset.y
                     )
                     node.run(SKAction.move(to: pos, duration: animDuration))
                 }
@@ -271,5 +300,22 @@ class GameScene<
                 node.run(SKAction.fadeOut(withDuration: animDuration))
             }
         }
+    }
+
+    /// Compute a small offset for pieces sharing the same site so they fan out
+    /// instead of stacking directly on top of each other.
+    private func stackingOffset(
+        pieceID: Int, at site: SiteID, sitePieces: [SiteID: [Int]]
+    ) -> CGPoint {
+        guard let group = sitePieces[site], group.count > 1,
+              let index = group.firstIndex(of: pieceID) else {
+            return .zero
+        }
+        let count = group.count
+        let spacing = cellSize * 0.3
+        // Center the group: offsets are -spacing, 0, +spacing for 3 items, etc.
+        let totalWidth = spacing * CGFloat(count - 1)
+        let xOffset = CGFloat(index) * spacing - totalWidth / 2
+        return CGPoint(x: xOffset, y: 0)
     }
 }

@@ -22,6 +22,9 @@ struct DynamicalSystemsApp: App {
                     NavigationLink("Battle Card: Malayan Campaign") {
                         MCView()
                     }
+                    NavigationLink("Legions of Darkness") {
+                        LoDView()
+                    }
                 }
                 .navigationTitle("Games")
             }
