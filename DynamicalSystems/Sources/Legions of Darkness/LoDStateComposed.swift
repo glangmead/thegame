@@ -148,8 +148,8 @@ extension LoD.State {
       }
 
     case .inspire:
-      applyInspire()
-      logs.append(Log(msg: "Inspire: morale raised, +1 DRM all rolls"))
+      applyInspire(heroic: heroic)
+      logs.append(Log(msg: "Inspire\(heroic ? " (heroic)" : ""): morale=\(morale), +1 DRM all rolls"))
 
     case .raiseDead:
       applyRaiseDead(gainDefenders: params.defenders, returnHero: params.returnHero)
@@ -183,6 +183,7 @@ extension LoD.State {
   /// Reset per-turn tracking at the start of a new turn.
   mutating func resetTurnTracking() {
     bloodyBattlePaidThisTurn = false
+    acidUsedThisTurn = false
     paladinRerollUsed = false
     pendingDieRollAction = nil
     phaseBeforePaladinReact = nil
@@ -257,12 +258,18 @@ extension LoD.State {
     return drm
   }
 
-  /// Total DRM for a rally heroic action from card DRMs and Inspire.
+  /// Total DRM for a rally heroic action from card DRMs, Paladin bonus, and Inspire.
   func totalRallyDRM() -> Int {
     var drm = 0
     if let card = currentCard {
       for cardDRM in card.heroicDRMs where cardDRM.action == .rally {
         drm += cardDRM.value
+      }
+    }
+    // Paladin on a wall track gives +1 to rally (rule 10.2)
+    if let paladinLoc = heroLocation[.paladin], !heroDead.contains(.paladin) {
+      if case .onTrack(let track) = paladinLoc, track.isWall {
+        drm += 1
       }
     }
     if inspireDRMActive { drm += 1 }
@@ -310,7 +317,7 @@ extension LoD.State {
   /// Whether the given action is a die-roll action eligible for Paladin re-roll.
   static func isDieRollAction(_ action: LoD.Action) -> Bool {
     switch action {
-    case .meleeAttack, .rangedAttack, .buildUpgrade, .chant, .questAction:
+    case .meleeAttack, .rangedAttack, .buildUpgrade, .buildBarricade, .chant, .questAction:
       return true
     case .heroicAttack, .rally, .questHeroic:
       return true
@@ -328,6 +335,8 @@ extension LoD.State {
       return .rangedAttack(slot, dieRoll: newDieRoll, bloodyBattleDefender: bb, useMagicBow: mb)
     case .buildUpgrade(let upgrade, let track, _):
       return .buildUpgrade(upgrade, track, dieRoll: newDieRoll)
+    case .buildBarricade(let track, _):
+      return .buildBarricade(track, dieRoll: newDieRoll)
     case .chant:
       return .chant(dieRoll: newDieRoll)
     case .questAction(_, let reward):
@@ -379,6 +388,11 @@ extension LoD.State {
       let drm = totalBuildDRM()
       let result = build(upgrade: upgrade, on: track, dieRoll: dieRoll, drm: drm)
       logs.append(Log(msg: "Build \(upgrade) on \(track): \(result)"))
+
+    case .buildBarricade(let track, let dieRoll):
+      let drm = totalBuildDRM()
+      let result = buildBarricade(on: track, dieRoll: dieRoll, drm: drm)
+      logs.append(Log(msg: "Build barricade on \(track): \(result)"))
 
     case .chant(let dieRoll):
       let drm = totalChantDRM()
@@ -435,7 +449,7 @@ extension LoD.State {
   /// The phase an action belongs to (for returning after Paladin re-roll).
   static func phaseForDieRollAction(_ action: LoD.Action) -> LoD.Phase {
     switch action {
-    case .meleeAttack, .rangedAttack, .buildUpgrade, .chant, .questAction:
+    case .meleeAttack, .rangedAttack, .buildUpgrade, .buildBarricade, .chant, .questAction:
       return .action
     case .heroicAttack, .rally, .questHeroic:
       return .heroic

@@ -106,16 +106,18 @@ extension LoD.State {
   }
 
   /// Attempt the quest on the current card.
-  /// Actions grant +1 DRM, heroics grant +2 DRM. Ranger adds +1 DRM to quests.
-  /// Natural 1 always fails. Must roll > quest target.
+  /// Each action point spent gives +1 DRM; each heroic point gives +2 DRM.
+  /// Ranger adds +1 DRM to quests. Natural 1 always fails. Must roll > quest target.
   mutating func attemptQuest(
     isHeroic: Bool,
     dieRoll: Int,
-    additionalDRM: Int = 0
+    additionalDRM: Int = 0,
+    pointsSpent: Int = 1
   ) -> QuestResult {
     guard let quest = currentCard?.quest else { return .noQuest }
     if dieRoll == 1 { return .naturalOneFail }
-    let baseDRM = isHeroic ? 2 : 1
+    let perPointDRM = isHeroic ? 2 : 1
+    let baseDRM = perPointDRM * pointsSpent
     let modified = dieRoll + baseDRM + additionalDRM
     if modified > quest.target {
       return .success

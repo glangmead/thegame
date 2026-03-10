@@ -21,6 +21,7 @@ extension LoD.State {
     case defenderLoss
     case notOnBoard
     case slowMarkerRemoved(LoD.ArmySlot)
+    case greaseHeld(LoD.Track)
   }
 
   /// Advance a single army slot one space toward the castle (space number decreases).
@@ -61,6 +62,16 @@ extension LoD.State {
           return .barricadeHeld(track)
         }
       } else if !breaches.contains(track) {
+        // Grease check (rule 6.3): army rolls die, if > 2 stays on space 1
+        if upgrades[track] == .grease {
+          upgrades.removeValue(forKey: track)  // Grease is consumed
+          let roll = dieRoll ?? 3  // Default pass if no roll provided
+          if roll > 2 {
+            // Grease held — army stays on space 1
+            return .greaseHeld(track)
+          }
+          // Grease failed — fall through to create breach
+        }
         // First time: create breach, remove any upgrade (4.1.2)
         upgrades.removeValue(forKey: track)
         breaches.insert(track)
@@ -321,7 +332,10 @@ extension LoD.State {
     guard let upgrade = upgrades[track] else { return 0 }
     // Upgrades only affect armies at space 1 (per Player Aid)
     switch upgrade {
-    case .grease, .oil:
+    case .grease:
+      // Grease is a breach-prevention mechanic, not a DRM
+      return 0
+    case .oil:
       // +1 DRM to melee or ranged in space 1
       return 1
     case .lava:

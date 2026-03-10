@@ -76,7 +76,8 @@ extension LoD.State {
     dieRoll: Int,
     drm: Int = 0
   ) -> BuildResult {
-    guard track.isWall, !breaches.contains(track), upgrades[track] == nil else {
+    guard track.isWall, !breaches.contains(track), upgrades[track] == nil,
+          !armyAtSpace1(on: track) else {
       return .trackInvalid
     }
     if dieRoll == 1 { return .rollFailed }
@@ -84,6 +85,35 @@ extension LoD.State {
     if modified > upgrade.buildNumber {
       upgrades[track] = upgrade
       return .success(upgrade, track)
+    }
+    return .rollFailed
+  }
+
+  // -- Build Barricade (rule 6.3) --
+
+  enum BarricadeBuildResult: Equatable {
+    case success
+    case rollFailed
+    case trackInvalid
+  }
+
+  /// Build barricade action: roll > 2 to convert a breach into a barricade.
+  /// Track must be a wall with a breach.
+  /// Natural 1 always fails.
+  mutating func buildBarricade(
+    on track: LoD.Track,
+    dieRoll: Int,
+    drm: Int = 0
+  ) -> BarricadeBuildResult {
+    guard track.isWall, breaches.contains(track) else {
+      return .trackInvalid
+    }
+    if dieRoll == 1 { return .rollFailed }
+    let modified = dieRoll + drm
+    if modified > 2 {
+      breaches.remove(track)
+      barricades.insert(track)
+      return .success
     }
     return .rollFailed
   }
@@ -134,6 +164,54 @@ extension LoD.State {
     return .success(spell, heroic: heroic)
   }
 
+  // MARK: - Spell Targeting (rule 9.2)
+
+  /// Whether an arcane spell can target a given track.
+  /// Most arcane spells require the Wizard to be on the same track as the target.
+  /// Chain Lightning and Fortune are exempt (they affect multiple targets or the deck).
+  func canTargetWithArcaneSpell(_ spell: LoD.SpellType, targetTrack: LoD.Track) -> Bool {
+    // Chain Lightning and Fortune have no track restriction
+    if spell == .chainLightning || spell == .fortune { return true }
+    guard spell.isArcane else { return true }  // Divine spells have no track restriction
+    // Wizard must be on the target track
+    if let wizardLoc = heroLocation[.wizard], !heroDead.contains(.wizard) {
+      if case .onTrack(let track) = wizardLoc {
+        return track == targetTrack
+      }
+    }
+    // No wizard or wizard in reserves — can still cast (wizard not required), but
+    // if the spell needs same-track, it can target any track when wizard is absent
+    // Actually per rule 9.2, wizard is needed for same-track. If no wizard, cannot target.
+    // But rule says "wizard not required to cast". The same-track is a targeting restriction.
+    // If wizard is absent/dead/in reserves, targeted arcane spells can't pick a track.
+    return false
+  }
+
+  /// Whether normal Inspire can be cast (not at High morale).
+  func canCastInspireNormal() -> Bool {
+    morale != .high
+  }
+
+  /// Validate Raise Dead parameters based on normal vs heroic mode.
+  /// Normal: 2 different defenders OR 1 hero, not both.
+  /// Heroic: 2 different defenders AND/OR 1 hero.
+  func isValidRaiseDeadParams(
+    gainDefenders: [LoD.DefenderType],
+    returnHero: LoD.HeroType?,
+    heroic: Bool
+  ) -> Bool {
+    if heroic {
+      // Heroic: can do defenders, hero, or both
+      return true
+    } else {
+      // Normal: exclusive OR — defenders or hero, not both
+      let hasDefenders = !gainDefenders.isEmpty
+      let hasHero = returnHero != nil
+      if hasDefenders && hasHero { return false }
+      return true
+    }
+  }
+
   // MARK: - Spell Effects (rules 9.2, 9.3)
 
   // -- Cure Wounds (divine, cost 1) --
@@ -159,10 +237,16 @@ extension LoD.State {
   // -- Inspire (divine, cost 3) --
 
   /// Raise morale one step and grant +1 DRM to all rolls until end of turn.
-  /// Normal and heroic (†) have the same effect.
-  mutating func applyInspire() {
-    morale = morale.raised()
-    inspireDRMActive = true
+  /// Normal: cannot cast at High morale. Raises morale + DRM.
+  /// Heroic (†): at High morale, only grants +1 DRM (no morale raise).
+  mutating func applyInspire(heroic: Bool = false) {
+    if morale == .high {
+      // At high morale, only heroic Inspire works, and only for DRM
+      inspireDRMActive = true
+    } else {
+      morale = morale.raised()
+      inspireDRMActive = true
+    }
   }
 
   // -- Raise Dead (divine, cost 4) --

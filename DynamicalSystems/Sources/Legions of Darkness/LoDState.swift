@@ -87,6 +87,9 @@ extension LoD {
     /// Whether the bloody battle defender cost has already been paid this turn.
     var bloodyBattlePaidThisTurn: Bool = false
 
+    /// Whether the acid upgrade's free attack has been used this turn.
+    var acidUsedThisTurn: Bool = false
+
     // MARK: - Slow marker
 
     /// Which army slot has the Slow marker, if any.
@@ -211,7 +214,7 @@ extension LoD {
         switch action {
         case .skipEvent, .resolveEvent:
           return count
-        case .meleeAttack, .rangedAttack, .buildUpgrade, .chant, .memorize, .pray, .questAction, .castSpell:
+        case .meleeAttack, .rangedAttack, .buildUpgrade, .buildBarricade, .chant, .memorize, .pray, .questAction, .castSpell:
           count += 1
         default:
           break
@@ -244,6 +247,38 @@ extension LoD {
     /// Remaining heroic points this turn.
     var heroicBudgetRemaining: Int {
       max(heroicBudget - heroicPointsSpent, 0)
+    }
+
+    /// Count melee attacks made this turn (since last event phase action).
+    var meleeAttacksThisTurn: Int {
+      var count = 0
+      for action in history.reversed() {
+        switch action {
+        case .skipEvent, .resolveEvent:
+          return count
+        case .meleeAttack:
+          count += 1
+        default:
+          break
+        }
+      }
+      return count
+    }
+
+    /// Count ranged attacks made this turn (since last event phase action).
+    var rangedAttacksThisTurn: Int {
+      var count = 0
+      for action in history.reversed() {
+        switch action {
+        case .skipEvent, .resolveEvent:
+          return count
+        case .rangedAttack:
+          count += 1
+        default:
+          break
+        }
+      }
+      return count
     }
 
   }

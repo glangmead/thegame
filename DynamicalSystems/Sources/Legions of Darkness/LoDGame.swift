@@ -41,13 +41,15 @@ extension LoD {
             let results = state.advanceArmyOnTrack(track)
             for result in results {
               logs.append(Log(msg: "Army advance on \(track): \(result)"))
-              // Check for acid upgrade free attack (rule 6.3)
+              // Check for acid upgrade free melee attack (rule 6.3)
               if case .advanced(let slot, _, let to) = result,
                  to == 1,
                  state.upgrades[slot.track] == .acid,
+                 !state.acidUsedThisTurn,
                  let dieRoll = acidAttackDieRolls[slot] {
-                let attackResult = state.resolveAttack(on: slot, attackType: .ranged, dieRoll: dieRoll, drm: 0)
-                logs.append(Log(msg: "Acid free attack on \(slot): \(attackResult)"))
+                let attackResult = state.resolveAttack(on: slot, attackType: .melee, dieRoll: dieRoll, drm: 0)
+                state.acidUsedThisTurn = true
+                logs.append(Log(msg: "Acid free melee attack on \(slot): \(attackResult)"))
               }
             }
           }
@@ -238,8 +240,9 @@ extension LoD {
           actions: { state in
             var actions: [Action] = []
 
-            // Melee attacks (if allowed this turn)
-            if !state.noMeleeThisTurn {
+            // Melee attacks (if allowed this turn, limited by men-at-arms count)
+            let meleeLimit = state.defenders[.menAtArms] ?? 0
+            if !state.noMeleeThisTurn && state.meleeAttacksThisTurn < meleeLimit {
               for slot in ArmySlot.allCases {
                 guard let space = state.armyPosition[slot] else { continue }
                 if slot.track.isMeleeRange(space: space) {
@@ -255,8 +258,9 @@ extension LoD {
               }
             }
 
-            // Ranged attacks (archers > 0, not Terror track)
-            if (state.defenders[.archers] ?? 0) > 0 {
+            // Ranged attacks (archers > 0, not Terror track, limited by archers count)
+            let rangedLimit = state.defenders[.archers] ?? 0
+            if rangedLimit > 0 && state.rangedAttacksThisTurn < rangedLimit {
               for slot in ArmySlot.allCases {
                 guard state.armyPosition[slot] != nil else { continue }
                 guard slot.track != .terror else { continue }
@@ -270,12 +274,20 @@ extension LoD {
               }
             }
 
-            // Build upgrades (on unbreached walls without existing upgrades)
+            // Build upgrades (on unbreached walls without existing upgrades and no army on space 1)
             for track in Track.walls {
-              if !state.breaches.contains(track) && state.upgrades[track] == nil {
+              if !state.breaches.contains(track) && state.upgrades[track] == nil
+                 && !state.armyAtSpace1(on: track) {
                 for upgrade in UpgradeType.allCases {
                   actions.append(.buildUpgrade(upgrade, track, dieRoll: 0))
                 }
+              }
+            }
+
+            // Build barricade (on breached walls, rule 6.3)
+            for track in Track.walls {
+              if state.breaches.contains(track) {
+                actions.append(.buildBarricade(track, dieRoll: 0))
               }
             }
 
@@ -348,7 +360,7 @@ extension LoD {
 
         // Check if this is an action-phase die-roll action eligible for Paladin re-roll deferral
         switch action {
-        case .meleeAttack, .rangedAttack, .buildUpgrade, .chant, .questAction:
+        case .meleeAttack, .rangedAttack, .buildUpgrade, .buildBarricade, .chant, .questAction:
           if state.canPaladinReroll {
             state.pendingDieRollAction = action
             state.phaseBeforePaladinReact = .action
@@ -357,6 +369,12 @@ extension LoD {
             return (logs, [])
           }
           logs += state.resolveActionDieRoll(action)
+          return (logs, [])
+
+        case .buildBarricade(let track, let dieRoll):
+          let drm = state.totalBuildDRM()
+          let result = state.buildBarricade(on: track, dieRoll: dieRoll, drm: drm)
+          logs.append(Log(msg: "Build barricade on \(track): \(result)"))
           return (logs, [])
 
         case .memorize(let spell):
@@ -595,7 +613,7 @@ extension LoD {
         case .advanceArmies(_): return .event
         case .skipEvent: return .action
         case .resolveEvent: return .action
-        case .meleeAttack, .rangedAttack, .buildUpgrade, .chant,
+        case .meleeAttack, .rangedAttack, .buildUpgrade, .buildBarricade, .chant,
              .memorize, .pray, .questAction, .castSpell, .rogueMove:
           return nil  // stay in action phase
         case .passActions: return .heroic

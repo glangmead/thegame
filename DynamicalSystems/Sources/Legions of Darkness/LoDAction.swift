@@ -106,6 +106,7 @@ extension LoD {
     case pray(SpellType)
     case questAction(dieRoll: Int, reward: QuestRewardParams)
     case castSpell(SpellType, heroic: Bool, SpellCastParams)
+    case buildBarricade(Track, dieRoll: Int) // build barricade on breached wall (rule 6.3)
     case rogueMove(HeroLocation)           // free move, no action cost (rule 10.4)
     case passActions
 
