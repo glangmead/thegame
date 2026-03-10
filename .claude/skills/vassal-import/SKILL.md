@@ -327,3 +327,57 @@ files in `Sources/` are auto-discovered by the main app target. However, the
 | Targeting restrictions | Arcane spells with no track restriction (Wizard must be same track) | Check each spell class for targeting rules |
 | Empty MCTS reward signal | `endedInVictoryFor`/`endedInDefeatFor` never set (MCTS sees all-zero values) | Set these arrays at every `ended = true` site; write an MCTS smoke test |
 | Game missing from CLI | Implemented game not wired into `gamer` tool | Add game enum case + factory to `main.swift` as part of Phase 6a |
+| Placeholder die rolls never randomized | Actions generated with `dieRoll: 0` resolved literally — every attack misses | Use `effectiveDie()`: randomize 0 → 1-6 at resolution time, pass through non-zero for deterministic tests |
+| Force-unwrap on optional die roll | Barricade/grease paths crash when `dieRoll` is `nil` | Use `effectiveDie(dieRoll ?? 0)` instead of `dieRoll!` |
+
+### Phase 6c: Die Roll Randomization Tests
+
+When actions carry placeholder die rolls (e.g., `dieRoll: 0`), the resolution layer
+must randomize them. This is easy to get wrong — the actions look correct in tests
+(which supply explicit rolls) but silently break in MCTS rollouts and CLI play.
+
+**Write statistical tests that verify randomization works end-to-end:**
+
+```swift
+@Test func meleeAttackWithPlaceholderDieSometimesHits() {
+    // Placeholder dieRoll=0 should be randomized, so attacks against
+    // a low-strength army sometimes hit and sometimes miss.
+    var hitCount = 0
+    for _ in 0..<100 {
+        var state = Game.setup(...)
+        state.armyPosition[.east] = 2  // melee range
+        let action = Action.meleeAttack(.east, dieRoll: 0, ...)
+        let logs = state.resolveActionDieRoll(action)
+        if logs.map(\.msg).joined().contains("hit") { hitCount += 1 }
+    }
+    #expect(hitCount > 10, "Expected some hits in 100 trials")
+    #expect(hitCount < 100, "Expected some misses in 100 trials")
+}
+```
+
+**Also test that explicit die rolls still work** (determinism for unit tests):
+
+```swift
+@Test func explicitDieRollStillWorks() {
+    // Explicit dieRoll=6 against strength 2 should always hit.
+    var state = Game.setup(...)
+    let action = Action.meleeAttack(.east, dieRoll: 6, ...)
+    let logs = state.resolveActionDieRoll(action)
+    #expect(logs.map(\.msg).joined().contains("hit"))
+}
+```
+
+**Test every path that consumes a die roll:**
+- Action-phase attacks (melee, ranged)
+- Heroic-phase attacks
+- Build upgrade/barricade rolls
+- Chant, rally, quest rolls
+- Event die rolls
+- Barricade test rolls (army reaching breached/barricaded wall)
+- Grease/upgrade defense rolls
+
+**The `effectiveDie` pattern:** A static helper that returns `Int.random(in: 1...6)`
+when given 0, and passes through any non-zero value unchanged. Apply it at the
+resolution boundary — NOT in `allowedActions` (which generates actions for the
+MCTS tree and needs stable identities) and NOT deep in state mutation functions
+(which should remain pure and testable with explicit rolls).

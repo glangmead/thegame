@@ -98,6 +98,7 @@ class OpenLoopMCTS<
   var rootState: State
   var rootNodes = [State.Player: ActionNode<Action, State.Player>]()
   var reducer: any PlayableGame<State, Action>
+  var rolloutPolicy: (([Action]) -> Action)?
 
   init(state: State, reducer: any PlayableGame<State, Action>) {
     self.rootState = state
@@ -138,7 +139,8 @@ class OpenLoopMCTS<
   }
 
   func rolloutAction(from: ActionNode<Action, State.Player>, in state: State) -> Action {
-    reducer.allowedActions(state: state).randomElement()!
+    let actions = reducer.allowedActions(state: state)
+    return rolloutPolicy?(actions) ?? actions.randomElement()!
   }
 
   enum SearchPhase {

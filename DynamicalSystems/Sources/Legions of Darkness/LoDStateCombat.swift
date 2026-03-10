@@ -72,12 +72,12 @@ extension LoD.State {
     if track.isWall && newSpace == 0 {
       if barricades.contains(track) {
         // Barricade test (4.1.3)
-        let roll = dieRoll!
+        let roll = Self.effectiveDie(dieRoll ?? 0)
         let strength = armyType[slot]!.strength
         if roll <= strength {
           barricades.remove(track)
           armyPosition[slot] = 0
-          ended = true
+          endInDefeat()
           return .armyBrokeBarricade(track)
         } else {
           barricades.remove(track)
@@ -88,7 +88,7 @@ extension LoD.State {
         // Grease check (rule 6.3): army rolls die, if > 2 stays on space 1
         if upgrades[track] == .grease {
           upgrades.removeValue(forKey: track)  // Grease is consumed
-          let roll = dieRoll ?? 3  // Default pass if no roll provided
+          let roll = Self.effectiveDie(dieRoll ?? 0)
           if roll > 2 {
             // Grease held — army stays on space 1
             return .greaseHeld(track)
@@ -102,9 +102,7 @@ extension LoD.State {
       } else {
         // Breach exists: army enters → defeat
         armyPosition[slot] = 0
-        ended = true
-        endedInDefeatFor = players
-        endedInVictoryFor = []
+        endInDefeat()
         return .armyEnteredCastle(track)
       }
     }
@@ -157,9 +155,7 @@ extension LoD.State {
       defenders[type] = current - 1
     }
     if allDefendersAtZero {
-      ended = true
-      endedInDefeatFor = players
-      endedInVictoryFor = []
+      endInDefeat()
     }
   }
 

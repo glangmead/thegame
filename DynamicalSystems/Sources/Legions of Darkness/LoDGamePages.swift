@@ -127,9 +127,13 @@ extension LoD {
         case .skipEvent:
           return ([Log(msg: "No event this turn")], [])
 
-        case .resolveEvent(let resolution):
+        case .resolveEvent(var resolution):
           guard let card = state.currentCard else {
             return ([Log(msg: "No card for event")], [])
+          }
+          resolution.dieRoll = State.effectiveDie(resolution.dieRoll)
+          if let barricadeRoll = resolution.barricadeDieRoll {
+            resolution.barricadeDieRoll = State.effectiveDie(barricadeRoll)
           }
           var logs: [Log] = []
 

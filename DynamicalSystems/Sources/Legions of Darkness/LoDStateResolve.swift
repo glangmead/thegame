@@ -49,36 +49,41 @@ extension LoD.State {
     }
   }
 
+  /// Roll a d6 if the action carries a placeholder (0), otherwise use the provided value.
+  static func effectiveDie(_ dieRoll: Int) -> Int {
+    dieRoll == 0 ? Int.random(in: 1...6) : dieRoll
+  }
+
   /// Resolve an action-phase die-roll action. Returns logs.
   mutating func resolveActionDieRoll(_ action: LoD.Action) -> [Log] {
     switch action {
     case .meleeAttack(let slot, let dieRoll, let bloodyBattleDefender, let useMagicSword):
-      return resolveMeleeAttack(slot: slot, dieRoll: dieRoll,
+      return resolveMeleeAttack(slot: slot, dieRoll: Self.effectiveDie(dieRoll),
                                 bloodyBattleDefender: bloodyBattleDefender,
                                 useMagicSword: useMagicSword)
 
     case .rangedAttack(let slot, let dieRoll, let bloodyBattleDefender, let useMagicBow):
-      return resolveRangedAttack(slot: slot, dieRoll: dieRoll,
+      return resolveRangedAttack(slot: slot, dieRoll: Self.effectiveDie(dieRoll),
                                 bloodyBattleDefender: bloodyBattleDefender,
                                 useMagicBow: useMagicBow)
 
     case .buildUpgrade(let upgrade, let track, let dieRoll):
       let drm = totalBuildDRM()
-      let result = build(upgrade: upgrade, on: track, dieRoll: dieRoll, drm: drm)
+      let result = build(upgrade: upgrade, on: track, dieRoll: Self.effectiveDie(dieRoll), drm: drm)
       return [Log(msg: "Build \(upgrade) on \(track): \(result)")]
 
     case .buildBarricade(let track, let dieRoll):
       let drm = totalBuildDRM()
-      let result = buildBarricade(on: track, dieRoll: dieRoll, drm: drm)
+      let result = buildBarricade(on: track, dieRoll: Self.effectiveDie(dieRoll), drm: drm)
       return [Log(msg: "Build barricade on \(track): \(result)")]
 
     case .chant(let dieRoll):
       let drm = totalChantDRM()
-      let success = chant(dieRoll: dieRoll, drm: drm)
+      let success = chant(dieRoll: Self.effectiveDie(dieRoll), drm: drm)
       return [Log(msg: "Chant: \(success ? "success" : "failed")")]
 
     case .questAction(let dieRoll, let reward):
-      return resolveQuestAction(dieRoll: dieRoll, reward: reward, isHeroic: false)
+      return resolveQuestAction(dieRoll: Self.effectiveDie(dieRoll), reward: reward, isHeroic: false)
 
     default:
       return []
@@ -143,15 +148,15 @@ extension LoD.State {
   mutating func resolveHeroicDieRoll(_ action: LoD.Action) -> [Log] {
     switch action {
     case .heroicAttack(let hero, let slot, let dieRoll):
-      return resolveHeroicAttackAction(hero: hero, slot: slot, dieRoll: dieRoll)
+      return resolveHeroicAttackAction(hero: hero, slot: slot, dieRoll: Self.effectiveDie(dieRoll))
 
     case .rally(let dieRoll):
       let drm = totalRallyDRM()
-      let success = rally(dieRoll: dieRoll, drm: drm)
+      let success = rally(dieRoll: Self.effectiveDie(dieRoll), drm: drm)
       return [Log(msg: "Rally: \(success ? "success" : "failed")")]
 
     case .questHeroic(let dieRoll, let reward):
-      return resolveQuestAction(dieRoll: dieRoll, reward: reward, isHeroic: true)
+      return resolveQuestAction(dieRoll: Self.effectiveDie(dieRoll), reward: reward, isHeroic: true)
 
     default:
       return []

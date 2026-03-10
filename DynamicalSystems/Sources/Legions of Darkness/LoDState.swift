@@ -164,6 +164,20 @@ extension LoD {
     var victory: Bool = false
     var gameAcknowledged: Bool = false
 
+    /// Set ended + victory/defeat arrays atomically to prevent inconsistency.
+    mutating func endInDefeat() {
+      ended = true
+      endedInDefeatFor = players
+      endedInVictoryFor = []
+    }
+
+    mutating func endInVictory() {
+      ended = true
+      victory = true
+      endedInVictoryFor = players
+      endedInDefeatFor = []
+    }
+
     // swiftlint:disable:next nesting
     enum GameOutcome: Equatable {
       case ongoing
@@ -185,10 +199,7 @@ extension LoD {
     mutating func checkVictory() {
       guard !ended else { return }
       if isOnFinalTwilight {
-        ended = true
-        victory = true
-        endedInVictoryFor = players
-        endedInDefeatFor = []
+        endInVictory()
       }
     }
 

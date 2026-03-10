@@ -70,12 +70,27 @@ struct GamerTool: ParsableCommand {
           numRollouts: numRollouts,
           interactive: interactive,
           logFile: logFile,
-          showAIHints: showAIHints
+          showAIHints: showAIHints,
+          rolloutPolicy: lodRolloutPolicy
         )
         try gameRunner.run()
       }
     }
   }
+}
+
+/// Rollout policy for LoD: 80% chance to pick an attack action when available.
+func lodRolloutPolicy(_ actions: [LoD.Action]) -> LoD.Action {
+  let attacks = actions.filter { action in
+    switch action {
+    case .meleeAttack, .rangedAttack, .heroicAttack: return true
+    default: return false
+    }
+  }
+  if !attacks.isEmpty && Float.random(in: 0...1) < 0.8 {
+    return attacks.randomElement()!
+  }
+  return actions.randomElement()!
 }
 
 struct GameRunner<
@@ -89,6 +104,7 @@ struct GameRunner<
   private var logFile: String = ""
   private var showAIHints: Bool = false
   private var reducer: any PlayableGame<State, Action>
+  var rolloutPolicy: (([Action]) -> Action)?
 
   var colwidths: [Int]
 
@@ -100,6 +116,7 @@ struct GameRunner<
     interactive: Bool,
     logFile: String,
     showAIHints: Bool,
+    rolloutPolicy: (([Action]) -> Action)? = nil,
     colwidths: [Int] = [10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
   ) {
     self.reducer = reducer
@@ -109,6 +126,7 @@ struct GameRunner<
     self.interactive = interactive
     self.logFile = logFile
     self.showAIHints = showAIHints
+    self.rolloutPolicy = rolloutPolicy
     self.colwidths = colwidths
   }
 
@@ -186,7 +204,7 @@ struct GameRunner<
     }
 
     if auto {
-      return bestAction
+      return bestAction ?? actions.first
     } else {
       let typed = readLine()!
       let typedNum = (Int(typed) ?? 1) - 1
@@ -199,6 +217,7 @@ struct GameRunner<
 
   func treeSearch(state: State) -> [Action: (Float, Float)] {
     let search = OpenLoopMCTS(state: state, reducer: reducer)
+    search.rolloutPolicy = rolloutPolicy
     let results = search.recommendation(iters: numMCTSIters, numRollouts: numRollouts)
     if !logFile.isEmpty {
       var logStream: any TextOutputStream = LogDestination(path: logFile)
