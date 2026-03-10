@@ -18,13 +18,13 @@ extension LoD {
         GameRule(
           condition: { $0.phase == .card },
           actions: { _ in [.drawCard] }
-        ),
+        )
       ],
       reduce: { state, action in
         guard case .drawCard = action else { return nil }
         state.drawCard()
         return ([Log(msg: "Drew card: \(state.currentCard?.title ?? "none")")],
-                [.advanceArmies])
+                [.advanceArmies(acidAttackDieRolls: [:])])
       }
     )
   }
@@ -34,18 +34,26 @@ extension LoD {
       name: "Army Phase",
       rules: [],  // automatic — no player choices
       reduce: { state, action in
-        guard case .advanceArmies = action else { return nil }
+        guard case .advanceArmies(let acidAttackDieRolls) = action else { return nil }
         var logs: [Log] = []
         if let card = state.currentCard {
           for track in card.advances {
             let results = state.advanceArmyOnTrack(track)
-            for r in results {
-              logs.append(Log(msg: "Army advance on \(track): \(r)"))
+            for result in results {
+              logs.append(Log(msg: "Army advance on \(track): \(result)"))
+              // Check for acid upgrade free attack (rule 6.3)
+              if case .advanced(let slot, _, let to) = result,
+                 to == 1,
+                 state.upgrades[slot.track] == .acid,
+                 let dieRoll = acidAttackDieRolls[slot] {
+                let attackResult = state.resolveAttack(on: slot, attackType: .ranged, dieRoll: dieRoll, drm: 0)
+                logs.append(Log(msg: "Acid free attack on \(slot): \(attackResult)"))
+              }
             }
           }
           // Set bloody battle marker if card specifies it
-          if let bb = card.bloodyBattle {
-            for slot in ArmySlot.allCases where slot.track == bb {
+          if let bloodyBattleTrack = card.bloodyBattle {
+            for slot in ArmySlot.allCases where slot.track == bloodyBattleTrack {
               if state.armyPosition[slot] != nil {
                 state.bloodyBattleArmy = slot
                 logs.append(Log(msg: "Bloody battle marker placed on \(slot)"))
@@ -79,7 +87,7 @@ extension LoD {
             // The caller fills in die rolls and choices.
             [.resolveEvent(EventResolution())]
           }
-        ),
+        )
       ],
       reduce: { state, action in
         switch action {
@@ -107,20 +115,20 @@ extension LoD {
 
           case 9: // Distracted Defenders
             let results = state.eventDistractedDefenders()
-            for r in results {
-              logs.append(Log(msg: "Distracted Defenders: \(r)"))
+            for result in results {
+              logs.append(Log(msg: "Distracted Defenders: \(result)"))
             }
 
           case 11: // Harbingers of Doom
             let results = state.eventHarbingers(chosenSlot: resolution.chosenSlot)
-            for r in results {
-              logs.append(Log(msg: "Harbingers of Doom: \(r)"))
+            for result in results {
+              logs.append(Log(msg: "Harbingers of Doom: \(result)"))
             }
 
           case 14: // Broken Walls
             let results = state.eventBrokenWalls()
-            for r in results {
-              logs.append(Log(msg: "Broken Walls: \(r)"))
+            for result in results {
+              logs.append(Log(msg: "Broken Walls: \(result)"))
             }
 
           case 16: // Lamentation of the Women
@@ -137,14 +145,14 @@ extension LoD {
 
           case 20: // Banners in the Distance
             let results = state.eventBannersInDistance()
-            for r in results {
-              logs.append(Log(msg: "Banners in the Distance: \(r)"))
+            for result in results {
+              logs.append(Log(msg: "Banners in the Distance: \(result)"))
             }
 
           case 23: // Campfires in the Distance
             let results = state.eventCampfires()
-            for r in results {
-              logs.append(Log(msg: "Campfires in the Distance: \(r)"))
+            for result in results {
+              logs.append(Log(msg: "Campfires in the Distance: \(result)"))
             }
 
           case 24: // Bloody Handprints
@@ -169,8 +177,8 @@ extension LoD {
               chosenSlot: resolution.chosenSlot,
               dieRollForBarricade: resolution.barricadeDieRoll
             )
-            for r in results {
-              logs.append(Log(msg: "Death and Despair: \(r)"))
+            for result in results {
+              logs.append(Log(msg: "Death and Despair: \(result)"))
             }
 
           case 30: // Assassin's Creedo
@@ -202,8 +210,8 @@ extension LoD {
               advanceSky: resolution.advanceSky,
               otherAdvances: resolution.otherAdvances
             )
-            for r in results {
-              logs.append(Log(msg: "Bump in the Night: \(r)"))
+            for result in results {
+              logs.append(Log(msg: "Bump in the Night: \(result)"))
             }
 
           default:
@@ -238,10 +246,10 @@ extension LoD {
                   // Gate targeting rule
                   if slot.track == .gate {
                     if state.gateAttackTargets().contains(slot) {
-                      actions.append(.meleeAttack(slot, dieRoll: 0))
+                      actions.append(.meleeAttack(slot, dieRoll: 0, bloodyBattleDefender: nil, useMagicSword: nil))
                     }
                   } else {
-                    actions.append(.meleeAttack(slot, dieRoll: 0))
+                    actions.append(.meleeAttack(slot, dieRoll: 0, bloodyBattleDefender: nil, useMagicSword: nil))
                   }
                 }
               }
@@ -254,10 +262,10 @@ extension LoD {
                 guard slot.track != .terror else { continue }
                 if slot.track == .gate {
                   if state.gateAttackTargets().contains(slot) {
-                    actions.append(.rangedAttack(slot, dieRoll: 0))
+                    actions.append(.rangedAttack(slot, dieRoll: 0, bloodyBattleDefender: nil, useMagicBow: nil))
                   }
                 } else {
-                  actions.append(.rangedAttack(slot, dieRoll: 0))
+                  actions.append(.rangedAttack(slot, dieRoll: 0, bloodyBattleDefender: nil, useMagicBow: nil))
                 }
               }
             }
@@ -288,7 +296,29 @@ extension LoD {
 
             // Quest (if card has a quest)
             if state.currentCard?.quest != nil {
-              actions.append(.questAction(dieRoll: 0))
+              actions.append(.questAction(dieRoll: 0, reward: QuestRewardParams()))
+            }
+
+            // Cast known spells with sufficient energy
+            for spell in state.knownSpells {
+              let cost = spell.energyCost
+              let hasEnergy = spell.isArcane
+                ? state.arcaneEnergy >= cost
+                : state.divineEnergy >= cost
+              if hasEnergy {
+                actions.append(.castSpell(spell, heroic: false, SpellCastParams()))
+                if state.canHeroicCast(spell) {
+                  actions.append(.castSpell(spell, heroic: true, SpellCastParams()))
+                }
+              }
+            }
+
+            // Rogue free move (rule 10.4) — doesn't cost an action
+            if state.heroLocation[.rogue] != nil && !state.heroDead.contains(.rogue) {
+              for track in Track.allCases {
+                actions.append(.rogueMove(.onTrack(track)))
+              }
+              actions.append(.rogueMove(.reserves))
             }
 
             // Always offer pass
@@ -297,38 +327,36 @@ extension LoD {
             return actions
           }
         ),
-        // When budget is exhausted, only offer pass
+        // When budget is exhausted, only offer pass (but still allow rogue free move)
         GameRule(
           condition: { $0.phase == .action && $0.actionBudgetRemaining == 0 },
-          actions: { _ in [.passActions] }
-        ),
+          actions: { state in
+            var actions: [Action] = []
+            if state.heroLocation[.rogue] != nil && !state.heroDead.contains(.rogue) {
+              for track in Track.allCases {
+                actions.append(.rogueMove(.onTrack(track)))
+              }
+              actions.append(.rogueMove(.reserves))
+            }
+            actions.append(.passActions)
+            return actions
+          }
+        )
       ],
       reduce: { state, action in
         var logs: [Log] = []
 
+        // Check if this is an action-phase die-roll action eligible for Paladin re-roll deferral
         switch action {
-        case .meleeAttack(let slot, let dieRoll):
-          let drm = state.totalAttackDRM(slot: slot, attackType: .melee)
-          let result = state.resolveAttack(on: slot, attackType: .melee, dieRoll: dieRoll, drm: drm)
-          logs.append(Log(msg: "Melee attack on \(slot): \(result)"))
-          return (logs, [])
-
-        case .rangedAttack(let slot, let dieRoll):
-          let drm = state.totalAttackDRM(slot: slot, attackType: .ranged)
-          let result = state.resolveAttack(on: slot, attackType: .ranged, dieRoll: dieRoll, drm: drm)
-          logs.append(Log(msg: "Ranged attack on \(slot): \(result)"))
-          return (logs, [])
-
-        case .buildUpgrade(let upgrade, let track, let dieRoll):
-          let drm = state.totalBuildDRM()
-          let result = state.build(upgrade: upgrade, on: track, dieRoll: dieRoll, drm: drm)
-          logs.append(Log(msg: "Build \(upgrade) on \(track): \(result)"))
-          return (logs, [])
-
-        case .chant(let dieRoll):
-          let drm = state.totalChantDRM()
-          let success = state.chant(dieRoll: dieRoll, drm: drm)
-          logs.append(Log(msg: "Chant: \(success ? "success" : "failed")"))
+        case .meleeAttack, .rangedAttack, .buildUpgrade, .chant, .questAction:
+          if state.canPaladinReroll {
+            state.pendingDieRollAction = action
+            state.phaseBeforePaladinReact = .action
+            state.phase = .paladinReact
+            logs.append(Log(msg: "Paladin may re-roll this die"))
+            return (logs, [])
+          }
+          logs += state.resolveActionDieRoll(action)
           return (logs, [])
 
         case .memorize(let spell):
@@ -341,9 +369,25 @@ extension LoD {
           logs.append(Log(msg: "Pray \(spell): \(success ? "success" : "failed")"))
           return (logs, [])
 
-        case .questAction(let dieRoll):
-          let result = state.attemptQuest(isHeroic: false, dieRoll: dieRoll)
-          logs.append(Log(msg: "Quest (action): \(result)"))
+        case .castSpell(let spell, let heroic, let params):
+          let castResult = state.castSpell(spell, heroic: heroic)
+          switch castResult {
+          case .success:
+            logs.append(Log(msg: "Cast \(spell)\(heroic ? " (heroic)" : "")"))
+            logs += state.applySpellEffect(spell: spell, heroic: heroic, params: params)
+          case .spellNotKnown:
+            logs.append(Log(msg: "Cannot cast \(spell): not known"))
+          case .insufficientEnergy:
+            logs.append(Log(msg: "Cannot cast \(spell): insufficient energy"))
+          case .heroicRequiresHero:
+            logs.append(Log(msg: "Cannot cast \(spell) heroically: no hero"))
+          }
+          return (logs, [])
+
+        case .rogueMove(let location):
+          state.moveHero(.rogue, to: location)
+          // Free move — rogueMove is not counted in actionPointsSpent
+          logs.append(Log(msg: "Rogue moved to \(location) (free)"))
           return (logs, [])
 
         case .passActions:
@@ -397,7 +441,7 @@ extension LoD {
 
             // Quest (heroic)
             if state.currentCard?.quest != nil {
-              actions.append(.questHeroic(dieRoll: 0))
+              actions.append(.questHeroic(dieRoll: 0, reward: QuestRewardParams()))
             }
 
             // Always offer pass
@@ -410,7 +454,7 @@ extension LoD {
         GameRule(
           condition: { $0.phase == .heroic && $0.heroicBudgetRemaining == 0 },
           actions: { _ in [.passHeroics] }
-        ),
+        )
       ],
       reduce: { state, action in
         var logs: [Log] = []
@@ -421,32 +465,82 @@ extension LoD {
           logs.append(Log(msg: "Hero \(hero) moved to \(location)"))
           return (logs, [])
 
-        case .heroicAttack(let hero, let slot, let dieRoll):
-          let result = state.resolveHeroicAttack(hero: hero, on: slot, dieRoll: dieRoll)
-          switch result {
-          case .success(let r):
-            logs.append(Log(msg: "Heroic attack by \(hero) on \(slot): \(r.attackResult)"))
-            if r.heroWounded { logs.append(Log(msg: "Hero \(hero) wounded!")) }
-            if r.heroKilled { logs.append(Log(msg: "Hero \(hero) killed!")) }
-          case .failure(let err):
-            logs.append(Log(msg: "Heroic attack error: \(err)"))
+        case .heroicAttack, .rally, .questHeroic:
+          // Check if eligible for Paladin re-roll deferral
+          if state.canPaladinReroll {
+            state.pendingDieRollAction = action
+            state.phaseBeforePaladinReact = .heroic
+            state.phase = .paladinReact
+            logs.append(Log(msg: "Paladin may re-roll this die"))
+            return (logs, [])
           }
-          return (logs, [])
-
-        case .rally(let dieRoll):
-          let drm = state.totalRallyDRM()
-          let success = state.rally(dieRoll: dieRoll, drm: drm)
-          logs.append(Log(msg: "Rally: \(success ? "success" : "failed")"))
-          return (logs, [])
-
-        case .questHeroic(let dieRoll):
-          let result = state.attemptQuest(isHeroic: true, dieRoll: dieRoll)
-          logs.append(Log(msg: "Quest (heroic): \(result)"))
+          logs += state.resolveHeroicDieRoll(action)
           return (logs, [])
 
         case .passHeroics:
           logs.append(Log(msg: "Heroics passed"))
           return (logs, [.performHousekeeping])
+
+        default:
+          return nil
+        }
+      }
+    )
+  }
+
+  // MARK: - Paladin Re-roll (rule 10.2)
+
+  static var paladinReactPage: RulePage<State, Action> {
+    RulePage(
+      name: "Paladin React",
+      rules: [
+        GameRule(
+          condition: { $0.phase == .paladinReact && $0.pendingDieRollAction != nil },
+          actions: { _ in
+            [.paladinReroll(newDieRoll: 0), .declineReroll]
+          }
+        )
+      ],
+      reduce: { state, action in
+        var logs: [Log] = []
+
+        switch action {
+        case .declineReroll:
+          guard let pending = state.pendingDieRollAction else { return nil }
+          let returnPhase = state.phaseBeforePaladinReact ?? .action
+
+          // Resolve the deferred action
+          if returnPhase == .action {
+            logs += state.resolveActionDieRoll(pending)
+          } else {
+            logs += state.resolveHeroicDieRoll(pending)
+          }
+
+          state.pendingDieRollAction = nil
+          state.phaseBeforePaladinReact = nil
+          state.phase = returnPhase
+          return (logs, [])
+
+        case .paladinReroll(let newDieRoll):
+          guard let pending = state.pendingDieRollAction else { return nil }
+          let returnPhase = state.phaseBeforePaladinReact ?? .action
+
+          // Modify the pending action with the new die roll
+          let modifiedAction = State.withNewDieRoll(pending, newDieRoll: newDieRoll)
+          logs.append(Log(msg: "Paladin re-roll: new die = \(newDieRoll)"))
+
+          // Resolve with the new die roll
+          if returnPhase == .action {
+            logs += state.resolveActionDieRoll(modifiedAction)
+          } else {
+            logs += state.resolveHeroicDieRoll(modifiedAction)
+          }
+
+          state.usePaladinReroll()
+          state.pendingDieRollAction = nil
+          state.phaseBeforePaladinReact = nil
+          state.phase = returnPhase
+          return (logs, [])
 
         default:
           return nil
@@ -481,7 +575,7 @@ extension LoD {
     shuffledNightCards: [Card]? = nil
   ) -> ComposedGame<State> {
     oapply(
-      pages: [cardPage, armyPage, eventPage, actionPage, heroicPage, housekeepingPage],
+      pages: [cardPage, armyPage, eventPage, actionPage, heroicPage, paladinReactPage, housekeepingPage],
       priorities: [],
       initialState: {
         var state = greenskinSetup(
@@ -498,15 +592,17 @@ extension LoD {
       phaseForAction: { action in
         switch action {
         case .drawCard: return .army
-        case .advanceArmies: return .event
+        case .advanceArmies(_): return .event
         case .skipEvent: return .action
         case .resolveEvent: return .action
         case .meleeAttack, .rangedAttack, .buildUpgrade, .chant,
-             .memorize, .pray, .questAction:
+             .memorize, .pray, .questAction, .castSpell, .rogueMove:
           return nil  // stay in action phase
         case .passActions: return .heroic
         case .moveHero, .heroicAttack, .rally, .questHeroic:
           return nil  // stay in heroic phase
+        case .paladinReroll, .declineReroll:
+          return nil  // paladin react page handles phase transition
         case .passHeroics: return .housekeeping
         case .performHousekeeping: return .card
         }

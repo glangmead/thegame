@@ -185,6 +185,15 @@ struct LoDComponents: GameComponents {
     }
   }
 
+  // MARK: - Magic Item Timing
+
+  /// When to use a magic item relative to a die roll (rule 9.2).
+  /// Before rolling: +2 DRM. After seeing the roll: +1 DRM.
+  enum ItemTiming: Hashable {
+    case before  // +2 DRM
+    case after   // +1 DRM
+  }
+
   // MARK: - Upgrades (rule 6.3)
 
   enum UpgradeType: String, CaseIterable, Equatable, Hashable {
@@ -278,7 +287,7 @@ struct LoDComponents: GameComponents {
     .dawn,      // 12
     .day,       // 13
     .day,       // 14
-    .twilight,  // 15: Final Twilight
+    .twilight   // 15: Final Twilight
   ]
 
   /// Whether a time space draws from the day deck.
@@ -297,6 +306,7 @@ struct LoDComponents: GameComponents {
     case action
     case heroic
     case housekeeping
+    case paladinReact
   }
 
   // MARK: - Cards (rule 3.0)
