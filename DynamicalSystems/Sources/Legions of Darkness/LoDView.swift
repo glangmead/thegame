@@ -43,16 +43,12 @@ struct LoDView: View {
   var body: some View {
     GeometryReader { geo in
       let isLandscape = geo.size.width > geo.size.height
-      if isLandscape {
-        HStack(spacing: 0) {
-          boardView(squareSize: geo.size.height)
-          actionPanel
-        }
-      } else {
-        VStack(spacing: 0) {
-          boardView(squareSize: geo.size.width)
-          actionPanel
-        }
+      let layout = isLandscape
+        ? AnyLayout(HStackLayout(spacing: 0))
+        : AnyLayout(VStackLayout(spacing: 0))
+      layout {
+        boardView(squareSize: isLandscape ? geo.size.height : geo.size.width)
+        actionPanel
       }
     }
     .navigationTitle("Legions of Darkness")

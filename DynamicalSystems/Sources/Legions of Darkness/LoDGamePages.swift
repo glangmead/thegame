@@ -23,10 +23,39 @@ extension LoD {
       reduce: { state, action in
         guard case .drawCard = action else { return nil }
         state.drawCard()
-        return ([Log(msg: "Drew card: \(state.currentCard?.title ?? "none")")],
-                [.advanceArmies(acidAttackDieRolls: [:])])
+        let logs = cardLogs(for: state.currentCard)
+        return (logs, [.advanceArmies(acidAttackDieRolls: [:])])
       }
     )
+  }
+
+  // MARK: - Card Log Formatting
+
+  private static func cardLogs(for card: Card?) -> [Log] {
+    guard let card else { return [Log(msg: "Drew card: none")] }
+    var logs: [Log] = []
+    let advances = card.advances.map(\.rawValue).joined(separator: ", ")
+    logs.append(Log(msg: "Card #\(card.number): \(card.title) (\(card.deck.rawValue))"))
+    logs.append(Log(msg: "  Advances: \(advances), Time: \(card.time)"))
+    logs.append(Log(msg: "  Actions: \(card.actions), Heroics: \(card.heroics)"))
+    if !card.actionDRMs.isEmpty {
+      let drms = card.actionDRMs.map { "\($0.action.rawValue) \($0.value > 0 ? "+" : "")\($0.value)" }
+      logs.append(Log(msg: "  Action DRMs: \(drms.joined(separator: ", "))"))
+    }
+    if !card.heroicDRMs.isEmpty {
+      let drms = card.heroicDRMs.map { "\($0.action.rawValue) \($0.value > 0 ? "+" : "")\($0.value)" }
+      logs.append(Log(msg: "  Heroic DRMs: \(drms.joined(separator: ", "))"))
+    }
+    if let event = card.event {
+      logs.append(Log(msg: "  Event: \(event.title)"))
+    }
+    if let quest = card.quest {
+      logs.append(Log(msg: "  Quest: \(quest.title) (target \(quest.target))"))
+    }
+    if let bloodyBattle = card.bloodyBattle {
+      logs.append(Log(msg: "  Bloody battle: \(bloodyBattle.rawValue)"))
+    }
+    return logs
   }
 
   // MARK: - Army Phase

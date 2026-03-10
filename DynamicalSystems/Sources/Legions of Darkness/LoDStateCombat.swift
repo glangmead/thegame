@@ -12,7 +12,7 @@ extension LoD.State {
   // MARK: - Army Advancement (rule 4.1)
 
   /// Result of attempting to advance an army one space toward the castle.
-  enum AdvanceResult: Equatable {
+  enum AdvanceResult: Equatable, CustomStringConvertible {
     case advanced(LoD.ArmySlot, from: Int, destination: Int)
     case breachCreated(LoD.Track)
     case armyEnteredCastle(LoD.Track)
@@ -22,6 +22,29 @@ extension LoD.State {
     case notOnBoard
     case slowMarkerRemoved(LoD.ArmySlot)
     case greaseHeld(LoD.Track)
+
+    var description: String {
+      switch self {
+      case .advanced(_, let from, let dest):
+        return "moved from space \(from) to \(dest)"
+      case .breachCreated(let track):
+        return "breach created on \(track.rawValue)"
+      case .armyEnteredCastle(let track):
+        return "army entered castle via \(track.rawValue)"
+      case .barricadeHeld(let track):
+        return "barricade held on \(track.rawValue)"
+      case .armyBrokeBarricade(let track):
+        return "barricade broken on \(track.rawValue)"
+      case .defenderLoss:
+        return "defender lost"
+      case .notOnBoard:
+        return "army not on board"
+      case .slowMarkerRemoved(let slot):
+        return "slow removed from \(slot.rawValue)"
+      case .greaseHeld(let track):
+        return "grease held on \(track.rawValue)"
+      }
+    }
   }
 
   /// Advance a single army slot one space toward the castle (space number decreases).
@@ -178,13 +201,30 @@ extension LoD.State {
     case ranged
   }
 
-  enum AttackResult: Equatable {
+  enum AttackResult: Equatable, CustomStringConvertible {
     case hit(LoD.ArmySlot, pushedFrom: Int, pushedTo: Int)
     case miss(LoD.ArmySlot)
     case naturalOneFail(LoD.ArmySlot)
     case targetNotOnBoard
     case targetNotInMeleeRange
     case targetNotInRange
+
+    var description: String {
+      switch self {
+      case .hit(let slot, let from, let dest):
+        return "hit \(slot.rawValue), pushed from \(from) to \(dest)"
+      case .miss(let slot):
+        return "missed \(slot.rawValue)"
+      case .naturalOneFail(let slot):
+        return "natural 1 vs \(slot.rawValue)"
+      case .targetNotOnBoard:
+        return "target not on board"
+      case .targetNotInMeleeRange:
+        return "target not in melee range"
+      case .targetNotInRange:
+        return "target not in range"
+      }
+    }
   }
 
   /// Resolve an attack action against an army.

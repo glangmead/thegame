@@ -90,6 +90,24 @@ class GameScene<
 
     for siteID in model.graph.sites.keys.sorted(by: { $0.raw < $1.raw }) {
       guard let site = model.graph.sites[siteID] else { continue }
+
+      if site.tags.contains("header") {
+        let labelNode = SKLabelNode(text: site.label ?? "")
+        labelNode.fontName = "Helvetica-Bold"
+        labelNode.fontSize = cellSize * 0.4
+        labelNode.fontColor = .darkGray
+        labelNode.horizontalAlignmentMode = .left
+        labelNode.verticalAlignmentMode = .center
+        labelNode.position = CGPoint(
+          x: site.position.x,
+          y: site.position.y + cellSize / 2
+        )
+        labelNode.name = "header_\(siteID.raw)"
+        parent.addChild(labelNode)
+        siteNodes[siteID] = labelNode
+        continue
+      }
+
       let node = SKShapeNode(rect: CGRect(
         x: 0, y: 0,
         width: cellSize, height: cellSize

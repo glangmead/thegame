@@ -48,6 +48,7 @@ struct LoDGraph {
     addArmyTracks(&graph, cell: cell, yPos: yPos)
     addStatusTracks(&graph, cell: cell, yPos: yPos)
     addTimeTracks(&graph, cell: cell, yPos: yPos)
+    addHeaderLabels(&graph, cell: cell, yPos: yPos)
     return graph
   }
 
@@ -222,6 +223,43 @@ struct LoDGraph {
     }
     connectTrack(&graph, sites: sites)
     graph.tracks[key] = sites
+  }
+
+  // MARK: - Header Labels
+
+  private struct HeaderLabel {
+    let col: CGFloat
+    let row: CGFloat
+    let name: String
+  }
+
+  private static func addHeaderLabels(
+    _ graph: inout SiteGraph,
+    cell: CGFloat,
+    yPos: (CGFloat) -> CGFloat
+  ) {
+    let headers: [HeaderLabel] = [
+      HeaderLabel(col: 9, row: 0, name: "East"),
+      HeaderLabel(col: 9, row: 1, name: "West"),
+      HeaderLabel(col: 9, row: 2, name: "Gate"),
+      HeaderLabel(col: 9, row: 3, name: "Sky"),
+      HeaderLabel(col: 9, row: 4, name: "Terror"),
+      HeaderLabel(col: 3, row: 6, name: "Morale"),
+      HeaderLabel(col: 12, row: 7, name: "Defenders"),
+      HeaderLabel(col: 7, row: 8, name: "Arcane"),
+      HeaderLabel(col: 15, row: 8, name: "Divine"),
+      HeaderLabel(col: 0, row: 9, name: "Time"),
+      HeaderLabel(col: 8, row: 12, name: "Cards"),
+      HeaderLabel(col: 10, row: 13, name: "Spells"),
+      HeaderLabel(col: 3, row: 14, name: "Items")
+    ]
+    for header in headers {
+      let id = graph.addSite(
+        position: CGPoint(x: header.col * cell, y: yPos(header.row)),
+        tags: ["header"]
+      )
+      graph.sites[id]?.label = header.name
+    }
   }
 
   // MARK: - Helpers
