@@ -14,28 +14,28 @@ extension CantStop: GameComponents {
   enum Column: Int, CaseIterable, Equatable, Hashable, RawComparable, CustomStringConvertible {
     case none = 0
     case two = 2, three, four, five, six, seven, eight, nine, ten, eleven, twelve
-    
+
     var description: String {
       "\(rawValue)"
     }
   }
-  
+
   static func tracks() -> [Column: Track] {
     [
-      .two:    Track(length: 3),
-      .three:  Track(length: 5),
-      .four:   Track(length: 7),
-      .five:   Track(length: 9),
-      .six:    Track(length: 11),
-      .seven:  Track(length: 13),
-      .eight:  Track(length: 11),
-      .nine:   Track(length: 9),
-      .ten:    Track(length: 7),
+      .two: Track(length: 3),
+      .three: Track(length: 5),
+      .four: Track(length: 7),
+      .five: Track(length: 9),
+      .six: Track(length: 11),
+      .seven: Track(length: 13),
+      .eight: Track(length: 11),
+      .nine: Track(length: 9),
+      .ten: Track(length: 7),
       .eleven: Track(length: 5),
       .twelve: Track(length: 3)
     ]
   }
-  
+
   // For debugging -- shrink the board
   //  static func colHeights() -> [Column: Int] {
   //    [.two:   2,  .three: 2, .four: 2, .five:   2, .six:    2, .seven: 2,
@@ -43,8 +43,8 @@ extension CantStop: GameComponents {
   //  }
   //
   static func colHeights() -> [Column: Int] {
-    [.two:   3,  .three: 5, .four: 7, .five:   9, .six:    11, .seven: 13,
-     .eight: 11, .nine:  9, .ten:  7, .eleven: 5, .twelve: 3,]
+    [.two: 3, .three: 5, .four: 7, .five: 9, .six: 11, .seven: 13,
+    .eight: 11, .nine: 9, .ten: 7, .eleven: 5, .twelve: 3 ]
   }
 
   // I'd like to evolve towards the Ludii paradigms: a board is a complex, and there are
@@ -52,7 +52,7 @@ extension CantStop: GameComponents {
   // The board's legal faces are the fibers of the type family.
   // The connectivity will interact with the rules.
   // All of it will be renderable, say in SpriteKit.
-  
+
   // Containers: Dice, Board, Hand, Deck
   // Components: Piece, Tile, Die, Domino, Card
   // Complex: vertices, edges, faces
@@ -69,14 +69,14 @@ extension CantStop: GameComponents {
       "\(col)\(row)"
     }
   }
-  
+
   static func columnTops() -> [Position] {
     Column.allCases.filter({$0 != Column.none}).map { col in Position(col: col, row: colHeights()[col] ?? 0) }
   }
-  
+
   enum Player: Hashable, Equatable, CaseIterable, Cyclic, CustomStringConvertible {
     case player1, player2, player3, player4
-    
+
     var description: String {
       switch self {
       case .player1:
@@ -89,7 +89,7 @@ extension CantStop: GameComponents {
         "4"
       }
     }
-    
+
     func next() -> Player {
       switch self {
       case .player1:
@@ -103,7 +103,7 @@ extension CantStop: GameComponents {
       }
     }
   }
-  
+
   enum Phase: String, Hashable, Equatable, Cyclic, CustomStringConvertible {
     case notRolled = "Not rolled"
     case rolled = "Rolled"
@@ -119,47 +119,47 @@ extension CantStop: GameComponents {
       }
     }
   }
-  
+
   ///
   /// Components
   ///
   enum WhitePiece: Int, CaseIterable, Hashable {
-    case white1  = 1,  white2, white3
+    case white1  = 1, white2, white3
   }
-  
+
   enum Piece: CaseIterable, Equatable, Hashable, CustomStringConvertible {
     case white(WhitePiece)
     case placeholder(Player, Column)
-    
+
     // all the associated values of a particular case
-    static var whitePieces: [Piece] { WhitePiece.allCases.map{ Piece.white($0) } }
-    
+    static var whitePieces: [Piece] { WhitePiece.allCases.map { Piece.white($0) } }
+
     static func placeholders(for player: Player) -> [Piece] {
       return Column.allCases.map { return .placeholder(player, $0) }
     }
-    
+
     static var allCases: [Piece] {
       return WhitePiece.allCases.map { Piece.white($0) }
       + Player.allCases.flatMap { placeholders(for: $0) }
     }
-    
+
     var description: String {
       switch self {
-      case .white(_):
+      case .white:
         "w"
       case .placeholder(let player, _):
         player.description
       }
     }
   }
-  
+
   enum Die: Int, CaseIterable, Equatable, Hashable, RawComparable, CustomStringConvertible {
     case die1 = 1, die2, die3, die4
     var description: String {
       "\(rawValue)"
     }
   }
-  
+
   struct PiecePosition: Hashable, Equatable, CustomStringConvertible {
     var piece: Piece
     var position: Position
@@ -167,7 +167,7 @@ extension CantStop: GameComponents {
       "\(piece): \(position)"
     }
   }
-  
+
   struct DieValue: Hashable, Equatable, CustomStringConvertible {
     var die: Die
     var value: DSix
@@ -175,6 +175,5 @@ extension CantStop: GameComponents {
       "\(die): \(value)"
     }
   }
-  
-}
 
+}

@@ -8,7 +8,7 @@
 import Foundation
 
 protocol TextTableAble {
-  func printTable<Target>(to: inout Target) where Target: TextOutputStream
+  func printTable<Target>(to output: inout Target) where Target: TextOutputStream
 }
 
 public struct StandardOutput: TextOutputStream {

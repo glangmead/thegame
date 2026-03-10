@@ -13,10 +13,15 @@ extension LoD {
 
     // MARK: - GameComponents typealiases
 
+    // swiftlint:disable:next nesting
     typealias Player        = LoDComponents.Player
+    // swiftlint:disable:next nesting
     typealias Phase         = LoDComponents.Phase
+    // swiftlint:disable:next nesting
     typealias Piece         = LoDComponents.Piece
+    // swiftlint:disable:next nesting
     typealias Position      = LoDComponents.Position
+    // swiftlint:disable:next nesting
     typealias PiecePosition = LoDComponents.PiecePosition
 
     // MARK: - GameState conformance
@@ -159,6 +164,7 @@ extension LoD {
     var victory: Bool = false
     var gameAcknowledged: Bool = false
 
+    // swiftlint:disable:next nesting
     enum GameOutcome: Equatable {
       case ongoing
       case victory
@@ -234,7 +240,9 @@ extension LoD {
         switch action {
         case .skipEvent, .resolveEvent:
           return count
-        case .meleeAttack, .rangedAttack, .buildUpgrade, .buildBarricade, .chant, .memorize, .pray, .questAction, .castSpell:
+        case .meleeAttack, .rangedAttack, .buildUpgrade,
+             .buildBarricade, .chant, .memorize, .pray,
+             .questAction, .castSpell:
           count += 1
         default:
           break

@@ -113,11 +113,11 @@ struct MalayanCampaign {
   }
 
   static func advantage(alliedStrength: DSix, japaneseStrength: DSix) -> Advantage {
-    let a = alliedStrength.rawValue
-    let j = japaneseStrength.rawValue
-    if j >= a * 3 {
+    let alliedValue = alliedStrength.rawValue
+    let japaneseValue = japaneseStrength.rawValue
+    if japaneseValue >= alliedValue * 3 {
       return .japaneseDecisive
-    } else if j > a {
+    } else if japaneseValue > alliedValue {
       return .japanese
     } else {
       return .alliedOrNone

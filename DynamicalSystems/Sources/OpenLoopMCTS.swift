@@ -14,27 +14,27 @@ import Foundation
 class ActionNode<Action: Hashable & Equatable & CustomStringConvertible, Player: Equatable>: CustomStringConvertible {
   let inboundAction: Action?
   let player: Player
-  var children = [Action:ActionNode]() // successor nodes after applying some action
+  var children = [Action: ActionNode]() // successor nodes after applying some action
   var parent: ActionNode?
 
   var visitableCount: Int = 0 // how often we were legal to be visited by our parent
   var visitCount: Int = 0
   var valueSum: Float = 0
-  
+
   var description: String {
     ((inboundAction == nil) ? "none" : "\(inboundAction!)")
   }
-  
+
   init(action: Action?, parent: ActionNode?, player: Player) {
     self.inboundAction = action
     self.parent = parent
     self.player = player
   }
-  
+
   func copy() -> ActionNode<Action, Player> {
     return ActionNode(action: self.inboundAction, parent: self.parent, player: self.player)
   }
-  
+
   func getOrCreateChild(action: Action, player: Player) -> ActionNode<Action, Player> {
     var child = children[action]
     if child == nil {
@@ -43,12 +43,12 @@ class ActionNode<Action: Hashable & Equatable & CustomStringConvertible, Player:
     }
     return child!
   }
-  
-  func printTree<Target>(level: Int = 0, to: inout Target) where Target: TextOutputStream {
+
+  func printTree<Target>(level: Int = 0, to destination: inout Target) where Target: TextOutputStream {
     let indent = String(repeating: " ", count: level)
-    print("\(indent)\(self)", to: &to)
+    print("\(indent)\(self)", to: &destination)
     for (_, child) in children {
-      child.printTree(level: level + 1, to: &to)
+      child.printTree(level: level + 1, to: &destination)
     }
   }
 
@@ -72,7 +72,7 @@ class ActionNode<Action: Hashable & Equatable & CustomStringConvertible, Player:
   var exploitValue: Float {
     visitCount > 0 ? valueSum / Float(visitCount) : 0
   }
-  
+
   // 0 if we have no data yet
   var exploreValue: Float {
     // sqrt( N(a) / n(a) ) in the notation of "Dice, Cards, Action!" Goodman, J., 2025
@@ -83,7 +83,7 @@ class ActionNode<Action: Hashable & Equatable & CustomStringConvertible, Player:
       ? sqrt(Float(visitableCount) / Float(visitCount))
       : Float.greatestFiniteMagnitude
   }
-  
+
   // upper confidence for trees (Kocsis & Szepesvári, Bandit-based monte-carlo planning, 2006)
   var exploreExploitValue: Float {
     return exploitValue + exploreValue
@@ -94,11 +94,11 @@ class OpenLoopMCTS<
   State: GameState & CustomStringConvertible,
   Action: Hashable & Equatable & CustomStringConvertible
 >: AnytimePlayer {
-  
+
   var rootState: State
-  var rootNodes = [State.Player:ActionNode<Action,State.Player>]()
+  var rootNodes = [State.Player: ActionNode<Action, State.Player>]()
   var reducer: any PlayableGame<State, Action>
-  
+
   init(state: State, reducer: any PlayableGame<State, Action>) {
     self.rootState = state
     self.reducer = reducer
@@ -106,9 +106,9 @@ class OpenLoopMCTS<
       self.rootNodes[player] = ActionNode(action: nil, parent: nil, player: player)
     }
   }
-  
+
   // use the explore-exploit tradeoff to select one next action
-  func selectAction(for node: ActionNode<Action,State.Player>, in state: State) -> Action {
+  func selectAction(for node: ActionNode<Action, State.Player>, in state: State) -> Action {
     let legalActions = reducer.allowedActions(state: state)
     // update the node with each action: make sure it has a child, and a visitable-count stat
     for legalAction in legalActions {
@@ -127,18 +127,17 @@ class OpenLoopMCTS<
     }
     return bestActions.randomElement()!
   }
-  
 
   // pick an unexpanded action
-  func expandAction(from parent: ActionNode<Action,State.Player>, in state: State) -> Action {
+  func expandAction(from parent: ActionNode<Action, State.Player>, in state: State) -> Action {
     let legalActions = reducer.allowedActions(state: state)
     // by assumption one of these actions has no visit count
     return legalActions.filter({
       (parent.children[$0]?.visitCount ?? 0) == 0
     }).randomElement()!
   }
-  
-  func rolloutAction(from: ActionNode<Action,State.Player>, in state: State) -> Action {
+
+  func rolloutAction(from: ActionNode<Action, State.Player>, in state: State) -> Action {
     reducer.allowedActions(state: state).randomElement()!
   }
 
@@ -147,52 +146,56 @@ class OpenLoopMCTS<
     case expand
     case rollout
   }
-  
-  func recommendation(iters: Int, numRollouts: Int = 1) -> [Action:(Float, Float)] {
-    var result = [Action:(Float, Float)]()
+
+  // swiftlint:disable:next cyclomatic_complexity function_body_length
+  func recommendation(iters: Int, numRollouts: Int = 1) -> [Action: (Float, Float)] {
+    var result = [Action: (Float, Float)]()
     guard !rootState.ended else {
       return result
     }
-    
+
     let maxRolloutDepth = 1000
 
     for _ in 0..<iters {
       // init the search for each player similarly
-      var currentNodes = [State.Player:ActionNode<Action,State.Player>]()  // where the iteration currently stands
-      var selectedNodes = [State.Player:ActionNode<Action,State.Player>]() // the node created by selection
-      var expandedNodes = [State.Player:ActionNode<Action,State.Player>]() // the node created by expansion
-      var currentSearchPhase = [State.Player:SearchPhase]()
+      var currentNodes = [State.Player: ActionNode<Action, State.Player>]()  // where the iteration currently stands
+      var selectedNodes = [State.Player: ActionNode<Action, State.Player>]() // the node created by selection
+      var expandedNodes = [State.Player: ActionNode<Action, State.Player>]() // the node created by expansion
+      var currentSearchPhase = [State.Player: SearchPhase]()
       for player in rootState.players {
         currentNodes[player] = rootNodes[player]
         currentSearchPhase[player] = .select
       }
-      
+
       var state = rootState
       var rolloutDepth = 0
-      
+
       // Explore a tree for each player, even though the player of rootState is "the player".
       //
       while rolloutDepth < maxRolloutDepth && !state.ended {
         let player = state.player
-        
+
         // Pick one next action for the current player.
-        // Since we jump from player to player, we need to somehow know whether to do selection, expansion, or rollout at this moment.
+        // Since we jump from player to player, we need to somehow know
+        // whether to do selection, expansion, or rollout at this moment.
         let currentNode = currentNodes[player]!
         var nextAction: Action
         switch currentSearchPhase[player]! {
         case .select:
-          nextAction = selectAction(for: currentNode, in: state) // as a side effect this will create all children and update visitableCount for them
+          // as a side effect this will create all children
+          // and update visitableCount for them
+          nextAction = selectAction(for: currentNode, in: state)
         case .expand:
-          //let _ = selectAction(for: currentNode, in: state) // as a side effect this will create all
+          // let _ = selectAction(for: currentNode, in: state) // as a side effect this will create all
           nextAction = expandAction(from: currentNode, in: state)
         case .rollout:
           nextAction = rolloutAction(from: currentNode, in: state)
           rolloutDepth += 1
         }
-        
+
         // apply action
-        let _ = reducer.reduce(into: &state, action: nextAction)
-        
+        _ = reducer.reduce(into: &state, action: nextAction)
+
         // successor node
         let child = currentNode.getOrCreateChild(action: nextAction, player: state.player)
         currentNodes[state.player] = child
@@ -204,31 +207,31 @@ class OpenLoopMCTS<
         default:
           ()
         }
-        
+
         // update the phase for the player who started this iteration of the while loop
         switch currentSearchPhase[player]! {
-          case .select:
-            // if this new node has visitable but unvisited children, move to .expand
-            var someUnvisitedGrandchild = false
-            for action in reducer.allowedActions(state: state) {
-              let grandchild = child.children[action]
-              if grandchild == nil || grandchild!.visitCount == 0 {
-                someUnvisitedGrandchild = true
-              }
+        case .select:
+          // if this new node has visitable but unvisited children, move to .expand
+          var someUnvisitedGrandchild = false
+          for action in reducer.allowedActions(state: state) {
+            let grandchild = child.children[action]
+            if grandchild == nil || grandchild!.visitCount == 0 {
+              someUnvisitedGrandchild = true
             }
-            if someUnvisitedGrandchild {
-              currentSearchPhase[player] = .expand
-            } else {
-              currentSearchPhase[player] = .select
-            }
-          case .expand:
-            currentSearchPhase[player] = .rollout
-          case .rollout:
-            currentSearchPhase[player] = .rollout
+          }
+          if someUnvisitedGrandchild {
+            currentSearchPhase[player] = .expand
+          } else {
+            currentSearchPhase[player] = .select
+          }
+        case .expand:
+          currentSearchPhase[player] = .rollout
+        case .rollout:
+          currentSearchPhase[player] = .rollout
         }
-        
+
       } // while
-      
+
       // backprop the win/loss value
       for player in rootState.players {
         if let expandedNode = (expandedNodes[player]) ?? (selectedNodes[player]) {
@@ -243,11 +246,11 @@ class OpenLoopMCTS<
         )
       }
     }
-    
+
     return result
   }
-  
-  func printTree<Target>(to: inout Target) where Target: TextOutputStream {
-    rootNodes[rootState.player]!.printTree(level: 0, to: &to)
+
+  func printTree<Target>(to destination: inout Target) where Target: TextOutputStream {
+    rootNodes[rootState.player]!.printTree(level: 0, to: &destination)
   }
 }

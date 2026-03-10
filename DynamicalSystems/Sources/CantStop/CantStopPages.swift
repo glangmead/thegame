@@ -100,6 +100,7 @@ enum CantStopPages {
     )
   }
 
+  // swiftlint:disable:next function_body_length
   static func movePage() -> RulePage<CantStop.State, CantStop.Action> {
     RulePage(
       name: "Move",

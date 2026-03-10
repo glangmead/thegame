@@ -11,39 +11,39 @@ import Foundation
 /// Named `GamePiece` to avoid collision with existing game-specific `Piece` types
 /// during the migration period.
 struct GamePiece: Hashable, Codable, Equatable, Identifiable {
-    let id: Int
-    var kind: PieceKind
-    var owner: PlayerID?
-    var label: String?
+  let id: Int
+  var kind: PieceKind
+  var owner: PlayerID?
+  var label: String?
 
-    enum PieceKind: Codable, Equatable, Hashable {
-        case token
-        case die(sides: Int)
-        case card
-    }
+  enum PieceKind: Codable, Equatable, Hashable {
+    case token
+    case die(sides: Int)
+    case card
+  }
 }
 
 /// A player identifier, decoupled from game-specific player enums.
 struct PlayerID: Hashable, Codable, Equatable, CustomStringConvertible {
-    let raw: Int
-    init(_ raw: Int) { self.raw = raw }
-    var description: String { "player(\(raw))" }
+  let raw: Int
+  init(_ raw: Int) { self.raw = raw }
+  var description: String { "player(\(raw))" }
 }
 
 /// The fiber value for a piece — its position and type-specific state.
 /// Which case is inhabited is determined by the base point's PieceKind.
 enum PieceValue: Codable, Equatable, Hashable {
-    // swiftlint:disable:next identifier_name
-    case at(SiteID)
-    case dieShowing(face: Int, at: SiteID?) // swiftlint:disable:this identifier_name
-    case cardState(name: String, faceUp: Bool, at: SiteID?) // swiftlint:disable:this identifier_name
+  // swiftlint:disable:next identifier_name
+  case at(SiteID)
+  case dieShowing(face: Int, at: SiteID?) // swiftlint:disable:this identifier_name
+  case cardState(name: String, faceUp: Bool, at: SiteID?) // swiftlint:disable:this identifier_name
 
-    /// The site this piece occupies, regardless of kind.
-    var site: SiteID? {
-        switch self {
-        case .at(let siteID): return siteID
-        case .dieShowing(_, let siteID): return siteID
-        case .cardState(_, _, let siteID): return siteID
-        }
+  /// The site this piece occupies, regardless of kind.
+  var site: SiteID? {
+    switch self {
+    case .at(let siteID): return siteID
+    case .dieShowing(_, let siteID): return siteID
+    case .cardState(_, _, let siteID): return siteID
     }
+  }
 }

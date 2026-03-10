@@ -17,57 +17,57 @@ struct MCGraph {
   // Eastern (right): KB(0) -> Kuantan(1) -> Endau(2) -> Kluang(3) -> Singapore(4)
   // Kluang and Singapore are shared (same row)
 
+  /// Row position for each location on the allied track.
+  private static let alliedLocationRow: [Location: CGFloat] = [
+    .jitra: 0, .kotaBharu: 0,
+    .kampar: 1, .kuantan: 1,
+    .kualaLumpur: 2, .endau: 2,
+    .kluang: 3, .singapore: 4
+  ]
+
   static func board(cellSize: CGFloat = 75) -> SiteGraph {
     var graph = SiteGraph()
 
-    // Trunk road sites (left column): Jitra, Kampar, KL, Kluang, Singapore
-    let trunkLocations: [Location] = [.jitra, .kampar, .kualaLumpur, .kluang, .singapore]
-    var trunkSites: [SiteID] = []
-    for (row, loc) in trunkLocations.enumerated() {
-      let pos = CGPoint(x: 0 * cellSize, y: CGFloat(row) * cellSize)
-      let siteID = graph.addSite(position: pos, tags: ["trunk", loc.description.lowercased()])
-      graph.sites[siteID]?.label = loc.description
-      trunkSites.append(siteID)
-    }
-    connectTrack(&graph, sites: trunkSites)
-    graph.tracks["trunk"] = trunkSites
-
-    // Eastern road sites (right column): Kota Bharu, Kuantan, Endau, Kluang, Singapore
-    let easternLocations: [Location] = [.kotaBharu, .kuantan, .endau, .kluang, .singapore]
-    var easternSites: [SiteID] = []
-    for (row, loc) in easternLocations.enumerated() {
-      let pos = CGPoint(x: 2 * cellSize, y: CGFloat(row) * cellSize)
-      let siteID = graph.addSite(position: pos, tags: ["eastern", loc.description.lowercased()])
-      graph.sites[siteID]?.label = loc.description
-      easternSites.append(siteID)
-    }
-    connectTrack(&graph, sites: easternSites)
-    graph.tracks["eastern"] = easternSites
-
-    // Allied track (center column) - one site per location that has allied units
-    // All 7 locations + Singapore
-    let alliedLocations: [Location] = [.jitra, .kotaBharu, .kampar, .kuantan, .kualaLumpur, .endau, .kluang, .singapore]
-    var alliedSites: [SiteID] = []
-    for loc in alliedLocations {
-      // Position allied track in the center column
-      let row: CGFloat
-      switch loc {
-      case .jitra:       row = 0
-      case .kotaBharu:   row = 0  // same row as Jitra
-      case .kampar:      row = 1
-      case .kuantan:     row = 1  // same row as Kampar
-      case .kualaLumpur: row = 2
-      case .endau:       row = 2  // same row as KL
-      case .kluang:      row = 3
-      case .singapore:   row = 4
-      }
-      let pos = CGPoint(x: 1 * cellSize, y: row * cellSize)
-      let siteID = graph.addSite(position: pos, tags: ["allied", loc.description.lowercased()])
-      alliedSites.append(siteID)
-    }
-    graph.tracks["allied"] = alliedSites
+    graph.tracks["trunk"] = buildTrackSites(
+      &graph, locations: [.jitra, .kampar, .kualaLumpur, .kluang, .singapore],
+      column: 0, cellSize: cellSize, tag: "trunk"
+    )
+    graph.tracks["eastern"] = buildTrackSites(
+      &graph, locations: [.kotaBharu, .kuantan, .endau, .kluang, .singapore],
+      column: 2, cellSize: cellSize, tag: "eastern"
+    )
+    graph.tracks["allied"] = buildAlliedTrackSites(&graph, cellSize: cellSize)
 
     return graph
+  }
+
+  /// Build sites for a road track (trunk or eastern) at the given column.
+  private static func buildTrackSites(
+    _ graph: inout SiteGraph, locations: [Location],
+    column: CGFloat, cellSize: CGFloat, tag: String
+  ) -> [SiteID] {
+    var sites: [SiteID] = []
+    for (row, loc) in locations.enumerated() {
+      let pos = CGPoint(x: column * cellSize, y: CGFloat(row) * cellSize)
+      let siteID = graph.addSite(position: pos, tags: [tag, loc.description.lowercased()])
+      graph.sites[siteID]?.label = loc.description
+      sites.append(siteID)
+    }
+    connectTrack(&graph, sites: sites)
+    return sites
+  }
+
+  /// Build allied track sites using the row lookup table.
+  private static func buildAlliedTrackSites(_ graph: inout SiteGraph, cellSize: CGFloat) -> [SiteID] {
+    let alliedLocations: [Location] = [.jitra, .kotaBharu, .kampar, .kuantan, .kualaLumpur, .endau, .kluang, .singapore]
+    var sites: [SiteID] = []
+    for loc in alliedLocations {
+      let row = alliedLocationRow[loc] ?? 0
+      let pos = CGPoint(x: 1 * cellSize, y: row * cellSize)
+      let siteID = graph.addSite(position: pos, tags: ["allied", loc.description.lowercased()])
+      sites.append(siteID)
+    }
+    return sites
   }
 
   private static func connectTrack(_ graph: inout SiteGraph, sites: [SiteID]) {

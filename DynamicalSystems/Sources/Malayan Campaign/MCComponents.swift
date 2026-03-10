@@ -123,6 +123,7 @@ struct MalayanCampaignComponents: GameComponents {
 
   enum Position: Equatable, Hashable, CustomStringConvertible {
     case offBoard
+    // swiftlint:disable:next identifier_name
     case at(Location)
 
     var description: String {

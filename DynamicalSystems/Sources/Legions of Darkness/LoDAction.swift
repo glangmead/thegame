@@ -133,8 +133,8 @@ extension LoD {
       case .drawCard: return "Draw Card"
       case .advanceArmies: return "Advance Armies"
       case .skipEvent: return "Skip Event"
-      case .resolveEvent(let e):
-        return e.dieRoll > 0 ? "Resolve Event (roll \(e.dieRoll))" : "Resolve Event"
+      case .resolveEvent(let event):
+        return event.dieRoll > 0 ? "Resolve Event (roll \(event.dieRoll))" : "Resolve Event"
       case .meleeAttack(let slot, let roll, _, _):
         return "Melee: \(slot.rawValue.capitalized) (roll \(roll))"
       case .rangedAttack(let slot, let roll, _, _):

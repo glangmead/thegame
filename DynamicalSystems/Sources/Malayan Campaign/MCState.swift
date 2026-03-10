@@ -12,11 +12,17 @@ extension MalayanCampaign: StatePredicates {
 
   struct State: HistoryTracking, Equatable, Sendable, GameState, CustomStringConvertible {
 
+    // swiftlint:disable:next nesting
     typealias Player   = MalayanCampaignComponents.Player
+    // swiftlint:disable:next nesting
     typealias Phase    = MalayanCampaignComponents.Phase
+    // swiftlint:disable:next nesting
     typealias Piece    = MalayanCampaignComponents.Piece
+    // swiftlint:disable:next nesting
     typealias Position = MalayanCampaignComponents.Position
+    // swiftlint:disable:next nesting
     typealias Location = MalayanCampaignComponents.Location
+    // swiftlint:disable:next nesting
     typealias PiecePosition = MalayanCampaignComponents.PiecePosition
 
     var name: String { "Battle Card: Malayan Campaign" }
@@ -78,12 +84,12 @@ extension MalayanCampaign: StatePredicates {
       guard let loc = location(of: piece) else { return nil }
       // Check trunk road
       if let idx = MalayanCampaignComponents.trunkRoad.firstIndex(of: loc),
-         idx + 1 < MalayanCampaignComponents.trunkRoad.count {
+        idx + 1 < MalayanCampaignComponents.trunkRoad.count {
         return MalayanCampaignComponents.trunkRoad[idx + 1]
       }
       // Check eastern road
       if let idx = MalayanCampaignComponents.easternRoad.firstIndex(of: loc),
-         idx + 1 < MalayanCampaignComponents.easternRoad.count {
+        idx + 1 < MalayanCampaignComponents.easternRoad.count {
         return MalayanCampaignComponents.easternRoad[idx + 1]
       }
       return nil
@@ -104,8 +110,7 @@ extension MalayanCampaign: StatePredicates {
         let japStr = jap.map { "\($0.shortName)\(strength[$0]?.rawValue ?? 0)" } ?? ""
         result += "\(loc): \(allyStr) \(japStr) | "
       }
-      if endedInDefeatFor.isNonEmpty { result += "LOSS" }
-      else if endedInVictoryFor.isNonEmpty { result += "WIN" }
+      if endedInDefeatFor.isNonEmpty { result += "LOSS" } else if endedInVictoryFor.isNonEmpty { result += "WIN" }
       return result
     }
   }

@@ -13,9 +13,9 @@ import Foundation
 /// have been processed in a ForEach phase). The phase is cached for
 /// performance — it's checked on every rule evaluation.
 protocol HistoryTracking {
-    associatedtype Action: Hashable
-    associatedtype Phase: Hashable
+  associatedtype Action: Hashable
+  associatedtype Phase: Hashable
 
-    var history: [Action] { get set }
-    var phase: Phase { get set }
+  var history: [Action] { get set }
+  var phase: Phase { get set }
 }

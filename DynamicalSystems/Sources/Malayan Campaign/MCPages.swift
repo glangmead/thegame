@@ -7,6 +7,7 @@
 
 import Foundation
 
+// swiftlint:disable:next type_body_length
 enum MCPages {
   static func setupPage() -> RulePage<MalayanCampaign.State, MalayanCampaign.Action> {
     RulePage(
@@ -150,6 +151,7 @@ enum MCPages {
     )
   }
 
+  // swiftlint:disable:next cyclomatic_complexity function_body_length
   static func battlePage() -> ForEachPage<MalayanCampaign.State, MalayanCampaign.Piece> {
     ForEachPage(
       name: "Battle",
@@ -176,7 +178,7 @@ enum MCPages {
         return false
       },
       reduce: { state, action in
-        let mc = MalayanCampaign()
+        let campaign = MalayanCampaign()
         var logs = [Log]()
         switch action {
         case .counterattack(let ally):
@@ -187,10 +189,11 @@ enum MCPages {
             japaneseStrength: state.strength[jap]!
           )
           let roll = DSix.roll()
-          let (allyHit, japHit) = mc.counterattackCRT.result(adv, roll)
+          let (allyHit, japHit) = campaign.counterattackCRT.result(adv, roll)
           state.strength[ally] = DSix.minus(state.strength[ally]!, allyHit, clamp: false)
-          state.strength[jap]  = DSix.minus(state.strength[jap]!,  japHit, clamp: false)
-          logs.append(Log(msg: "Counterattack at \(loc): rolled \(roll.rawValue), -\(allyHit.rawValue) allied, -\(japHit.rawValue) japanese"))
+          state.strength[jap]  = DSix.minus(state.strength[jap]!, japHit, clamp: false)
+          logs.append(Log(msg: "Counterattack at \(loc): rolled \(roll.rawValue), " +
+            "-\(allyHit.rawValue) allied, -\(japHit.rawValue) japanese"))
           // Eliminate if reduced below 1
           if state.strength[ally]?.rawValue ?? 0 < 1 {
             state.removePiece(ally)
@@ -208,10 +211,11 @@ enum MCPages {
             japaneseStrength: state.strength[jap]!
           )
           let roll = DSix.roll()
-          let (allyHit, japHit) = mc.defendCRT.result(adv, roll)
+          let (allyHit, japHit) = campaign.defendCRT.result(adv, roll)
           state.strength[ally] = DSix.minus(state.strength[ally]!, allyHit, clamp: false)
-          state.strength[jap]  = DSix.minus(state.strength[jap]!,  japHit, clamp: false)
-          logs.append(Log(msg: "Defend at \(loc): rolled \(roll.rawValue), -\(allyHit.rawValue) allied, -\(japHit.rawValue) japanese"))
+          state.strength[jap]  = DSix.minus(state.strength[jap]!, japHit, clamp: false)
+          logs.append(Log(msg: "Defend at \(loc): rolled \(roll.rawValue), " +
+            "-\(allyHit.rawValue) allied, -\(japHit.rawValue) japanese"))
           if state.strength[ally]?.rawValue ?? 0 < 1 {
             state.removePiece(ally)
             logs.append(Log(msg: "\(ally) eliminated"))

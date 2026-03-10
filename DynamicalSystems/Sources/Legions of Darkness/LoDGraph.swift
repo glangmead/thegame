@@ -41,187 +41,187 @@ struct LoDGraph {
 
   static func board(cellSize: CGFloat = 40) -> SiteGraph {
     var graph = SiteGraph()
-    let cs = cellSize
+    let cell = cellSize
+    func yPos(_ row: CGFloat) -> CGFloat { (14 - row) * cell }
 
-    // Flip y so row 0 (East) is at the top of the SpriteKit scene.
-    // The board has 15 logical rows (0–14). SpriteKit y-axis points up,
-    // so we map row r → (14 - r) * cs.
-    func y(_ row: CGFloat) -> CGFloat { (14 - row) * cs }
+    registerWellKnownSites(&graph, cell: cell, yPos: yPos)
+    addArmyTracks(&graph, cell: cell, yPos: yPos)
+    addStatusTracks(&graph, cell: cell, yPos: yPos)
+    addTimeTracks(&graph, cell: cell, yPos: yPos)
+    return graph
+  }
 
-    // Pre-register all well-known sites so nextID starts past them.
-    // This prevents auto-generated IDs from colliding with well-known IDs.
-    graph.addSite(id: eastBreach, position: CGPoint(x: cs, y: y(0)), tags: ["breach"])
-    graph.addSite(id: westBreach, position: CGPoint(x: cs, y: y(1)), tags: ["breach"])
-    graph.addSite(id: gateBreach, position: CGPoint(x: cs, y: y(2)), tags: ["breach"])
-    graph.addSite(id: eastUpgrade, position: CGPoint(x: 0, y: y(0)), tags: ["upgrade"])
-    graph.addSite(id: westUpgrade, position: CGPoint(x: 0, y: y(1)), tags: ["upgrade"])
-    graph.addSite(id: gateUpgrade, position: CGPoint(x: 0, y: y(2)), tags: ["upgrade"])
+  // MARK: - Board Builder Helpers
+
+  private static func registerWellKnownSites(
+    _ graph: inout SiteGraph,
+    cell: CGFloat,
+    yPos: (CGFloat) -> CGFloat
+  ) {
+    graph.addSite(id: eastBreach, position: CGPoint(x: cell, y: yPos(0)), tags: ["breach"])
+    graph.addSite(id: westBreach, position: CGPoint(x: cell, y: yPos(1)), tags: ["breach"])
+    graph.addSite(id: gateBreach, position: CGPoint(x: cell, y: yPos(2)), tags: ["breach"])
+    graph.addSite(id: eastUpgrade, position: CGPoint(x: 0, y: yPos(0)), tags: ["upgrade"])
+    graph.addSite(id: westUpgrade, position: CGPoint(x: 0, y: yPos(1)), tags: ["upgrade"])
+    graph.addSite(id: gateUpgrade, position: CGPoint(x: 0, y: yPos(2)), tags: ["upgrade"])
     let cardRow: CGFloat = 12
-    graph.addSite(id: dayDraw, position: CGPoint(x: 0, y: y(cardRow)), tags: ["card"])
-    graph.addSite(id: nightDraw, position: CGPoint(x: cs, y: y(cardRow)), tags: ["card"])
-    graph.addSite(id: currentCard, position: CGPoint(x: 3 * cs, y: y(cardRow)), tags: ["card"])
-    graph.addSite(id: dayDiscard, position: CGPoint(x: 5 * cs, y: y(cardRow)), tags: ["card"])
-    graph.addSite(id: nightDiscard, position: CGPoint(x: 6 * cs, y: y(cardRow)), tags: ["card"])
+    graph.addSite(id: dayDraw, position: CGPoint(x: 0, y: yPos(cardRow)), tags: ["card"])
+    graph.addSite(id: nightDraw, position: CGPoint(x: cell, y: yPos(cardRow)), tags: ["card"])
+    graph.addSite(id: currentCard, position: CGPoint(x: 3 * cell, y: yPos(cardRow)), tags: ["card"])
+    graph.addSite(id: dayDiscard, position: CGPoint(x: 5 * cell, y: yPos(cardRow)), tags: ["card"])
+    graph.addSite(id: nightDiscard, position: CGPoint(x: 6 * cell, y: yPos(cardRow)), tags: ["card"])
     let itemRow: CGFloat = 14
-    graph.addSite(id: sword, position: CGPoint(x: 0, y: y(itemRow)), tags: ["item"])
-    graph.addSite(id: bow, position: CGPoint(x: cs, y: y(itemRow)), tags: ["item"])
+    graph.addSite(id: sword, position: CGPoint(x: 0, y: yPos(itemRow)), tags: ["item"])
+    graph.addSite(id: bow, position: CGPoint(x: cell, y: yPos(itemRow)), tags: ["item"])
     let statusRow: CGFloat = 6
-    graph.addSite(id: reserves, position: CGPoint(x: 4 * cs, y: y(statusRow)), tags: ["reserves"])
+    graph.addSite(id: reserves, position: CGPoint(x: 4 * cell, y: yPos(statusRow)), tags: ["reserves"])
 
-    // Set labels for well-known sites
-    graph.sites[eastBreach]?.label = "E 0"
-    graph.sites[westBreach]?.label = "W 0"
-    graph.sites[gateBreach]?.label = "G 0"
-    graph.sites[eastUpgrade]?.label = "E Up"
-    graph.sites[westUpgrade]?.label = "W Up"
-    graph.sites[gateUpgrade]?.label = "G Up"
-    graph.sites[dayDraw]?.label = "Day"
-    graph.sites[nightDraw]?.label = "Night"
-    graph.sites[currentCard]?.label = "Card"
-    graph.sites[dayDiscard]?.label = "D Dis"
-    graph.sites[nightDiscard]?.label = "N Dis"
-    graph.sites[sword]?.label = "Sword"
-    graph.sites[bow]?.label = "Bow"
-    graph.sites[reserves]?.label = "Rsv"
+    let labels: [(SiteID, String)] = [
+      (eastBreach, "E 0"), (westBreach, "W 0"), (gateBreach, "G 0"),
+      (eastUpgrade, "E Up"), (westUpgrade, "W Up"), (gateUpgrade, "G Up"),
+      (dayDraw, "Day"), (nightDraw, "Night"), (currentCard, "Card"),
+      (dayDiscard, "D Dis"), (nightDiscard, "N Dis"),
+      (sword, "Sword"), (bow, "Bow"), (reserves, "Rsv")
+    ]
+    for (siteID, label) in labels { graph.sites[siteID]?.label = label }
+  }
 
-    // ---- ARMY TRACKS (rows 0–4) ----
-    // Layout: [Upgrade] [Breach/Space0] [Space1] [Space2] ... [SpaceMax]
-    // Spaces go left (castle) to right (far)
+  private static func addArmyTracks(
+    _ graph: inout SiteGraph,
+    cell: CGFloat,
+    yPos: (CGFloat) -> CGFloat
+  ) {
+    addSingleTrack(&graph, key: "east", prefix: "E", row: 0, count: 6, cell: cell, yPos: yPos)
+    addSingleTrack(&graph, key: "west", prefix: "W", row: 1, count: 6, cell: cell, yPos: yPos)
+    addSingleTrack(&graph, key: "gate", prefix: "G", row: 2, count: 4, cell: cell, yPos: yPos)
+    addSingleTrack(&graph, key: "sky", prefix: "S", row: 3, count: 6, cell: cell, yPos: yPos)
+    addSingleTrack(&graph, key: "terror", prefix: "T", row: 4, count: 3, cell: cell, yPos: yPos)
+  }
 
-    // East track (row 0): spaces 1-6
-    var eastSites: [SiteID] = []
-    for space in 1...6 {
-      let id = graph.addSite(position: CGPoint(x: CGFloat(space + 1) * cs, y: y(0)), tags: ["east"])
-      graph.sites[id]?.label = "E\(space)"
-      eastSites.append(id)
-    }
-    connectTrack(&graph, sites: eastSites)
-    graph.tracks["east"] = eastSites
-
-    // West track (row 1): spaces 1-6
-    var westSites: [SiteID] = []
-    for space in 1...6 {
-      let id = graph.addSite(position: CGPoint(x: CGFloat(space + 1) * cs, y: y(1)), tags: ["west"])
-      graph.sites[id]?.label = "W\(space)"
-      westSites.append(id)
-    }
-    connectTrack(&graph, sites: westSites)
-    graph.tracks["west"] = westSites
-
-    // Gate track (row 2): spaces 1-4
-    var gateSites: [SiteID] = []
-    for space in 1...4 {
-      let id = graph.addSite(position: CGPoint(x: CGFloat(space + 1) * cs, y: y(2)), tags: ["gate"])
-      graph.sites[id]?.label = "G\(space)"
-      gateSites.append(id)
-    }
-    connectTrack(&graph, sites: gateSites)
-    graph.tracks["gate"] = gateSites
-
-    // Sky track (row 3): no upgrade/breach, spaces 1-6
-    var skySites: [SiteID] = []
-    for space in 1...6 {
-      let id = graph.addSite(position: CGPoint(x: CGFloat(space + 1) * cs, y: y(3)), tags: ["sky"])
-      graph.sites[id]?.label = "S\(space)"
-      skySites.append(id)
-    }
-    connectTrack(&graph, sites: skySites)
-    graph.tracks["sky"] = skySites
-
-    // Terror track (row 4): no upgrade/breach, spaces 1-3
-    var terrorSites: [SiteID] = []
-    for space in 1...3 {
-      let id = graph.addSite(position: CGPoint(x: CGFloat(space + 1) * cs, y: y(4)), tags: ["terror"])
-      graph.sites[id]?.label = "T\(space)"
-      terrorSites.append(id)
-    }
-    connectTrack(&graph, sites: terrorSites)
-    graph.tracks["terror"] = terrorSites
-
-    // ---- STATUS SECTION (row 6) ----
+  private static func addStatusTracks(
+    _ graph: inout SiteGraph,
+    cell: CGFloat,
+    yPos: (CGFloat) -> CGFloat
+  ) {
+    let statusRow: CGFloat = 6
 
     // Morale: Low, Normal, High
-    var moraleSites: [SiteID] = []
-    for (i, label) in ["Low", "Norm", "High"].enumerated() {
-      let id = graph.addSite(position: CGPoint(x: CGFloat(i) * cs, y: y(statusRow)), tags: ["morale"])
-      graph.sites[id]?.label = label
-      moraleSites.append(id)
-    }
-    graph.tracks["morale"] = moraleSites
+    graph.tracks["morale"] = addLabeledTrack(
+      &graph, labels: ["Low", "Norm", "High"],
+      xStart: 0, cell: cell, yVal: yPos(statusRow), tag: "morale"
+    )
 
-    // ---- DEFENDERS (row 7) ----
+    // Defenders (row 7)
+    graph.tracks["menAtArms"] = addIndexedTrack(
+      &graph, prefix: "M", range: 0...3,
+      xStart: 0, cell: cell, yVal: yPos(7), tag: "defender"
+    )
+    graph.tracks["archers"] = addIndexedTrack(
+      &graph, prefix: "A", range: 0...2,
+      xStart: 5, cell: cell, yVal: yPos(7), tag: "defender"
+    )
+    graph.tracks["priests"] = addIndexedTrack(
+      &graph, prefix: "P", range: 0...2,
+      xStart: 9, cell: cell, yVal: yPos(7), tag: "defender"
+    )
 
-    // Men-at-Arms: 0-3
-    var maaSites: [SiteID] = []
-    for i in 0...3 {
-      let id = graph.addSite(position: CGPoint(x: CGFloat(i) * cs, y: y(7)), tags: ["defender"])
-      graph.sites[id]?.label = "M\(i)"
-      maaSites.append(id)
-    }
-    graph.tracks["menAtArms"] = maaSites
+    // Energy (row 8)
+    graph.tracks["arcane"] = addIndexedTrack(
+      &graph, prefix: "a", range: 0...6,
+      xStart: 0, cell: cell, yVal: yPos(8), tag: "energy"
+    )
+    graph.tracks["divine"] = addIndexedTrack(
+      &graph, prefix: "d", range: 0...6,
+      xStart: 8, cell: cell, yVal: yPos(8), tag: "energy"
+    )
+  }
 
-    // Archers: 0-2
-    var archerSites: [SiteID] = []
-    for i in 0...2 {
-      let id = graph.addSite(position: CGPoint(x: CGFloat(i + 5) * cs, y: y(7)), tags: ["defender"])
-      graph.sites[id]?.label = "A\(i)"
-      archerSites.append(id)
-    }
-    graph.tracks["archers"] = archerSites
-
-    // Priests: 0-2
-    var priestSites: [SiteID] = []
-    for i in 0...2 {
-      let id = graph.addSite(position: CGPoint(x: CGFloat(i + 9) * cs, y: y(7)), tags: ["defender"])
-      graph.sites[id]?.label = "P\(i)"
-      priestSites.append(id)
-    }
-    graph.tracks["priests"] = priestSites
-
-    // ---- ENERGY (row 8) ----
-
-    // Arcane: 0-6
-    var arcaneSites: [SiteID] = []
-    for i in 0...6 {
-      let id = graph.addSite(position: CGPoint(x: CGFloat(i) * cs, y: y(8)), tags: ["energy"])
-      graph.sites[id]?.label = "a\(i)"
-      arcaneSites.append(id)
-    }
-    graph.tracks["arcane"] = arcaneSites
-
-    // Divine: 0-6
-    var divineSites: [SiteID] = []
-    for i in 0...6 {
-      let id = graph.addSite(position: CGPoint(x: CGFloat(i + 8) * cs, y: y(8)), tags: ["energy"])
-      graph.sites[id]?.label = "d\(i)"
-      divineSites.append(id)
-    }
-    graph.tracks["divine"] = divineSites
-
-    // ---- TIME TRACK (row 10) ----
-    var timeSites: [SiteID] = []
+  private static func addTimeTracks(
+    _ graph: inout SiteGraph,
+    cell: CGFloat,
+    yPos: (CGFloat) -> CGFloat
+  ) {
     let timeLabels = ["D0", "d1", "d2", "T3", "n4", "n5",
                       "D6", "d7", "d8", "T9", "n10", "n11",
                       "D12", "d13", "d14", "T15"]
-    for i in 0..<16 {
-      let id = graph.addSite(position: CGPoint(x: CGFloat(i) * cs, y: y(10)), tags: ["time"])
-      graph.sites[id]?.label = timeLabels[i]
-      timeSites.append(id)
-    }
+    let timeSites = addLabeledTrack(
+      &graph, labels: timeLabels,
+      xStart: 0, cell: cell, yVal: yPos(10), tag: "time"
+    )
     connectTrack(&graph, sites: timeSites)
     graph.tracks["time"] = timeSites
 
-    // ---- SPELLS (row 13) ----
-    var spellSites: [SiteID] = []
     let spellLabels = ["FB", "Sl", "CL", "Fo", "CW", "MH", "DW", "In", "RD"]
-    for (i, label) in spellLabels.enumerated() {
-      let id = graph.addSite(position: CGPoint(x: CGFloat(i) * cs, y: y(13)), tags: ["spell"])
-      graph.sites[id]?.label = label
-      spellSites.append(id)
-    }
-    graph.tracks["spells"] = spellSites
+    graph.tracks["spells"] = addLabeledTrack(
+      &graph, labels: spellLabels,
+      xStart: 0, cell: cell, yVal: yPos(13), tag: "spell"
+    )
+  }
 
-    return graph
+  // swiftlint:disable:next function_parameter_count
+  private static func addLabeledTrack(
+    _ graph: inout SiteGraph,
+    labels: [String],
+    xStart: Int,
+    cell: CGFloat,
+    yVal: CGFloat,
+    tag: String
+  ) -> [SiteID] {
+    var sites: [SiteID] = []
+    for (idx, label) in labels.enumerated() {
+      let id = graph.addSite(
+        position: CGPoint(x: CGFloat(xStart + idx) * cell, y: yVal),
+        tags: [tag]
+      )
+      graph.sites[id]?.label = label
+      sites.append(id)
+    }
+    return sites
+  }
+
+  // swiftlint:disable:next function_parameter_count
+  private static func addIndexedTrack(
+    _ graph: inout SiteGraph,
+    prefix: String,
+    range: ClosedRange<Int>,
+    xStart: Int,
+    cell: CGFloat,
+    yVal: CGFloat,
+    tag: String
+  ) -> [SiteID] {
+    var sites: [SiteID] = []
+    for idx in range {
+      let id = graph.addSite(
+        position: CGPoint(x: CGFloat(xStart + idx) * cell, y: yVal),
+        tags: [tag]
+      )
+      graph.sites[id]?.label = "\(prefix)\(idx)"
+      sites.append(id)
+    }
+    return sites
+  }
+
+  // swiftlint:disable:next function_parameter_count
+  private static func addSingleTrack(
+    _ graph: inout SiteGraph,
+    key: String,
+    prefix: String,
+    row: CGFloat,
+    count: Int,
+    cell: CGFloat,
+    yPos: (CGFloat) -> CGFloat
+  ) {
+    var sites: [SiteID] = []
+    for space in 1...count {
+      let id = graph.addSite(
+        position: CGPoint(x: CGFloat(space + 1) * cell, y: yPos(row)),
+        tags: [key]
+      )
+      graph.sites[id]?.label = "\(prefix)\(space)"
+      sites.append(id)
+    }
+    connectTrack(&graph, sites: sites)
+    graph.tracks[key] = sites
   }
 
   // MARK: - Helpers

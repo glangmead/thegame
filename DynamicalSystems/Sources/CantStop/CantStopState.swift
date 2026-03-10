@@ -12,18 +12,28 @@ extension CantStop: StatePredicates {
 
   // The pi type of the family, i.e. a type of sections of the family.
   // In that light, members like player: Player are maps from the unit type to Player.
-  struct State: HistoryTracking, Equatable, Hashable, Sendable, GameState, CustomStringConvertible, CustomDebugStringConvertible {
-    
+  struct State: HistoryTracking, Equatable, Hashable, Sendable,
+    GameState, CustomStringConvertible,
+    CustomDebugStringConvertible {
+
+    // swiftlint:disable:next nesting
     typealias Player = CantStop.Player
+    // swiftlint:disable:next nesting
     typealias Phase = CantStop.Phase
+    // swiftlint:disable:next nesting
     typealias Piece = CantStop.Piece
+    // swiftlint:disable:next nesting
     typealias Position = CantStop.Position
+    // swiftlint:disable:next nesting
     typealias PiecePosition = CantStop.PiecePosition
-    
+
     var name: String {
       "F My Luck"
     }
-    // TODO: force-query w/ extension Dictionary { subscript(force key: Key) -> Value {} } like in https://stackoverflow.com/questions/59793783/force-swift-dictionary-to-return-a-non-optional-or-assert
+    // TODO: force-query w/ extension Dictionary {
+    //   subscript(force key: Key) -> Value {}
+    // } like in https://stackoverflow.com/questions/59793783/
+    // force-swift-dictionary-to-return-a-non-optional-or-assert
     var position = [Piece: Position]()
     var phase: CantStop.Phase = .notRolled
     var dice = [Die: DSix]()
@@ -36,15 +46,15 @@ extension CantStop: StatePredicates {
     var endedInDefeatFor = [Player]()
     var loggedActions = [Log]()
     var history: [Action] = []
-    
+
     var description: String {
       ""
     }
-    
+
     var debugDescription: String {
       description
     }
-    
+
     init() {
       assignedDicePair = Column.none
       player = Player.player1
@@ -61,7 +71,7 @@ extension CantStop: StatePredicates {
         dice[die] = DSix.none
       }
     }
-    
+
     static func equiv(lhs: State, rhs: State) -> Bool {
       return
         lhs.ended                                ==  rhs.ended &&
@@ -75,19 +85,19 @@ extension CantStop: StatePredicates {
     }
 
     // MARK: - semantic queries
-    
+
     var whitePositions: Set<Position> {
       Set(WhitePiece.allCases.map { position[Piece.white($0)]! })
     }
-    
+
     func whiteIn(col: Column) -> Piece? {
-      Piece.whitePieces.first(where: {position[$0]?.col == col} )
+      Piece.whitePieces.first(where: {position[$0]?.col == col})
     }
-    
+
     func placeholderPositions(for thePlayer: Player) -> Set<Position> {
       Set(Piece.placeholders(for: thePlayer).map { position[$0]! })
     }
-    
+
     /// The player's high-water mark in a column
     func farthestAlong(in col: Column) -> Int {
       var whiteHeight = 0
@@ -97,11 +107,11 @@ extension CantStop: StatePredicates {
       let placeholderHeight = position[Piece.placeholder(player, col)]?.row ?? 0
       return max(placeholderHeight, whiteHeight)
     }
-    
+
     func rolledDice() -> [Die] {
       Die.allCases.filter { die in dice[die] != DSix.none}
     }
-    
+
     func colIsWon(_ col: Column) -> Bool {
       return col != Column.none &&
         piecesAt([Position(col: col, row: colHeights()[col]!)]).anySatisfy({ piece in
@@ -114,16 +124,16 @@ extension CantStop: StatePredicates {
         }
         )
     }
-    
+
     func wonCols() -> [Column] {
       Column.allCases.filter({ colIsWon($0)})
     }
-    
+
     func winAchieved() -> Bool {
       let piecesAtTop = Set(piecesAt(columnTops()))
       return piecesAtTop.intersection(Piece.placeholders(for: player) + Piece.whitePieces).count >= 3
     }
-    
+
     func piecesAt(_ spots: [Position]) -> [Piece] {
       return spots.flatMap { spot in
         Piece.allCases.filter {
@@ -131,7 +141,7 @@ extension CantStop: StatePredicates {
         }
       }
     }
-    
+
     var boardReport: [Column: [Piece]] {
       var report: [Column: [Piece]] = [:]
       for col in Column.allCases {
@@ -142,7 +152,7 @@ extension CantStop: StatePredicates {
       }
       return report
     }
-    
+
     func asText() -> [[String]] {
       var text = [[String]]()
       for col in Column.allCases.filter({$0 != Column.none}) {
@@ -156,7 +166,7 @@ extension CantStop: StatePredicates {
       }
       return text
     }
-    
+
     var diceReport: [Die: DSix] {
       var report: [Die: DSix] = [:]
       for die in Die.allCases {
@@ -166,7 +176,7 @@ extension CantStop: StatePredicates {
     }
 
     // MARK: - mutating
-    
+
     mutating func advancePlayer() {
       var putativeNextPlayer = player.next()
       // advance until we get to the next player actually playing in this game
@@ -176,19 +186,19 @@ extension CantStop: StatePredicates {
       player = putativeNextPlayer
       rolledThisTurn = false
     }
-    
+
     mutating func clearWhite() {
       for white in Piece.whitePieces {
         position[white] = Position(col: .none, row: 0)
       }
     }
-    
+
     mutating func clearDice() {
       for die in Die.allCases {
         dice[die] = DSix.none
       }
     }
-    
+
     mutating func savePlace() {
       for col in Column.allCases {
         position[Piece.placeholder(player, col)] = Position(col: col, row: farthestAlong(in: col))

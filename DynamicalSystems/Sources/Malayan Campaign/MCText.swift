@@ -35,12 +35,12 @@ extension MalayanCampaign.State: TextTableAble {
     }
   }
 
-  func printTable<Target>(to: inout Target) where Target: TextOutputStream {
+  func printTable<Target>(to output: inout Target) where Target: TextOutputStream {
     let turnTable = TextTable<MalayanCampaign.State> { state in
       [Column(title: "Turn", value: state.turnNumber),
-       Column(title: "Phase", value: state.phase.name)]
+      Column(title: "Phase", value: state.phase.name)]
     }
-    if let s = turnTable.string(for: [self]) { Swift.print(s, to: &to) }
+    if let text = turnTable.string(for: [self]) { Swift.print(text, to: &output) }
 
     let mapTable = TextTable<LocationReport> { row in
       [
@@ -51,6 +51,6 @@ extension MalayanCampaign.State: TextTableAble {
         Column(title: "Str", value: row.japStr)
       ]
     }
-    if let s = mapTable.string(for: reports) { Swift.print(s, to: &to) }
+    if let text = mapTable.string(for: reports) { Swift.print(text, to: &output) }
   }
 }

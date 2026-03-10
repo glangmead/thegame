@@ -11,25 +11,25 @@ import Observation
 @MainActor
 @Observable
 class GameModel<
-    State: GameState & CustomStringConvertible,
-    Action: Hashable & Equatable & CustomStringConvertible
+  State: GameState & CustomStringConvertible,
+  Action: Hashable & Equatable & CustomStringConvertible
 > {
-    var state: State
-    let game: any PlayableGame<State, Action>
-    let graph: SiteGraph
+  var state: State
+  let game: any PlayableGame<State, Action>
+  let graph: SiteGraph
 
-    init(game: some PlayableGame<State, Action>, graph: SiteGraph) {
-        self.game = game
-        self.graph = graph
-        self.state = game.newState()
-    }
+  init(game: some PlayableGame<State, Action>, graph: SiteGraph) {
+    self.game = game
+    self.graph = graph
+    self.state = game.newState()
+  }
 
-    var allowedActions: [Action] {
-        game.allowedActions(state: state)
-    }
+  var allowedActions: [Action] {
+    game.allowedActions(state: state)
+  }
 
-    @discardableResult
-    func perform(_ action: Action) -> [Log] {
-        game.reduce(into: &state, action: action)
-    }
+  @discardableResult
+  func perform(_ action: Action) -> [Log] {
+    game.reduce(into: &state, action: action)
+  }
 }

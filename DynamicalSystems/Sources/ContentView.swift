@@ -11,24 +11,25 @@ import SwiftUI
 
 enum Hour: Int {
   case one = 1, two, three, four, five, six, seven, eight, nine, ten, eleven, twelve
-  static func tick(_ h: Hour) -> Hour {
-    switch h {
+  static func tick(_ hour: Hour) -> Hour {
+    switch hour {
     case .twelve:
       return .one
     default:
-      return Hour(rawValue: h.rawValue + 1)!
+      return Hour(rawValue: hour.rawValue + 1)!
     }
   }
 }
 
 enum Meridiem: String {
-  case am, pm
+  case anteMeridiem = "am"
+  case postMeridiem = "pm"
   func toggle() -> Self {
     switch self {
-    case .am:
-      return .pm
-    case .pm:
-      return .am
+    case .anteMeridiem:
+      return .postMeridiem
+    case .postMeridiem:
+      return .anteMeridiem
     }
   }
   static func tick(merid: Meridiem, hour: Hour) -> Meridiem {
@@ -42,33 +43,33 @@ enum Meridiem: String {
 }
 
 // Clock lens: clock state is just the Hour enum, no need to wrap in a Clock struct
-let clock = StateLens<Hour, Void, Hour>(down: { $0 }, up: {hv in Hour.tick(hv.0) })
+let clock = StateLens<Hour, Void, Hour>(down: { $0 }, update: { hourVoid in Hour.tick(hourVoid.0) })
 
 // Meridiem lens
-let meridiem = StateLens<Meridiem, Hour, Meridiem>(down: { $0 }, up: { $0 ||> Meridiem.tick})
+let meridiem = StateLens<Meridiem, Hour, Meridiem>(down: { $0 }, update: { $0 ||> Meridiem.tick})
 
 // meridiem-clock free product
-let meridiem_clock_free = meridiem ⊗ clock
+let meridiemClockFree = meridiem ⊗ clock
 
 // meridiem-clock coupling
 // TODO: could this be generic, with the types chosen later by the ev_C functor from DJM's book (Example 1.3.3.17)?
-let meridiem_clock_coupling = Lens<
+let meridiemClockCoupling = Lens<
   (Hour, Void),
   (Meridiem, Hour),
   Void,
   (Meridiem, Hour)
 >(
   down: { $0 },
-  up: { mh_v in
-    (mh_v.0.1, ())
+  update: { meridiemHourValue in
+    (meridiemHourValue.0.1, ())
   }
 )
 
-let meridiem_clock = meridiem_clock_free <=> meridiem_clock_coupling
+let meridiemClock = meridiemClockFree <=> meridiemClockCoupling
 
 struct MeridiemClockView: View {
-  @State private var time: (Meridiem, Hour) = (.am, .eleven)
-  
+  @State private var time: (Meridiem, Hour) = (.anteMeridiem, .eleven)
+
   var body: some View {
     VStack {
       HStack {
@@ -76,7 +77,7 @@ struct MeridiemClockView: View {
         Text(time.0.rawValue.description)
       }
       Button("Tick") {
-        time = time |> (meridiem_clock => ())
+        time = time |> (meridiemClock => ())
       }
       .buttonStyle(.borderedProminent)
     }

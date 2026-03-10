@@ -31,7 +31,7 @@ struct CantStop {
 
     var description: String {
       switch self {
-      case .assignDicePair(_):
+      case .assignDicePair:
         return ""
       case .sequence(let actions):
         let name = actions.compactMap { $0.name.isEmpty ? nil : $0.name }

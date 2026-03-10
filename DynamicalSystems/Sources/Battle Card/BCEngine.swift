@@ -59,11 +59,13 @@ import Foundation
 /// All that would do, though, is to interrupt my spaghetti with "case sideEffectAction:," right?
 /// Sure, but what if these were reusable actions across many games? That would make it "higher level."
 /// 
-/// I'm in need of automation around "do this thing once" (roll for weather) or "move these guys until they are all moved" (armies)
+/// I'm in need of automation around "do this thing once" (roll for
+/// weather) or "move these guys until they are all moved" (armies)
 /// Is this a sub-reducer with its own actions? A "battle" reducer with battle actions? Maybe but that doesn't help.
 /// I just need the idea of a state: there are 3 armies who have to either attack or defend. Then go to the next phase.
 ///
-/// It's OK for the size of the spec to be the size of the rulebook. It's about making it easy to enter, and easy to get right.
+/// It's OK for the size of the spec to be the size of the rulebook.
+/// It's about making it easy to enter, and easy to get right.
 /// It's fiddly to work through a list of 3 armies -- need a higher-level construct.
 /// Is it an emitter of rules? A meta-rule?
 ///
@@ -84,7 +86,7 @@ struct BattleCard {
   typealias Piece = BattleCardComponents.Piece
   typealias Phase = BattleCardComponents.Phase
   typealias Control = BattleCardComponents.Control
-  
+
   enum Action: Hashable, Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible {
     // to organize actions, we need to have effects
     // e.g. an action "generate decision actions for these 3 armies" that pushes that onto a stack?
@@ -105,20 +107,20 @@ struct BattleCard {
     case skipReinforce1st
     case addLog(String)
     case sequence([Action])
-    
+
     var name: String {
       description
     }
-    
+
     var debugDescription: String {
       description
     }
-    
+
     var description: String {
       switch self {
       case .initialize:
         return "Perform setup"
-      case .addLog(_):
+      case .addLog:
         return ""
       case .setPhase(let phase):
         return "Go to \(phase) phase"
@@ -155,7 +157,8 @@ struct BattleCard {
       }
     }
   }
-  
+
+  // swiftlint:disable:next large_tuple
   let attackCRT = TwoParamCRT<Trichotomy, DSix, (DSix, DSix, Bool)>(
     result: { advantage, roll in
       switch roll {
@@ -216,16 +219,16 @@ struct BattleCard {
       }
     }
   )
-  
+
   func newState() -> State {
     State()
   }
-  
+
   /// A Rule is a conditional action
   struct Rule {
     let condition: StatePredicate
     let actions: (State) -> [Action]
-    
+
     func also(_ cond: @escaping StatePredicate) -> Rule {
       return Rule(
         condition: { self.condition($0) && cond($0) },
@@ -233,7 +236,7 @@ struct BattleCard {
       )
     }
   }
-  
+
   func airdropPenalty(_ roll: DSix) -> DSix {
     switch roll {
     case .one, .two:

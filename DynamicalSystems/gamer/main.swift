@@ -11,8 +11,8 @@ import Foundation
 GamerTool.main()
 
 enum Games: String, Codable, ExpressibleByArgument {
-  case CantStop = "CantStop"
-  case BattleCard = "BattleCard"
+  case cantStop = "CantStop"
+  case battleCard = "BattleCard"
   case BCMC = "MalayanCampaign"
 }
 
@@ -28,7 +28,7 @@ struct GamerTool: ParsableCommand {
   mutating func run() throws {
     do {
       switch game {
-      case .CantStop:
+      case .cantStop:
         var gameRunner = GameRunner<CantStop.State, CantStop.Action>(
           reducer: CantStopPages.game(),
           numTrials: numTrials,
@@ -39,7 +39,7 @@ struct GamerTool: ParsableCommand {
           showAIHints: showAIHints
         )
         try gameRunner.run()
-      case .BattleCard:
+      case .battleCard:
         var gameRunner = GameRunner<BattleCard.State, BattleCard.Action>(
           reducer: BCPages.game(),
           numTrials: numTrials,
@@ -69,7 +69,7 @@ struct GamerTool: ParsableCommand {
 struct GameRunner<
   State: GameState & TextTableAble & CustomStringConvertible,
   Action: Hashable & Equatable & CustomStringConvertible
->{
+> {
   private var numTrials: Int = 0
   private var numMCTSIters: Int = 1
   private var numRollouts: Int = 1
@@ -77,7 +77,7 @@ struct GameRunner<
   private var logFile: String = ""
   private var showAIHints: Bool = false
   private var reducer: any PlayableGame<State, Action>
-  
+
   var colwidths: [Int]
 
   init(
@@ -89,7 +89,7 @@ struct GameRunner<
     logFile: String,
     showAIHints: Bool,
     colwidths: [Int] = [10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
-  ){
+  ) {
     self.reducer = reducer
     self.numTrials = numTrials
     self.numMCTSIters = numMCTSIters
@@ -99,7 +99,7 @@ struct GameRunner<
     self.showAIHints = showAIHints
     self.colwidths = colwidths
   }
-  
+
   mutating func run() throws {
     var stdout = StandardOutput()
     if numTrials > 0 {
@@ -111,13 +111,13 @@ struct GameRunner<
     var numWins = 0
     var numLosses = 0
     var numGames = 0
-    while(!done) {
+    while !done {
       // print state
       if interactive {
         state.printTable(to: &stdout)
         print("")
       }
-      
+
       if let action = getAction(state: state, auto: numTrials > 0) {
         let logs = reducer.reduce(into: &state, action: action)
         if interactive {
@@ -136,12 +136,14 @@ struct GameRunner<
           done = true
         }
         state.printTable(to: &stdout)
-        print("\(numWins)\t\(numLosses)\t\(battingAverage.formatted(.number.precision(.significantDigits(4))))\t\(numMCTSIters)\t\(numRollouts)")
+        let avg = battingAverage.formatted(
+          .number.precision(.significantDigits(4)))
+        print("\(numWins)\t\(numLosses)\t\(avg)\t\(numMCTSIters)\t\(numRollouts)")
         state = reducer.newState()
       }
     }
   }
-  
+
   func getAction(state: State, auto: Bool) -> Action? {
     let actions = reducer.allowedActions(state: state)
     let results = treeSearch(state: state)
@@ -150,7 +152,7 @@ struct GameRunner<
       let count = valCount.1
       return val / (count > 0 ? count : 1)
     }
-    
+
     let bestValue = results.values.map({ ratio($0) }).max() ?? 0
     let bestAction = results.keys.filter { action in
       ratio(results[action]!).near(bestValue)
@@ -158,11 +160,19 @@ struct GameRunner<
     if interactive {
       for (index, action) in actions.enumerated() {
         let hint = (showAIHints && (action == bestAction)) ? "🤖 " : "  "
-        let val  = showAIHints ? "[⚛️  \(ratio(results[action]!).formatted(.percent.precision(.significantDigits(0...2)))) win rate (\(results[action]!.1.formatted()) trials)]" : ""
+        let val: String
+        if showAIHints {
+          let pct = ratio(results[action]!).formatted(
+            .percent.precision(.significantDigits(0...2)))
+          let cnt = results[action]!.1.formatted()
+          val = "[  \(pct) win rate (\(cnt) trials)]"
+        } else {
+          val = ""
+        }
         print("\(index+1). \(hint)\(action.description) \(val)")
       }
     }
-    
+
     if auto {
       return bestAction
     } else {
@@ -174,13 +184,13 @@ struct GameRunner<
     }
     return nil
   }
-  
-  func treeSearch(state: State) -> [Action:(Float, Float)] {
+
+  func treeSearch(state: State) -> [Action: (Float, Float)] {
     let search = OpenLoopMCTS(state: state, reducer: reducer)
     let results = search.recommendation(iters: numMCTSIters, numRollouts: numRollouts)
     if !logFile.isEmpty {
       var logStream: any TextOutputStream = LogDestination(path: logFile)
-      //print("treeSearch from state \(state)", to: &logStream)
+      // print("treeSearch from state \(state)", to: &logStream)
       search.printTree(to: &logStream)
     }
     return results

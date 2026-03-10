@@ -8,6 +8,7 @@
 import Foundation
 import SpriteKit
 
+// swiftlint:disable:next type_body_length
 struct LoDPieceAdapter {
 
   // MARK: - Piece ID Ranges
@@ -51,9 +52,9 @@ struct LoDPieceAdapter {
     var result: [GamePiece] = []
 
     // 6 army tokens
-    for (i, slot) in armySlotOrder.enumerated() {
+    for (idx, slot) in armySlotOrder.enumerated() {
       result.append(GamePiece(
-        id: armyBaseID + i,
+        id: armyBaseID + idx,
         kind: .token,
         owner: PlayerID(1),  // Enemy
         label: armyLabels[slot] ?? slot.rawValue
@@ -61,9 +62,9 @@ struct LoDPieceAdapter {
     }
 
     // 6 hero tokens (all possible heroes)
-    for (i, hero) in heroOrder.enumerated() {
+    for (idx, hero) in heroOrder.enumerated() {
       result.append(GamePiece(
-        id: heroBaseID + i,
+        id: heroBaseID + idx,
         kind: .token,
         owner: PlayerID(0),  // Player
         label: heroLabels[hero] ?? hero.rawValue
@@ -97,35 +98,60 @@ struct LoDPieceAdapter {
       allPieces.first { $0.id == id }!
     }
 
-    // -- Armies --
-    for (i, slot) in armySlotOrder.enumerated() {
-      let p = piece(id: armyBaseID + i)
+    sectionForArmies(state: state, graph: graph, piece: piece, section: &section)
+    sectionForHeroes(state: state, graph: graph, piece: piece, section: &section)
+    sectionForMorale(state: state, graph: graph, piece: piece, section: &section)
+    sectionForTime(state: state, graph: graph, piece: piece, section: &section)
+    sectionForDefenders(state: state, graph: graph, piece: piece, section: &section)
+    sectionForEnergy(state: state, graph: graph, piece: piece, section: &section)
+    sectionForBloodyBattle(state: state, graph: graph, piece: piece, section: &section)
+    sectionForSlowMarker(state: state, graph: graph, piece: piece, section: &section)
+    sectionForCurrentCard(state: state, piece: piece, section: &section)
+
+    return section
+  }
+
+  // MARK: - Section Helpers
+
+  private static func sectionForArmies(
+    state: LoD.State, graph: SiteGraph,
+    piece: (Int) -> GamePiece, section: inout GameSection
+  ) {
+    for (idx, slot) in armySlotOrder.enumerated() {
+      let armyPiece = piece(armyBaseID + idx)
       if let space = state.armyPosition[slot] {
         let trackKey = LoDGraph.trackKey(for: slot.track)
         if let siteID = graph.tracks[trackKey]?[safe: LoDGraph.trackIndex(space: space)] {
-          section[p] = .at(siteID)
+          section[armyPiece] = .at(siteID)
         }
       }
       // If army not on board, piece absent from section (hidden)
     }
+  }
 
-    // -- Heroes --
-    for (i, hero) in heroOrder.enumerated() {
-      let p = piece(id: heroBaseID + i)
+  private static func sectionForHeroes(
+    state: LoD.State, graph: SiteGraph,
+    piece: (Int) -> GamePiece, section: inout GameSection
+  ) {
+    for (idx, hero) in heroOrder.enumerated() {
+      let heroPiece = piece(heroBaseID + idx)
       guard let loc = state.heroLocation[hero], !state.heroDead.contains(hero) else { continue }
       switch loc {
       case .reserves:
-        section[p] = .at(LoDGraph.reserves)
+        section[heroPiece] = .at(LoDGraph.reserves)
       case .onTrack(let track):
-        // Heroes go to space 1 of their track visually
         let trackKey = LoDGraph.trackKey(for: track)
         if let siteID = graph.tracks[trackKey]?.first {
-          section[p] = .at(siteID)
+          section[heroPiece] = .at(siteID)
         }
       }
     }
+  }
 
-    // -- Morale --
+  private static func sectionForMorale(
+    state: LoD.State, graph: SiteGraph,
+    piece: (Int) -> GamePiece, section: inout GameSection
+  ) {
     let moraleIndex: Int
     switch state.morale {
     case .low: moraleIndex = 0
@@ -133,39 +159,55 @@ struct LoDPieceAdapter {
     case .high: moraleIndex = 2
     }
     if let siteID = graph.tracks["morale"]?[moraleIndex] {
-      section[piece(id: moraleID)] = .at(siteID)
+      section[piece(moraleID)] = .at(siteID)
     }
+  }
 
-    // -- Time --
+  private static func sectionForTime(
+    state: LoD.State, graph: SiteGraph,
+    piece: (Int) -> GamePiece, section: inout GameSection
+  ) {
     if let siteID = graph.tracks["time"]?[safe: state.timePosition] {
-      section[piece(id: timeID)] = .at(siteID)
+      section[piece(timeID)] = .at(siteID)
     }
+  }
 
-    // -- Defenders --
+  private static func sectionForDefenders(
+    state: LoD.State, graph: SiteGraph,
+    piece: (Int) -> GamePiece, section: inout GameSection
+  ) {
     let maaValue = state.defenders[.menAtArms] ?? 0
     if let siteID = graph.tracks["menAtArms"]?[safe: maaValue] {
-      section[piece(id: maaMarkerID)] = .at(siteID)
+      section[piece(maaMarkerID)] = .at(siteID)
     }
     let archerValue = state.defenders[.archers] ?? 0
     if let siteID = graph.tracks["archers"]?[safe: archerValue] {
-      section[piece(id: archerMarkerID)] = .at(siteID)
+      section[piece(archerMarkerID)] = .at(siteID)
     }
     let priestValue = state.defenders[.priests] ?? 0
     if let siteID = graph.tracks["priests"]?[safe: priestValue] {
-      section[piece(id: priestMarkerID)] = .at(siteID)
+      section[piece(priestMarkerID)] = .at(siteID)
     }
+  }
 
-    // -- Energy --
+  private static func sectionForEnergy(
+    state: LoD.State, graph: SiteGraph,
+    piece: (Int) -> GamePiece, section: inout GameSection
+  ) {
     if let siteID = graph.tracks["arcane"]?[safe: state.arcaneEnergy] {
-      section[piece(id: arcaneMarkerID)] = .at(siteID)
+      section[piece(arcaneMarkerID)] = .at(siteID)
     }
     if let siteID = graph.tracks["divine"]?[safe: state.divineEnergy] {
-      section[piece(id: divineMarkerID)] = .at(siteID)
+      section[piece(divineMarkerID)] = .at(siteID)
     }
+  }
 
-    // -- Bloody Battle marker --
+  private static func sectionForBloodyBattle(
+    state: LoD.State, graph: SiteGraph,
+    piece: (Int) -> GamePiece, section: inout GameSection
+  ) {
     if let bbSlot = state.bloodyBattleArmy {
-      let bbPiece = piece(id: bloodyBattleID)
+      let bbPiece = piece(bloodyBattleID)
       if let space = state.armyPosition[bbSlot] {
         let trackKey = LoDGraph.trackKey(for: bbSlot.track)
         if let siteID = graph.tracks[trackKey]?[safe: LoDGraph.trackIndex(space: space)] {
@@ -173,10 +215,14 @@ struct LoDPieceAdapter {
         }
       }
     }
+  }
 
-    // -- Slow marker --
+  private static func sectionForSlowMarker(
+    state: LoD.State, graph: SiteGraph,
+    piece: (Int) -> GamePiece, section: inout GameSection
+  ) {
     if let slowSlot = state.slowedArmy {
-      let slowPiece = piece(id: slowMarkerID)
+      let slowPiece = piece(slowMarkerID)
       if let space = state.armyPosition[slowSlot] {
         let trackKey = LoDGraph.trackKey(for: slowSlot.track)
         if let siteID = graph.tracks[trackKey]?[safe: LoDGraph.trackIndex(space: space)] {
@@ -184,17 +230,19 @@ struct LoDPieceAdapter {
         }
       }
     }
+  }
 
-    // -- Current card --
+  private static func sectionForCurrentCard(
+    state: LoD.State,
+    piece: (Int) -> GamePiece, section: inout GameSection
+  ) {
     if let card = state.currentCard {
-      section[piece(id: currentCardID)] = .cardState(
+      section[piece(currentCardID)] = .cardState(
         name: card.title,
         faceUp: true,
         at: LoDGraph.currentCard
       )
     }
-
-    return section
   }
 
   // MARK: - Site Highlights
@@ -202,48 +250,65 @@ struct LoDPieceAdapter {
   static func siteHighlights(from state: LoD.State, graph: SiteGraph) -> [SiteID: SKColor] {
     var highlights: [SiteID: SKColor] = [:]
 
-    // Highlight breached walls in red
+    highlightBreachesAndBarricades(state: state, highlights: &highlights)
+    highlightUpgrades(state: state, graph: graph, highlights: &highlights)
+    highlightSpells(state: state, graph: graph, highlights: &highlights)
+    highlightItems(state: state, highlights: &highlights)
+
+    return highlights
+  }
+
+  // MARK: - Highlight Helpers
+
+  /// Map a wall track to its breach site ID, returning nil for non-wall tracks.
+  private static func breachSiteID(for track: LoD.Track) -> SiteID? {
+    switch track {
+    case .east: return LoDGraph.eastBreach
+    case .west: return LoDGraph.westBreach
+    case .gate: return LoDGraph.gateBreach
+    default: return nil
+    }
+  }
+
+  /// Map a wall track to its upgrade site ID, returning nil for non-wall tracks.
+  private static func upgradeSiteID(for track: LoD.Track) -> SiteID? {
+    switch track {
+    case .east: return LoDGraph.eastUpgrade
+    case .west: return LoDGraph.westUpgrade
+    case .gate: return LoDGraph.gateUpgrade
+    default: return nil
+    }
+  }
+
+  private static func highlightBreachesAndBarricades(
+    state: LoD.State, highlights: inout [SiteID: SKColor]
+  ) {
     for track in LoD.Track.walls {
+      guard let siteID = breachSiteID(for: track) else { continue }
       if state.breaches.contains(track) {
-        let breachSite: SiteID
-        switch track {
-        case .east: breachSite = LoDGraph.eastBreach
-        case .west: breachSite = LoDGraph.westBreach
-        case .gate: breachSite = LoDGraph.gateBreach
-        default: continue
-        }
-        highlights[breachSite] = SKColor.red.withAlphaComponent(0.3)
+        highlights[siteID] = SKColor.red.withAlphaComponent(0.3)
       }
-      // Highlight barricaded walls in orange
       if state.barricades.contains(track) {
-        let breachSite: SiteID
-        switch track {
-        case .east: breachSite = LoDGraph.eastBreach
-        case .west: breachSite = LoDGraph.westBreach
-        case .gate: breachSite = LoDGraph.gateBreach
-        default: continue
-        }
-        highlights[breachSite] = SKColor.orange.withAlphaComponent(0.3)
+        highlights[siteID] = SKColor.orange.withAlphaComponent(0.3)
       }
     }
+  }
 
-    // Highlight upgrade sites
+  private static func highlightUpgrades(
+    state: LoD.State, graph: SiteGraph, highlights: inout [SiteID: SKColor]
+  ) {
     for (track, upgrade) in state.upgrades {
-      let upgradeSite: SiteID
-      switch track {
-      case .east: upgradeSite = LoDGraph.eastUpgrade
-      case .west: upgradeSite = LoDGraph.westUpgrade
-      case .gate: upgradeSite = LoDGraph.gateUpgrade
-      default: continue
-      }
-      highlights[upgradeSite] = SKColor.green.withAlphaComponent(0.3)
-      graph.sites[upgradeSite]  // Just accessing to silence unused warning for upgrade
+      guard let siteID = upgradeSiteID(for: track) else { continue }
+      highlights[siteID] = SKColor.green.withAlphaComponent(0.3)
       _ = upgrade  // Upgrade type could be shown as label in future
     }
+  }
 
-    // Highlight spell statuses
-    for (i, spell) in LoDGraph.spellOrder.enumerated() {
-      guard let siteID = graph.tracks["spells"]?[safe: i] else { continue }
+  private static func highlightSpells(
+    state: LoD.State, graph: SiteGraph, highlights: inout [SiteID: SKColor]
+  ) {
+    for (idx, spell) in LoDGraph.spellOrder.enumerated() {
+      guard let siteID = graph.tracks["spells"]?[safe: idx] else { continue }
       switch state.spellStatus[spell] {
       case .known:
         highlights[siteID] = SKColor.cyan.withAlphaComponent(0.3)
@@ -253,16 +318,17 @@ struct LoDPieceAdapter {
         break  // face-down = no highlight
       }
     }
+  }
 
-    // Highlight items
+  private static func highlightItems(
+    state: LoD.State, highlights: inout [SiteID: SKColor]
+  ) {
     if state.hasMagicSword {
       highlights[LoDGraph.sword] = SKColor.yellow.withAlphaComponent(0.3)
     }
     if state.hasMagicBow {
       highlights[LoDGraph.bow] = SKColor.yellow.withAlphaComponent(0.3)
     }
-
-    return highlights
   }
 }
 

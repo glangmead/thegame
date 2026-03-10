@@ -18,20 +18,20 @@ extension CantStop.State: TextTableAble {
       row <= CantStop.colHeights()[col]! ?
         (
           pieces.isEmpty ? "--" :
-            pieces.reduce("", { $0.description + $1.description} )
+            pieces.reduce("", { $0.description + $1.description})
         ) : "   "
     }
   }
-  
+
   struct CantStopColDisplay {
     let col: Int
     let positions: [CantStopPositionDisplay]
   }
-  
+
   struct CantStopDisplay {
     let cols: [CantStopColDisplay]
   }
-  
+
   var display: CantStopDisplay {
     CantStopDisplay(
       cols: CantStop.Column.allCases.filter({$0 != CantStop.Column.none}).map { col in
@@ -45,13 +45,13 @@ extension CantStop.State: TextTableAble {
       }
     )
   }
-  
-  func printTable<Target>(to: inout Target) where Target: TextOutputStream {
+
+  func printTable<Target>(to output: inout Target) where Target: TextOutputStream {
     let colTextTable = TextTable<CantStopColDisplay> { colDisplay in
       [Column(title: "#", value: colDisplay.col)] + (1...12).map { row in
-        Column(title: "",  value: colDisplay.positions[row-1])
+        Column(title: "", value: colDisplay.positions[row-1])
       }
     }
-    if let s = colTextTable.string(for: display.cols) { Swift.print(s, to: &to) }
+    if let summary = colTextTable.string(for: display.cols) { Swift.print(summary, to: &output) }
   }
 }

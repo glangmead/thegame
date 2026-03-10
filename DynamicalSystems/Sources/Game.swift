@@ -87,15 +87,15 @@ typealias TrackPos = Int
 // TODO: remove .none
 enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable, Linear {
   case none = 0, one = 1, two, three, four, five, six
-  
+
   static func allFaces() -> [DSix] {
     DSix.allCases.filter { $0 != DSix.none}
   }
-  
+
   static func roll() -> DSix {
     DSix.allFaces().randomElement()!
   }
-  
+
   static func sum(_ lhs: DSix, _ rhs: DSix, clamp: Bool = true) -> DSix {
     var val = lhs.rawValue + rhs.rawValue
     if clamp {
@@ -103,7 +103,7 @@ enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable, Linear {
     }
     return DSix(rawValue: val)!
   }
-  
+
   static func minus(_ lhs: DSix, _ rhs: DSix, clamp: Bool = true) -> DSix {
     var val = lhs.rawValue - rhs.rawValue
     if clamp {
@@ -113,19 +113,19 @@ enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable, Linear {
     }
     return DSix(rawValue: val)!
   }
-  
+
   static func greater(_ lhs: DSix, _ rhs: DSix) -> Bool {
     return lhs.rawValue > rhs.rawValue
   }
-  
+
   static func compare(_ lhs: DSix, _ rhs: DSix) -> Trichotomy {
     return Int.compare(lhs.rawValue, rhs.rawValue)
   }
-  
+
   var name: String {
     String(describing: self)
   }
-  
+
   func next() -> Self {
     switch self {
     case .one, .two, .three, .four, .five:
@@ -136,11 +136,11 @@ enum DSix: Int, CaseIterable, Equatable, Hashable, RawComparable, Linear {
       return self
     }
   }
-  
+
   var start: Self {
     return .one
   }
-  
+
   var end: Self {
     return .six
   }
@@ -184,5 +184,5 @@ struct ThreeParamCRT<T, U, V, W> {
 
 protocol AnytimePlayer {
   associatedtype Action: Hashable
-  func recommendation(iters: Int, numRollouts: Int) -> [Action:(Float, Float)]
+  func recommendation(iters: Int, numRollouts: Int) -> [Action: (Float, Float)]
 }

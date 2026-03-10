@@ -8,7 +8,7 @@
 import Foundation
 
 /// Allows a raw enum type to be compared by the underlying comparable RawValue
-public protocol RawComparable : Comparable where Self : RawRepresentable, RawValue: Comparable {
+public protocol RawComparable: Comparable where Self: RawRepresentable, RawValue: Comparable {
 }
 
 extension RawComparable {
@@ -17,10 +17,10 @@ extension RawComparable {
   }
 }
 
-public protocol Indistinguishable : Equatable {}
+public protocol Indistinguishable: Equatable {}
 
 extension Indistinguishable {
-  public static func ==(lhs: Self, rhs: Self) -> Bool {
+  public static func == (lhs: Self, rhs: Self) -> Bool {
     return true
   }
 }

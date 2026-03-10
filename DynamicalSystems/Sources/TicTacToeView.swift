@@ -11,9 +11,8 @@ import SwiftUI
 // MARK: Tic Tac Toe
 //
 
-
 enum TTTPlayer {
-  case x, o
+  case x, o // swiftlint:disable:this identifier_name
   var inverted: TTTPlayer {
     switch self {
     case .x: return .o
@@ -24,8 +23,8 @@ enum TTTPlayer {
 
 enum TTTMark: Character, Identifiable {
   case none = "–"
-  case x = "x"
-  case o = "o"
+  case x = "x" // swiftlint:disable:this identifier_name
+  case o = "o" // swiftlint:disable:this identifier_name
   var id: Self { self }
   var inverted: TTTMark {
     switch self {
@@ -40,38 +39,36 @@ struct TTTState {
   let boardSize: Int
   var board: [[TTTMark]]
   var lastMark: TTTMark = .o // the player who put the most recent mark shown on the board
-  
+
   init(_ boardSize: Int) {
     self.boardSize = boardSize
     self.board = [[TTTMark]](
       repeating: [TTTMark](
-        repeating:.none,
+        repeating: .none,
         count: boardSize),
       count: boardSize)
   }
   var lines: [[(Int, Int)]] {
     var lines: [[(Int, Int)]] = []
     let vec = Array(0..<self.boardSize)
-    for i in 0..<self.boardSize {
-      lines.append(vec.map{ ($0, i)})
-      lines.append(vec.map{ (i, $0)})
-      lines.append(vec.map{ ($0, $0)})
-      lines.append(vec.map{ (-1 + self.boardSize - $0, $0)})
+    for idx in 0..<self.boardSize {
+      lines.append(vec.map { ($0, idx)})
+      lines.append(vec.map { (idx, $0)})
+      lines.append(vec.map { ($0, $0)})
+      lines.append(vec.map { (-1 + self.boardSize - $0, $0)})
     }
     return lines
   }
-  
+
   var terminal: Bool {
     return self.winner != nil
   }
-  
+
   var winner: TTTMark? {
     for line in self.lines {
-      let boardLine = line.map{ self.board[$0.0][$0.1] }
-      for mark in [TTTMark.x, TTTMark.o] {
-        if boardLine.allSatisfy({$0 == mark}) {
-          return mark
-        }
+      let boardLine = line.map { self.board[$0.0][$0.1] }
+      for mark in [TTTMark.x, TTTMark.o] where boardLine.allSatisfy({$0 == mark}) {
+        return mark
       }
     }
     return self.board.allSatisfy({$0.allSatisfy({$0 != .none})}) ? TTTMark.none : nil
@@ -82,10 +79,10 @@ enum TTTAction {
   case placeMark(Int, Int, TTTMark)
 }
 
-/// This is the lens for making a move. up() returns a nil state if it's illegal.
+/// This is the lens for making a move. update() returns a nil state if it's illegal.
 let tttLens = OptionalStateLens<TTTState, TTTAction, TTTState>(
   down: { $0 },
-  up: { (state, action) in
+  update: { (state, action) in
     switch action {
     case let .placeMark(row, col, mark):
       if state.board[row][col] == .none {
@@ -102,23 +99,21 @@ let tttLens = OptionalStateLens<TTTState, TTTAction, TTTState>(
 
 /// This lens only supplies a meaningful upstream map, which returns all legal actions.
 let tttPossibleLegalLens = Lens<[TTTAction], TTTState, Void, Void>(
-  down: { s in return },
-  up: { (state, _) in
+  down: { _ in return },
+  update: { (state, _) in
     var legalActions: [TTTAction] = []
     let rows = 0..<state.boardSize
     let cols = 0..<state.boardSize
     for row in rows {
-      for col in cols {
-        if state.board[row][col] == .none {
-          legalActions.append(.placeMark(row, col, state.lastMark.inverted))
-        }
+      for col in cols where state.board[row][col] == .none {
+        legalActions.append(.placeMark(row, col, state.lastMark.inverted))
       }
     }
     return legalActions
   }
 )
 
-//struct TicTacToeView: View {
+// struct TicTacToeView: View {
 //  @State private var userGameSize: Int = 3
 //  @State private var gameState = TTTState(3)
 //  var body: some View {
@@ -154,7 +149,7 @@ let tttPossibleLegalLens = Lens<[TTTAction], TTTState, Void, Void>(
 //      Button("\(mark.rawValue) ") {
 //        if !gameState.terminal {
 //          let tttAction = TTTAction.placeMark(row, col, gameState.lastMark == .x ? .o : .x)
-//          if let newState = tttLens.up((gameState, tttAction)) {
+//          if let newState = tttLens.update((gameState, tttAction)) {
 //            self.gameState = newState
 //          }
 //        }
@@ -165,8 +160,8 @@ let tttPossibleLegalLens = Lens<[TTTAction], TTTState, Void, Void>(
 //    }
 //  }
 //  
-//}
+// }
 //
-//#Preview("Tic Tac Toe") {
+// #Preview("Tic Tac Toe") {
 //  TicTacToeView()
-//}
+// }

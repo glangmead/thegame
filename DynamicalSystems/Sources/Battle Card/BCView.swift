@@ -15,7 +15,7 @@ struct BCView: View {
   @State private var logs: [Log] = []
   private let graph: SiteGraph
   private let pieces: [GamePiece]
-  
+
   init() {
     let graph = BCGraph.board(cellSize: 75)
     let game = BCPages.game()
@@ -29,17 +29,17 @@ struct BCView: View {
     )
     scene.scaleMode = .aspectFit
     let pieces = BCPieceAdapter.pieces()
-    
+
     self._model = State(initialValue: model)
     self._scene = State(initialValue: scene)
     self.graph = graph
     self.pieces = pieces
-    
+
     let section = BCPieceAdapter.section(from: model.state, graph: graph)
     let highlights = BCPieceAdapter.siteHighlights(from: model.state, graph: graph)
     scene.syncState(pieces: pieces, section: section, siteHighlights: highlights)
   }
-  
+
   var body: some View {
     VStack(spacing: 0) {
       SpriteView(scene: scene)
@@ -78,7 +78,7 @@ struct BCView: View {
     .navigationBarTitleDisplayMode(.inline)
     .onAppear { refreshActions() }
   }
-  
+
   private func performAction(_ action: BattleCard.Action) {
     let newLogs = model.perform(action)
     logs = newLogs
@@ -87,7 +87,7 @@ struct BCView: View {
     let highlights = BCPieceAdapter.siteHighlights(from: model.state, graph: graph)
     scene.syncState(pieces: pieces, section: section, siteHighlights: highlights)
   }
-  
+
   private func refreshActions() {
     cachedActions = model.allowedActions
   }

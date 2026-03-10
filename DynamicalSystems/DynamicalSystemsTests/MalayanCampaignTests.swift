@@ -28,21 +28,27 @@ struct MalayanCampaignTests {
   /// Check that the defend CRT always kills a str-1 unit against Decisive advantage.
   @Test
   func testDefendCRTAlwaysKillsStr1VsDecisive() {
-    let mc = MalayanCampaign()
+    let campaign = MalayanCampaign()
     for roll in DSix.allFaces() {
-      let (allyHit, _) = mc.defendCRT.result(.japaneseDecisive, roll)
+      let (allyHit, _) = campaign.defendCRT.result(.japaneseDecisive, roll)
       // Minimum allied hit is 2 for Decisive, which kills a str-1 unit
-      #expect(allyHit.rawValue >= 2, "Defend: roll \(roll) should deal >= 2 to allies vs Decisive, got \(allyHit.rawValue)")
+      #expect(
+        allyHit.rawValue >= 2,
+        "Defend: roll \(roll) should deal >= 2 to allies vs Decisive, got \(allyHit.rawValue)"
+      )
     }
   }
 
   /// Check that counterattack CRT always kills a str-1 unit against Decisive advantage.
   @Test
   func testCounterattackCRTAlwaysKillsStr1VsDecisive() {
-    let mc = MalayanCampaign()
+    let campaign = MalayanCampaign()
     for roll in DSix.allFaces() {
-      let (allyHit, _) = mc.counterattackCRT.result(.japaneseDecisive, roll)
-      #expect(allyHit.rawValue >= 3, "Counterattack: roll \(roll) should deal >= 3 to allies vs Decisive, got \(allyHit.rawValue)")
+      let (allyHit, _) = campaign.counterattackCRT.result(.japaneseDecisive, roll)
+      #expect(
+        allyHit.rawValue >= 3,
+        "Counterattack: roll \(roll) should deal >= 3 to allies vs Decisive, got \(allyHit.rawValue)"
+      )
     }
   }
 
@@ -103,6 +109,7 @@ struct MalayanCampaignTests {
 
   /// Play a single game step-by-step, logging every action, to trace game flow.
   @Test
+  // swiftlint:disable:next cyclomatic_complexity
   func testMCSingleGameTrace() {
     let game = MCPages.game()
     var state = game.newState()
@@ -132,11 +139,11 @@ struct MalayanCampaignTests {
         log += "  Withdraw \(piece.shortName)\n"
       case .japaneseAdvance(let piece):
         log += "  Advance \(piece.shortName)\n"
-        for l in logs { log += "    \(l.msg)\n" }
+        for line in logs { log += "    \(line.msg)\n" }
       case .counterattack(let piece), .defend(let piece):
         let verb = action.description.hasPrefix("Counter") ? "Counterattack" : "Defend"
         log += "  \(verb) \(piece.shortName)\n"
-        for l in logs { log += "    \(l.msg)\n" }
+        for line in logs { log += "    \(line.msg)\n" }
       case .advanceTurn:
         log += "--- Turn \(state.turnNumber) ---\n"
         log += "  State: \(state)\n"

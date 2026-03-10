@@ -19,12 +19,12 @@ extension Pair: Equatable where A: Equatable {
 extension Pair: Hashable where A: Hashable {}
 
 extension Pair {
-  func map<B> (_ f: (A) -> B) -> Pair<B> {
-    Pair<B>(fst: f(self.fst), snd: f(self.snd))
+  func map<B>(_ transform: (A) -> B) -> Pair<B> {
+    Pair<B>(fst: transform(self.fst), snd: transform(self.snd))
   }
 }
 
-func pairs<T>(of list: Array<T>) -> [Pair<T>] {
+func pairs<T>(of list: [T]) -> [Pair<T>] {
   var pairs = [Pair<T>]()
   let len = list.count
   for left in 0..<len {

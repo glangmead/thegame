@@ -42,42 +42,42 @@ precedencegroup LensProduct {
   higherThan: AssignmentPrecedence
 }
 
-func |> <A, B>(a: A, f: (A) -> B) -> B {
-  return f(a)
+func |> <A, B>(value: A, transform: (A) -> B) -> B {
+  return transform(value)
 }
 
-func ||> <A, B, C>(ab: (A, B), f: (A, B) -> C) -> C {
-  return f(ab.0, ab.1)
+func ||> <A, B, C>(pair: (A, B), transform: (A, B) -> C) -> C {
+  return transform(pair.0, pair.1)
 }
 
 // Apply a lens of the form AACD to an input value c:C to get out a function A -> D
-func => <A, C, D>(lens: Lens<A, A, C, D>, c: C) -> ((A) -> D) {
-  return { a in
-    lens.up((a, c)) |> lens.down
+func => <A, C, D>(lens: Lens<A, A, C, D>, input: C) -> ((A) -> D) {
+  return { state in
+    lens.update((state, input)) |> lens.down
   }
 }
 
 func >>> <A, B, C>(
-  f: @escaping (A) -> B, g: @escaping (B) -> C) -> ((A) -> C
+  lhs: @escaping (A) -> B, rhs: @escaping (B) -> C) -> ((A) -> C
   ) {
-  return { a in
-    g(f(a))
+  return { value in
+    rhs(lhs(value))
   }
 }
 
-//struct Pair<A, B> {
+// struct Pair<A, B> {
 //  let fst: A
 //  let snd: B
 //  init(_ fst: A, _ snd: B) {
 //    self.fst = fst
 //    self.snd = snd
 //  }
-//}
+// }
 
 // Lens (A / B) <-> (C / D)
 struct Lens<A, B, C, D> {
   let down: (B) -> D         // downstream function, left to right
-  let up: ((B, C)) -> A      // upstream function, right to left
+  let update: ((B, C)) -> A  // upstream function, right to left
 }
 
 typealias StateLens<A, C, D> = Lens<A, A, C, D>
@@ -86,37 +86,37 @@ typealias PossibleStateLens<A, C, D> = Lens<[A], A, C, D>
 
 // Lens composition
 func <=> <Am, Ap, Bm, Bp, Cm, Cp>(
-  _ f: Lens<Am, Ap, Bm, Bp>,
-  _ g: Lens<Bm, Bp, Cm, Cp>
+  _ lhs: Lens<Am, Ap, Bm, Bp>,
+  _ rhs: Lens<Bm, Bp, Cm, Cp>
 ) -> Lens<Am, Ap, Cm, Cp> {
-  return Lens<Am, Ap, Cm, Cp> (
-    down: f.down >>> g.down,
-    up: { ap_cm in
-      let ap = ap_cm.0
-      let cm = ap_cm.1
-      let bp_cm = (f.down(ap), cm)
-      let bm = g.up(bp_cm)
-      let ap_bm = (ap, bm)
-      return f.up(ap_bm)
+  return Lens<Am, Ap, Cm, Cp>(
+    down: lhs.down >>> rhs.down,
+    update: { aPartCMap in
+      let apVal = aPartCMap.0
+      let cmVal = aPartCMap.1
+      let bPartCMap = (lhs.down(apVal), cmVal)
+      let bmVal = rhs.update(bPartCMap)
+      let aPartBMap = (apVal, bmVal)
+      return lhs.update(aPartBMap)
     }
   )
 }
 
 // Lens cartesian/monoidal product
+// swiftlint:disable:next identifier_name
 func ⊗ <Am, Ap, Bm, Bp, Cm, Cp, Dm, Dp>(
   _ fab: Lens<Am, Ap, Bm, Bp>,
   _ gcd: Lens<Cm, Cp, Dm, Dp>
 ) -> Lens<(Am, Cm), (Ap, Cp), (Bm, Dm), (Bp, Dp)> {
-  return Lens<(Am, Cm), (Ap, Cp), (Bm, Dm), (Bp, Dp)> (
-    down: { ap_cp in
-      return (fab.down(ap_cp.0), gcd.down(ap_cp.1))
+  return Lens<(Am, Cm), (Ap, Cp), (Bm, Dm), (Bp, Dp)>(
+    down: { aPartCPart in
+      return (fab.down(aPartCPart.0), gcd.down(aPartCPart.1))
     },
-    up: { apcp_bmdm in
+    update: { acPartBDMap in
       return (
-        fab.up((apcp_bmdm.0.0, apcp_bmdm.1.0)),
-        gcd.up((apcp_bmdm.0.1, apcp_bmdm.1.1))
+        fab.update((acPartBDMap.0.0, acPartBDMap.1.0)),
+        gcd.update((acPartBDMap.0.1, acPartBDMap.1.1))
       )
     }
   )
 }
-

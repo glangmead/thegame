@@ -8,7 +8,7 @@
 import Foundation
 
 struct BattleCardComponents: GameComponents {
-  
+
   /// The rules are written as follows:
   ///
   /// Setup:
@@ -64,11 +64,11 @@ struct BattleCardComponents: GameComponents {
   /// Allied reinforcements:
   ///
   /// if d6 leq turn number and if fog, increase strength of All1, set to clear
-  
+
   enum Player: Equatable, Hashable {
     case solo
   }
-  
+
   enum Weather: String, Equatable, Hashable, CustomStringConvertible {
     case fog = "Fog"
     case clear = "Clear"
@@ -76,7 +76,7 @@ struct BattleCardComponents: GameComponents {
       rawValue
     }
   }
-  
+
   enum Phase: Equatable, Hashable {
     case setup
     case airdrop
@@ -104,7 +104,7 @@ struct BattleCardComponents: GameComponents {
       }
     }
   }
-  
+
   // The german pieces have associated Int value that line up semantically with the Ints in var track,
   // so you can do let city = track.names[Piece.germanGrave.rawValue]. This is only for the Germans because they are
   // semantically attached to constant cities. The allied pieces are mobile.
@@ -117,15 +117,15 @@ struct BattleCardComponents: GameComponents {
     case allied101st
     case allied82nd
     case allied1st
-    
+
     static func allies() -> [Piece] {
       [.allied101st, .allied82nd, .allied1st]
     }
-    
+
     static func germans() -> [Piece] {
       [.germanEindhoven, .germanGrave, .germanNijmegen, .germanArnhem]
     }
-    
+
     var description: String {
       switch self {
       case .thirtycorps:
@@ -160,7 +160,7 @@ struct BattleCardComponents: GameComponents {
       }
     }
   }
-  
+
   enum Die: Equatable, Hashable {
     case airdrop
     case attack
@@ -172,11 +172,11 @@ struct BattleCardComponents: GameComponents {
     length: 5,
     names: ["Belgium", "Eindhoven", "Grave", "Nijmegen", "Arnhem"]
   )
-  
+
   enum Position: Equatable, Hashable, CustomStringConvertible {
     case offBoard
     case onTrack(TrackPos)
-    
+
     var description: String {
       switch self {
       case .offBoard:
@@ -186,16 +186,16 @@ struct BattleCardComponents: GameComponents {
       }
     }
   }
-  
+
   enum Control: String, Equatable, Hashable, CustomStringConvertible {
-    case allies = "allies"
-    case germans = "germans"
-    
+    case allies
+    case germans
+
     var description: String {
       rawValue
     }
   }
-    
+
   struct PiecePosition: Equatable, Hashable {
     var piece: Piece
     var position: Position

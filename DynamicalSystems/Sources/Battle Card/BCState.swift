@@ -12,13 +12,19 @@ extension BattleCard: StatePredicates {
 
   struct State: HistoryTracking, Equatable, Sendable, GameState, CustomStringConvertible {
 
+    // swiftlint:disable:next nesting
     typealias Player        = BattleCardComponents.Player
+    // swiftlint:disable:next nesting
     typealias Phase         = BattleCardComponents.Phase
+    // swiftlint:disable:next nesting
     typealias Piece         = BattleCardComponents.Piece
+    // swiftlint:disable:next nesting
     typealias Position      = BattleCardComponents.Position
+    // swiftlint:disable:next nesting
     typealias PiecePosition = BattleCardComponents.PiecePosition
+    // swiftlint:disable:next nesting
     typealias Weather       = BattleCardComponents.Weather
-    
+
     var name: String {
       "Battle Card: Market Garden"
     }
@@ -36,10 +42,8 @@ extension BattleCard: StatePredicates {
     var position: [Piece: Position] = [:]
     func piecesIn(_ pos: Position) -> [Piece] {
       var pieces: [Piece] = []
-      for piece in Piece.allCases {
-        if position[piece] == pos {
-          pieces.append(piece)
-        }
+      for piece in Piece.allCases where position[piece] == pos {
+        pieces.append(piece)
       }
       return pieces
     }
@@ -52,15 +56,15 @@ extension BattleCard: StatePredicates {
     var germansOnBoard = Piece.germans()
 
     var loggedActions = [Log]()
-    
+
     func allyIn(pos: Position) -> Piece? {
       return piecesIn(pos).filter({ Piece.allies().contains($0) }).first
     }
-    
+
     func germanIn(pos: Position) -> Piece? {
       return piecesIn(pos).filter({ Piece.germans().contains($0) }).first
     }
-    
+
     func opponentFacing(piece: Piece) -> Piece? {
       if Piece.allies().contains(piece) || piece == .thirtycorps {
         return germanIn(pos: position[piece]!)
@@ -68,7 +72,7 @@ extension BattleCard: StatePredicates {
         return allyIn(pos: position[piece]!)
       }
     }
-    
+
     var cityPastXXXCorps: TrackPos? {
       switch position[Piece.thirtycorps] {
       case .none:
@@ -86,14 +90,14 @@ extension BattleCard: StatePredicates {
         }
       }
     }
-    
+
     mutating func removePiece(_ piece: Piece) {
       germansOnBoard.removeAll(where: {$0 == piece})
       alliesOnBoard.removeAll(where: {$0 == piece})
       position[piece] = Position.offBoard
       strength.removeValue(forKey: piece)
     }
-    
+
     var description: String {
       let fog = weather == .fog ? "☁️" : "🌤️"
       var result = "\(turnNumber)\(fog): "
