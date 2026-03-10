@@ -103,6 +103,8 @@ extension LoD.State {
         // Breach exists: army enters → defeat
         armyPosition[slot] = 0
         ended = true
+        endedInDefeatFor = players
+        endedInVictoryFor = []
         return .armyEnteredCastle(track)
       }
     }
@@ -156,6 +158,8 @@ extension LoD.State {
     }
     if allDefendersAtZero {
       ended = true
+      endedInDefeatFor = players
+      endedInVictoryFor = []
     }
   }
 

@@ -191,7 +191,38 @@ Wrap state mutations in `RulePage` instances:
 before the game stops accepting input. `ended` is set by state mutations;
 `gameAcknowledged` is set by the priority page reducer.
 
-### Phase 6a: Integration Tests
+### Phase 6a: MCTS Compatibility
+
+The `OpenLoopMCTS` search uses `state.endedInVictoryFor` and `state.endedInDefeatFor`
+(from the `GameState` protocol) to backpropagate win/loss values. If these arrays
+are never populated, MCTS gets zero reward signal and degenerates to random play.
+
+**Required steps:**
+
+1. **Set `endedInVictoryFor` / `endedInDefeatFor` at every site where `ended = true`.**
+   Victory sites set `endedInVictoryFor = players; endedInDefeatFor = []`.
+   Defeat sites set `endedInDefeatFor = players; endedInVictoryFor = []`.
+   Do this in the state mutations themselves (not the acknowledgment pages), because
+   MCTS rollouts stop at `!state.ended` and never process the acknowledgment action.
+
+2. **Write an MCTS smoke test** that runs `OpenLoopMCTS` on the game and verifies
+   it produces non-zero win/loss values. Example:
+   ```swift
+   @Test func mctsProducesNonZeroValues() {
+       let game = Game.composedGame(...)
+       var state = game.newState()
+       let mcts = OpenLoopMCTS(state: state, reducer: game)
+       let recs = mcts.recommendation(iters: 50, numRollouts: 1)
+       let totalValue = recs.values.map { $0.0 }.reduce(0, +)
+       #expect(totalValue > 0, "MCTS must observe at least one win or loss")
+   }
+   ```
+
+3. **Add the game to the `gamer` CLI target** in `DynamicalSystems/gamer/main.swift`.
+   Wire up the game enum case, `composedGame()` factory, and any game-specific
+   CLI options (scenario selection, etc.) so `gamer --game <name>` works.
+
+### Phase 6b: Integration Tests
 
 Write at least two integration tests using the composed game:
 1. **Victory playthrough** — use deterministic card sequences to reach the win condition
@@ -294,3 +325,5 @@ files in `Sources/` are auto-discovered by the main app target. However, the
 | Missing action type | No build-barricade action (separate from build-upgrade) | Look for actions that apply in different board states (breached vs unbreached) |
 | Magical exemptions | Bloody battle cost on spell attacks (should be exempt) | Check if physical/magical distinction matters for each triggered cost |
 | Targeting restrictions | Arcane spells with no track restriction (Wizard must be same track) | Check each spell class for targeting rules |
+| Empty MCTS reward signal | `endedInVictoryFor`/`endedInDefeatFor` never set (MCTS sees all-zero values) | Set these arrays at every `ended = true` site; write an MCTS smoke test |
+| Game missing from CLI | Implemented game not wired into `gamer` tool | Add game enum case + factory to `main.swift` as part of Phase 6a |

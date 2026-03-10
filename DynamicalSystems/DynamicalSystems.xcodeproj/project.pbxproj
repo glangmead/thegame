@@ -56,6 +56,7 @@
 				"Battle Card/BCEngine.swift",
 				"Battle Card/BCGraph.swift",
 				"Battle Card/BCPages.swift",
+				"Battle Card/BCPagesHelpers.swift",
 				"Battle Card/BCSceneConfig.swift",
 				"Battle Card/BCState.swift",
 				"Battle Card/BCText.swift",
@@ -80,6 +81,25 @@
 				Framework/TextTableAble.swift,
 				Game.swift,
 				Lens.swift,
+				"Legions of Darkness/LoDAction.swift",
+				"Legions of Darkness/LoDCards.swift",
+				"Legions of Darkness/LoDCardsJSON.swift",
+				"Legions of Darkness/LoDComponents.swift",
+				"Legions of Darkness/LoDComponentsExtras.swift",
+				"Legions of Darkness/LoDGame.swift",
+				"Legions of Darkness/LoDGamePages.swift",
+				"Legions of Darkness/LoDGamePagesAction.swift",
+				"Legions of Darkness/LoDGraph.swift",
+				"Legions of Darkness/LoDSceneConfig.swift",
+				"Legions of Darkness/LoDState.swift",
+				"Legions of Darkness/LoDStateActions.swift",
+				"Legions of Darkness/LoDStateCombat.swift",
+				"Legions of Darkness/LoDStateComposed.swift",
+				"Legions of Darkness/LoDStateDecks.swift",
+				"Legions of Darkness/LoDStateEvents.swift",
+				"Legions of Darkness/LoDStateHeroic.swift",
+				"Legions of Darkness/LoDStateResolve.swift",
+				"Legions of Darkness/LoDText.swift",
 				"Malayan Campaign/MCComponents.swift",
 				"Malayan Campaign/MCEngine.swift",
 				"Malayan Campaign/MCGraph.swift",
@@ -100,6 +120,7 @@
 				"Battle Card/BCEngine.swift",
 				"Battle Card/BCGraph.swift",
 				"Battle Card/BCPages.swift",
+				"Battle Card/BCPagesHelpers.swift",
 				"Battle Card/BCSceneConfig.swift",
 				"Battle Card/BCState.swift",
 				"Battle Card/BCText.swift",
@@ -119,6 +140,7 @@
 				Framework/GamePiece.swift,
 				Framework/GameRule.swift,
 				Framework/GameScene.swift,
+				Framework/GameSceneSync.swift,
 				Framework/GameSection.swift,
 				Framework/HistoryTracking.swift,
 				Framework/RulePage.swift,
@@ -128,8 +150,12 @@
 				Game.swift,
 				"Legions of Darkness/LoDAction.swift",
 				"Legions of Darkness/LoDCards.swift",
+				"Legions of Darkness/LoDCardsJSON.swift",
 				"Legions of Darkness/LoDComponents.swift",
+				"Legions of Darkness/LoDComponentsExtras.swift",
 				"Legions of Darkness/LoDGame.swift",
+				"Legions of Darkness/LoDGamePages.swift",
+				"Legions of Darkness/LoDGamePagesAction.swift",
 				"Legions of Darkness/LoDGraph.swift",
 				"Legions of Darkness/LoDPieceAdapter.swift",
 				"Legions of Darkness/LoDSceneConfig.swift",
@@ -139,6 +165,8 @@
 				"Legions of Darkness/LoDStateComposed.swift",
 				"Legions of Darkness/LoDStateDecks.swift",
 				"Legions of Darkness/LoDStateEvents.swift",
+				"Legions of Darkness/LoDStateHeroic.swift",
+				"Legions of Darkness/LoDStateResolve.swift",
 				Lens.swift,
 				"Malayan Campaign/MCComponents.swift",
 				"Malayan Campaign/MCEngine.swift",
@@ -558,6 +586,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "DynamicalSystems-Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -590,6 +619,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "DynamicalSystems-Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

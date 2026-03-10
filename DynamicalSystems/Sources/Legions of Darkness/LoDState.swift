@@ -187,6 +187,8 @@ extension LoD {
       if isOnFinalTwilight {
         ended = true
         victory = true
+        endedInVictoryFor = players
+        endedInDefeatFor = []
       }
     }
 
