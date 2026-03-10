@@ -68,6 +68,18 @@ class ActionNode<Action: Hashable & Equatable & CustomStringConvertible, Player:
     }
   }
 
+  /// Backpropagate a graduated float value (0.0–1.0) instead of binary win/loss.
+  func recordRolloutFloat(value: Float) {
+    valueSum += value
+    visitCount += 1
+    var next = parent
+    while next != nil {
+      next!.valueSum += value
+      next?.visitCount += 1
+      next = next?.parent
+    }
+  }
+
   // a calculation based on visit count unless visit count is 0 in which case 0, to force explore
   var exploitValue: Float {
     visitCount > 0 ? valueSum / Float(visitCount) : 0
@@ -99,6 +111,10 @@ class OpenLoopMCTS<
   var rootNodes = [State.Player: ActionNode<Action, State.Player>]()
   var reducer: any PlayableGame<State, Action>
   var rolloutPolicy: (([Action]) -> Action)?
+  /// Optional graduated evaluation function. Returns 0.0–1.0 for any terminal
+  /// or max-depth state. When provided, backpropagates this value instead of
+  /// binary win/loss.
+  var stateEvaluator: ((State) -> Float)?
 
   init(state: State, reducer: any PlayableGame<State, Action>) {
     self.rootState = state
@@ -234,10 +250,14 @@ class OpenLoopMCTS<
 
       } // while
 
-      // backprop the win/loss value
+      // backprop the win/loss value (or graduated evaluation if provided)
       for player in rootState.players {
         if let expandedNode = (expandedNodes[player]) ?? (selectedNodes[player]) {
-          expandedNode.recordRolloutValue(winners: state.endedInVictoryFor, losers: state.endedInDefeatFor)
+          if let evaluator = stateEvaluator {
+            expandedNode.recordRolloutFloat(value: evaluator(state))
+          } else {
+            expandedNode.recordRolloutValue(winners: state.endedInVictoryFor, losers: state.endedInDefeatFor)
+          }
         }
       }
       // update our return data

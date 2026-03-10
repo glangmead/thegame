@@ -71,7 +71,7 @@ struct GamerTool: ParsableCommand {
           interactive: interactive,
           logFile: logFile,
           showAIHints: showAIHints,
-          rolloutPolicy: lodRolloutPolicy
+          stateEvaluator: lodStateEvaluator
         )
         try gameRunner.run()
       }
@@ -79,18 +79,15 @@ struct GamerTool: ParsableCommand {
   }
 }
 
-/// Rollout policy for LoD: 80% chance to pick an attack action when available.
-func lodRolloutPolicy(_ actions: [LoD.Action]) -> LoD.Action {
-  let attacks = actions.filter { action in
-    switch action {
-    case .meleeAttack, .rangedAttack, .heroicAttack: return true
-    default: return false
-    }
+/// Graduated state evaluation for LoD MCTS.
+/// Victory = 1.0, defeat = 0.0–0.5 scaled by time survived.
+func lodStateEvaluator(_ state: LoD.State) -> Float {
+  if state.endedInVictoryFor.contains(.solo) { return 1.0 }
+  if state.endedInDefeatFor.contains(.solo) {
+    return 0.5 * Float(state.timePosition) / 15.0
   }
-  if !attacks.isEmpty && Float.random(in: 0...1) < 0.8 {
-    return attacks.randomElement()!
-  }
-  return actions.randomElement()!
+  // Rollout hit max depth without ending (rare)
+  return 0.5 * Float(state.timePosition) / 15.0 + 0.25
 }
 
 struct GameRunner<
@@ -105,6 +102,7 @@ struct GameRunner<
   private var showAIHints: Bool = false
   private var reducer: any PlayableGame<State, Action>
   var rolloutPolicy: (([Action]) -> Action)?
+  var stateEvaluator: ((State) -> Float)?
 
   var colwidths: [Int]
 
@@ -117,6 +115,7 @@ struct GameRunner<
     logFile: String,
     showAIHints: Bool,
     rolloutPolicy: (([Action]) -> Action)? = nil,
+    stateEvaluator: ((State) -> Float)? = nil,
     colwidths: [Int] = [10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
   ) {
     self.reducer = reducer
@@ -127,6 +126,7 @@ struct GameRunner<
     self.logFile = logFile
     self.showAIHints = showAIHints
     self.rolloutPolicy = rolloutPolicy
+    self.stateEvaluator = stateEvaluator
     self.colwidths = colwidths
   }
 
@@ -218,6 +218,7 @@ struct GameRunner<
   func treeSearch(state: State) -> [Action: (Float, Float)] {
     let search = OpenLoopMCTS(state: state, reducer: reducer)
     search.rolloutPolicy = rolloutPolicy
+    search.stateEvaluator = stateEvaluator
     let results = search.recommendation(iters: numMCTSIters, numRollouts: numRollouts)
     if !logFile.isEmpty {
       var logStream: any TextOutputStream = LogDestination(path: logFile)
