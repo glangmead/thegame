@@ -138,6 +138,7 @@ extension LoD {
 
     var ended: Bool = false
     var victory: Bool = false
+    var gameAcknowledged: Bool = false
 
     enum GameOutcome: Equatable {
       case ongoing

@@ -594,7 +594,7 @@ extension LoD {
   ) -> ComposedGame<State> {
     oapply(
       pages: [cardPage, armyPage, eventPage, actionPage, heroicPage, paladinReactPage, housekeepingPage],
-      priorities: [],
+      priorities: [victoryPage, defeatPage],
       initialState: {
         var state = greenskinSetup(
           windsOfMagicArcane: windsOfMagicArcane,
@@ -606,7 +606,7 @@ extension LoD {
         )
         return state
       },
-      isTerminal: { $0.ended },
+      isTerminal: { $0.gameAcknowledged },
       phaseForAction: { action in
         switch action {
         case .drawCard: return .army
@@ -623,7 +623,44 @@ extension LoD {
           return nil  // paladin react page handles phase transition
         case .passHeroics: return .housekeeping
         case .performHousekeeping: return .card
+        case .claimVictory, .declareLoss: return nil
         }
+      }
+    )
+  }
+
+  // MARK: - Victory / Defeat Priority Pages
+
+  static var victoryPage: RulePage<State, Action> {
+    RulePage(
+      name: "Victory",
+      rules: [
+        GameRule(
+          condition: { $0.ended && $0.victory },
+          actions: { _ in [.claimVictory] }
+        )
+      ],
+      reduce: { state, action in
+        guard case .claimVictory = action else { return nil }
+        state.gameAcknowledged = true
+        return ([Log(msg: "Victory! The castle stands!")], [])
+      }
+    )
+  }
+
+  static var defeatPage: RulePage<State, Action> {
+    RulePage(
+      name: "Defeat",
+      rules: [
+        GameRule(
+          condition: { $0.ended && !$0.victory },
+          actions: { _ in [.declareLoss] }
+        )
+      ],
+      reduce: { state, action in
+        guard case .declareLoss = action else { return nil }
+        state.gameAcknowledged = true
+        return ([Log(msg: "Defeat! The castle has fallen.")], [])
       }
     )
   }

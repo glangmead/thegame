@@ -123,5 +123,9 @@ extension LoD {
 
     // -- Housekeeping --
     case performHousekeeping
+
+    // -- Victory / Defeat --
+    case claimVictory
+    case declareLoss
   }
 }
