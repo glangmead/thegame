@@ -20,7 +20,7 @@ struct LoDComponents: GameComponents {
   /// The five army tracks leading to the castle.
   /// East, West, Gate are "wall" tracks (rule 4.1.2) — can breach and have upgrades.
   /// Terror and Sky cannot breach or have upgrades (rule 4.4).
-  enum Track: String, CaseIterable, Equatable, Hashable {
+  enum Track: String, CaseIterable, Equatable, Hashable, Codable, Sendable {
     case east, west, gate, terror, sky
 
     var isWall: Bool {
@@ -295,7 +295,58 @@ struct LoDComponents: GameComponents {
     case army
     case event
     case action
+    case heroic
     case housekeeping
+  }
+
+  // MARK: - Cards (rule 3.0)
+
+  enum DeckType: String, CaseIterable, Equatable, Hashable, Codable, Sendable {
+    case day, night
+  }
+
+  struct CardDRM: Equatable, Hashable, Codable, Sendable {
+    enum ActionType: String, Equatable, Hashable, Codable, Sendable {
+      case attack    // all attacks (melee + ranged)
+      case melee     // melee attacks only
+      case ranged    // ranged attacks only
+      case build     // build actions
+      case chant     // chant actions
+      case rally     // rally heroic acts
+    }
+
+    let action: ActionType
+    let track: Track?
+    let value: Int
+  }
+
+  struct CardEvent: Equatable, Hashable, Codable, Sendable {
+    let title: String
+    let text: String
+  }
+
+  struct CardQuest: Equatable, Hashable, Codable, Sendable {
+    let title: String
+    let text: String
+    let target: Int
+    let reward: String
+    let penalty: String?
+  }
+
+  struct Card: Equatable, Hashable, Codable, Sendable {
+    let number: Int
+    let file: String
+    let title: String
+    let deck: DeckType
+    let advances: [Track]
+    let actions: Int
+    let heroics: Int
+    let actionDRMs: [CardDRM]
+    let heroicDRMs: [CardDRM]
+    let event: CardEvent?
+    let quest: CardQuest?
+    let time: Int
+    let bloodyBattle: Track?
   }
 
   // MARK: - Scenarios

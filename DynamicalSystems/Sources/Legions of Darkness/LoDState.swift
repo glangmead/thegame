@@ -9,12 +9,16 @@ import Foundation
 
 extension LoD {
 
-  struct State: Equatable, Sendable {
+  struct State: Equatable, Sendable, HistoryTracking {
 
     // MARK: - Turn structure
 
     var phase: Phase = .setup
     var scenario: Scenario = .greenskinHorde
+
+    // MARK: - History (HistoryTracking conformance)
+
+    var history: [LoD.Action] = []
 
     // MARK: - Armies
 
@@ -88,6 +92,14 @@ extension LoD {
     /// Which army slot has the Slow marker, if any.
     var slowedArmy: ArmySlot? = nil
 
+    // MARK: - Card decks (rule 3.0)
+
+    var dayDrawPile: [LoD.Card] = []
+    var nightDrawPile: [LoD.Card] = []
+    var dayDiscardPile: [LoD.Card] = []
+    var nightDiscardPile: [LoD.Card] = []
+    var currentCard: LoD.Card? = nil
+
     // MARK: - Per-turn tracking
 
     /// Whether the Paladin has used their re-roll this turn.
@@ -96,10 +108,52 @@ extension LoD {
     /// Whether Inspire's +1 DRM to all rolls is active this turn.
     var inspireDRMActive: Bool = false
 
-    // MARK: - Victory / defeat
+    /// Per-turn +1 attack DRM from events (Acts of Valor, Assassin's Creedo).
+    var eventAttackDRMBonus: Int = 0
+
+    /// Whether melee attacks are forbidden this turn (Lamentation of the Women).
+    var noMeleeThisTurn: Bool = false
+
+    /// Whether wounded heroes cannot act this turn (Council of Heroes).
+    var woundedHeroesCannotAct: Bool = false
+
+    // MARK: - Items (quest rewards)
+
+    /// Whether the player holds the Magic Sword (from The Vorpal Blade quest).
+    var hasMagicSword: Bool = false
+
+    /// Whether the player holds the Magic Bow (from Arrows of the Dead quest).
+    var hasMagicBow: Bool = false
+
+    // MARK: - Victory / defeat (rule 11.0)
 
     var ended: Bool = false
     var victory: Bool = false
+
+    enum GameOutcome: Equatable {
+      case ongoing
+      case victory
+      case defeatBreached
+      case defeatAllDefendersLost
+    }
+
+    /// Current game outcome.
+    var outcome: GameOutcome {
+      if !ended { return .ongoing }
+      if victory { return .victory }
+      if allDefendersAtZero { return .defeatAllDefendersLost }
+      return .defeatBreached
+    }
+
+    /// Check for victory at the end of the Final Twilight turn (rule 11.0).
+    /// Call this during housekeeping of the last turn.
+    mutating func checkVictory() {
+      guard !ended else { return }
+      if isOnFinalTwilight {
+        ended = true
+        victory = true
+      }
+    }
 
     // MARK: - Queries
 
@@ -129,6 +183,61 @@ extension LoD {
         if armyPosition[slot] == 1 { return true }
       }
       return false
+    }
+
+    // MARK: - Budget Tracking (action/heroic phases)
+
+    /// How many action points this turn's card grants (card.actions + morale modifier).
+    var actionBudget: Int {
+      guard let card = currentCard else { return 0 }
+      return max(card.actions + morale.actionModifier, 0)
+    }
+
+    /// How many heroic points this turn's card grants.
+    var heroicBudget: Int {
+      currentCard?.heroics ?? 0
+    }
+
+    /// Count action-phase actions taken this turn (since last .advanceArmies or .resolveEvent or .skipEvent).
+    var actionPointsSpent: Int {
+      var count = 0
+      for action in history.reversed() {
+        switch action {
+        case .skipEvent, .resolveEvent:
+          return count
+        case .meleeAttack, .rangedAttack, .buildUpgrade, .chant, .memorize, .pray, .questAction:
+          count += 1
+        default:
+          break
+        }
+      }
+      return count
+    }
+
+    /// Count heroic-phase actions taken this turn (since last .passActions).
+    var heroicPointsSpent: Int {
+      var count = 0
+      for action in history.reversed() {
+        switch action {
+        case .passActions:
+          return count
+        case .moveHero, .heroicAttack, .rally, .questHeroic:
+          count += 1
+        default:
+          break
+        }
+      }
+      return count
+    }
+
+    /// Remaining action points this turn.
+    var actionBudgetRemaining: Int {
+      max(actionBudget - actionPointsSpent, 0)
+    }
+
+    /// Remaining heroic points this turn.
+    var heroicBudgetRemaining: Int {
+      max(heroicBudget - heroicPointsSpent, 0)
     }
 
     // MARK: - Army Advancement (rule 4.1)
@@ -760,8 +869,52 @@ extension LoD {
     }
 
     // -- Fortune (arcane, cost 4) --
-    // Fortune manipulates the card deck (look at top 3, reorder, optionally discard 1).
-    // Deferred until deck management is implemented.
+
+    /// Peek at the top cards of the current deck (day or night based on time).
+    func fortunePeek() -> [LoD.Card] {
+      let pile = drawsFromDayDeck ? dayDrawPile : nightDrawPile
+      return Array(pile.prefix(3))
+    }
+
+    /// Fortune spell effect. Operates on the current deck.
+    /// Normal: look at top 3, reorder. `newOrder` = indices into the top-3 in desired order.
+    /// Heroic (∞): look at top 3, discard 1. `discardIndex` specifies which to discard.
+    ///   `newOrder` = indices of the 2 remaining cards in desired order.
+    mutating func applyFortune(newOrder: [Int], discardIndex: Int? = nil) {
+      let isDayDeck = drawsFromDayDeck
+      let count = isDayDeck
+        ? min(3, dayDrawPile.count)
+        : min(3, nightDrawPile.count)
+      guard count > 0 else { return }
+
+      let top: [LoD.Card]
+      if isDayDeck {
+        top = Array(dayDrawPile.prefix(count))
+        dayDrawPile.removeFirst(count)
+      } else {
+        top = Array(nightDrawPile.prefix(count))
+        nightDrawPile.removeFirst(count)
+      }
+
+      if let discardIdx = discardIndex {
+        if isDayDeck {
+          dayDiscardPile.append(top[discardIdx])
+        } else {
+          nightDiscardPile.append(top[discardIdx])
+        }
+      }
+
+      var reordered: [LoD.Card] = []
+      for idx in newOrder {
+        reordered.append(top[idx])
+      }
+
+      if isDayDeck {
+        dayDrawPile.insert(contentsOf: reordered, at: 0)
+      } else {
+        nightDrawPile.insert(contentsOf: reordered, at: 0)
+      }
+    }
 
     // MARK: - Heroic Acts (rule 7.0)
 
@@ -786,13 +939,633 @@ extension LoD {
       return false
     }
 
-    // MARK: - Turn Reset (rule 3.0 step 5 — housekeeping)
+    // MARK: - Events (rule 5.0)
+
+    // Card #1: Catapult Shrapnel — Roll die. 1: lose Archer. 2-3: lose MaA. 4-6: no effect.
+    mutating func eventCatapultShrapnel(dieRoll: Int) {
+      switch dieRoll {
+      case 1: loseDefender(.archers)
+      case 2, 3: loseDefender(.menAtArms)
+      default: break
+      }
+    }
+
+    // Card #4: Rocks of Ages — Roll die. 1: lose Priest. 2-3: lose MaA. 4-6: no effect.
+    mutating func eventRocksOfAges(dieRoll: Int) {
+      switch dieRoll {
+      case 1: loseDefender(.priests)
+      case 2, 3: loseDefender(.menAtArms)
+      default: break
+      }
+    }
+
+    // Card #17: Reign of Arrows — Roll die. 1: lose Priest. 2-3: lose Archer. 4-6: no effect.
+    mutating func eventReignOfArrows(dieRoll: Int) {
+      switch dieRoll {
+      case 1: loseDefender(.priests)
+      case 2, 3: loseDefender(.archers)
+      default: break
+      }
+    }
+
+    // Card #18: Trapped by Flames — Roll die. 1-2: lose MaA. 3-4: lose Archer + Priest. 5-6: no effect.
+    mutating func eventTrappedByFlames(dieRoll: Int) {
+      switch dieRoll {
+      case 1, 2: loseDefender(.menAtArms)
+      case 3, 4:
+        loseDefender(.archers)
+        loseDefender(.priests)
+      default: break
+      }
+    }
+
+    // Card #9: Distracted Defenders — If East army out of melee range, advance it one space.
+    mutating func eventDistractedDefenders(dieRoll: Int? = nil) -> [AdvanceResult] {
+      guard let pos = armyPosition[.east] else { return [] }
+      if !LoD.Track.east.isMeleeRange(space: pos) {
+        return [advanceArmy(.east, dieRoll: dieRoll)]
+      }
+      return []
+    }
+
+    // Card #20: Banners in the Distance — If West army out of melee range, advance it one space.
+    mutating func eventBannersInDistance(dieRoll: Int? = nil) -> [AdvanceResult] {
+      guard let pos = armyPosition[.west] else { return [] }
+      if !LoD.Track.west.isMeleeRange(space: pos) {
+        return [advanceArmy(.west, dieRoll: dieRoll)]
+      }
+      return []
+    }
+
+    // Card #11: The Harbingers of Doom — Advance farthest army one space. If tied, player chooses.
+    mutating func eventHarbingers(chosenSlot: ArmySlot? = nil, dieRoll: Int? = nil) -> [AdvanceResult] {
+      var maxSpace = 0
+      var farthestSlots: [ArmySlot] = []
+      for slot in ArmySlot.allCases {
+        guard let pos = armyPosition[slot] else { continue }
+        if pos > maxSpace {
+          maxSpace = pos
+          farthestSlots = [slot]
+        } else if pos == maxSpace {
+          farthestSlots.append(slot)
+        }
+      }
+
+      guard !farthestSlots.isEmpty else { return [] }
+
+      if farthestSlots.count == 1 {
+        return [advanceArmy(farthestSlots[0], dieRoll: dieRoll)]
+      }
+
+      // Tied — use player choice
+      if let chosen = chosenSlot, farthestSlots.contains(chosen) {
+        return [advanceArmy(chosen, dieRoll: dieRoll)]
+      }
+
+      return [advanceArmy(farthestSlots[0], dieRoll: dieRoll)]
+    }
+
+    // Card #14: Broken Walls — Advance closest of East/West. If tied, advance both.
+    mutating func eventBrokenWalls(dieRoll: Int? = nil) -> [AdvanceResult] {
+      let eastPos = armyPosition[.east]
+      let westPos = armyPosition[.west]
+
+      switch (eastPos, westPos) {
+      case (nil, nil): return []
+      case (_?, nil): return [advanceArmy(.east, dieRoll: dieRoll)]
+      case (nil, _?): return [advanceArmy(.west, dieRoll: dieRoll)]
+      case (let e?, let w?):
+        if e < w {
+          return [advanceArmy(.east, dieRoll: dieRoll)]
+        } else if w < e {
+          return [advanceArmy(.west, dieRoll: dieRoll)]
+        } else {
+          let r1 = advanceArmy(.east, dieRoll: dieRoll)
+          let r2 = advanceArmy(.west, dieRoll: dieRoll)
+          return [r1, r2]
+        }
+      }
+    }
+
+    // Card #23: Campfires in the Distance — Gate armies out of melee range trigger advances.
+    mutating func eventCampfires(dieRoll: Int? = nil) -> [AdvanceResult] {
+      let pos1 = armyPosition[.gate1]
+      let pos2 = armyPosition[.gate2]
+
+      let out1 = pos1.map { !LoD.Track.gate.isMeleeRange(space: $0) } ?? false
+      let out2 = pos2.map { !LoD.Track.gate.isMeleeRange(space: $0) } ?? false
+
+      if out1 && out2 {
+        let r1 = advanceArmy(.gate1, dieRoll: dieRoll)
+        let r2 = advanceArmy(.gate2, dieRoll: dieRoll)
+        return [r1, r2]
+      } else if out1 {
+        return [advanceArmy(.gate1, dieRoll: dieRoll)]
+      } else if out2 {
+        return [advanceArmy(.gate2, dieRoll: dieRoll)]
+      }
+
+      return []
+    }
+
+    // Card #16: Lamentation of the Women — Roll 1-3: morale -1. Roll 4-6: no melee this turn.
+    mutating func eventLamentation(dieRoll: Int) {
+      switch dieRoll {
+      case 1, 2, 3: morale = morale.lowered()
+      case 4, 5, 6: noMeleeThisTurn = true
+      default: break
+      }
+    }
+
+    // Card #8: Acts of Valor — Wound all unwounded heroes. If ≥1 wounded, +1 attack DRM this turn.
+    mutating func eventActsOfValor(woundHeroes: Bool) {
+      guard woundHeroes else { return }
+      var woundedAny = false
+      for hero in HeroType.allCases {
+        if heroLocation[hero] != nil && !heroDead.contains(hero) && !heroWounded.contains(hero) {
+          heroWounded.insert(hero)
+          woundedAny = true
+        }
+      }
+      if woundedAny {
+        eventAttackDRMBonus += 1
+      }
+    }
+
+    // Card #24: Bloody Handprints — Roll 1-3: kill a Hero (wounded first). Roll 4-6: wound a Hero.
+    mutating func eventBloodyHandprints(dieRoll: Int, chosenHero: HeroType) {
+      switch dieRoll {
+      case 1, 2, 3:
+        // Kill hero — wounded heroes must be chosen first (enforced by caller)
+        heroDead.insert(chosenHero)
+        heroWounded.remove(chosenHero)
+        heroLocation.removeValue(forKey: chosenHero)
+      case 4, 5, 6:
+        woundHero(chosenHero)
+      default: break
+      }
+    }
+
+    // Card #26: Council of Heroes — Return all living heroes to Reserves.
+    // Wounded heroes cannot act this turn.
+    mutating func eventCouncilOfHeroes() {
+      for hero in HeroType.allCases {
+        if heroLocation[hero] != nil && !heroDead.contains(hero) {
+          heroLocation[hero] = .reserves
+        }
+      }
+      woundedHeroesCannotAct = true
+    }
+
+    // Cards #27, #32: Midnight Magic / By the Light of the Moon
+    // Roll 1-3: +1 arcane. Roll 4-6: +2 arcane.
+    mutating func eventMidnightMagic(dieRoll: Int) {
+      switch dieRoll {
+      case 1, 2, 3: arcaneEnergy = min(arcaneEnergy + 1, 6)
+      case 4, 5, 6: arcaneEnergy = min(arcaneEnergy + 2, 6)
+      default: break
+      }
+    }
+
+    // Card #30: Assassin's Creedo — Roll 1-3: kill a Hero. Roll 4-6: +1 attack DRM this turn.
+    mutating func eventAssassinsCreedo(dieRoll: Int, chosenHero: HeroType? = nil) {
+      switch dieRoll {
+      case 1, 2, 3:
+        if let hero = chosenHero {
+          heroDead.insert(hero)
+          heroWounded.remove(hero)
+          heroLocation.removeValue(forKey: hero)
+        }
+      case 4, 5, 6:
+        eventAttackDRMBonus += 1
+      default: break
+      }
+    }
+
+    // Card #31: In the Pale Moonlight — -1 divine, +1 arcane, lose one Priest.
+    mutating func eventPaleMoonlight() {
+      divineEnergy = max(divineEnergy - 1, 0)
+      arcaneEnergy = min(arcaneEnergy + 1, 6)
+      loseDefender(.priests)
+    }
+
+    // Card #33: Deserters in the Dark — Lose 2 defenders OR reduce Morale by one (not if Low).
+    mutating func eventDeserters(loseTwoDefenders: (DefenderType, DefenderType)?) {
+      if let (d1, d2) = loseTwoDefenders {
+        loseDefender(d1)
+        loseDefender(d2)
+      } else {
+        morale = morale.lowered()
+      }
+    }
+
+    // Card #34: The Waning Moon — Roll 1-3: -1 arcane. Roll 4-6: +1 arcane.
+    mutating func eventWaningMoon(dieRoll: Int) {
+      switch dieRoll {
+      case 1, 2, 3: arcaneEnergy = max(arcaneEnergy - 1, 0)
+      case 4, 5, 6: arcaneEnergy = min(arcaneEnergy + 1, 6)
+      default: break
+      }
+    }
+
+    // Card #35: Mystic Forces Reborn — Return all cast spells to pool.
+    // Roll 1-3: -1 arcane. Roll 4-6: draw a random arcane spell.
+    mutating func eventMysticForcesReborn(dieRoll: Int, randomSpell: SpellType? = nil) {
+      // Return all cast spells to face-down
+      for spell in SpellType.allCases {
+        if spellStatus[spell] == .cast {
+          spellStatus[spell] = .faceDown
+        }
+      }
+
+      switch dieRoll {
+      case 1, 2, 3: arcaneEnergy = max(arcaneEnergy - 1, 0)
+      case 4, 5, 6:
+        if let spell = randomSpell, spell.isArcane, spellStatus[spell] == .faceDown {
+          spellStatus[spell] = .known
+        }
+      default: break
+      }
+    }
+
+    // Card #29: Death and Despair — Roll die, advance farthest army that many spaces.
+    // Player can wound heroes or lose defenders to reduce the advance by 1 per sacrifice.
+    mutating func eventDeathAndDespair(
+      dieRoll: Int,
+      heroesToWound: [HeroType] = [],
+      defendersToLose: [DefenderType] = [],
+      chosenSlot: ArmySlot? = nil,
+      dieRollForBarricade: Int? = nil
+    ) -> [AdvanceResult] {
+      for hero in heroesToWound {
+        woundHero(hero)
+      }
+      for defender in defendersToLose {
+        loseDefender(defender)
+      }
+
+      let reductions = heroesToWound.count + defendersToLose.count
+      let advances = max(dieRoll - reductions, 0)
+
+      // Find farthest army
+      var maxSpace = 0
+      var farthestSlots: [ArmySlot] = []
+      for slot in ArmySlot.allCases {
+        guard let pos = armyPosition[slot] else { continue }
+        if pos > maxSpace {
+          maxSpace = pos
+          farthestSlots = [slot]
+        } else if pos == maxSpace {
+          farthestSlots.append(slot)
+        }
+      }
+
+      guard !farthestSlots.isEmpty else { return [] }
+
+      let targetSlot: ArmySlot
+      if farthestSlots.count == 1 {
+        targetSlot = farthestSlots[0]
+      } else if let chosen = chosenSlot, farthestSlots.contains(chosen) {
+        targetSlot = chosen
+      } else {
+        targetSlot = farthestSlots[0]
+      }
+
+      var results: [AdvanceResult] = []
+      for _ in 0..<advances {
+        results.append(advanceArmy(targetSlot, dieRoll: dieRollForBarricade))
+      }
+      return results
+    }
+
+    // Card #36: Bump in the Night — Advance Sky 1 space OR advance other armies total 2 spaces.
+    mutating func eventBumpInTheNight(
+      advanceSky: Bool,
+      otherAdvances: [ArmySlot] = [],
+      dieRoll: Int? = nil
+    ) -> [AdvanceResult] {
+      if advanceSky {
+        return [advanceArmy(.sky)]
+      } else {
+        var results: [AdvanceResult] = []
+        for slot in otherAdvances {
+          results.append(advanceArmy(slot, dieRoll: dieRoll))
+        }
+        return results
+      }
+    }
+
+    // MARK: - Deck Management (rule 3.0)
+
+    /// Set up the draw piles for a new game.
+    /// Pass `shuffledDayCards` and `shuffledNightCards` for deterministic testing,
+    /// or nil to use the default card lists (caller shuffles).
+    mutating func setupDecks(
+      shuffledDayCards: [LoD.Card]? = nil,
+      shuffledNightCards: [LoD.Card]? = nil
+    ) {
+      dayDrawPile = shuffledDayCards ?? LoD.dayCards
+      nightDrawPile = shuffledNightCards ?? LoD.nightCards
+      dayDiscardPile = []
+      nightDiscardPile = []
+      currentCard = nil
+    }
+
+    /// Draw a card from the appropriate deck (day/dawn → day deck, night/twilight → night deck).
+    /// Discards the previous current card. If the draw pile is empty, shuffles the
+    /// discard pile back in (rule 3.0). Returns the drawn card, or nil if both
+    /// draw pile and discard pile are empty.
+    @discardableResult
+    mutating func drawCard() -> LoD.Card? {
+      // Discard previous current card
+      if let current = currentCard {
+        if current.deck == .day {
+          dayDiscardPile.append(current)
+        } else {
+          nightDiscardPile.append(current)
+        }
+        currentCard = nil
+      }
+
+      if drawsFromDayDeck {
+        // Reshuffle discard into draw pile if empty
+        if dayDrawPile.isEmpty && !dayDiscardPile.isEmpty {
+          dayDrawPile = dayDiscardPile.shuffled()
+          dayDiscardPile = []
+        }
+        guard !dayDrawPile.isEmpty else { return nil }
+        currentCard = dayDrawPile.removeFirst()
+      } else {
+        // Reshuffle discard into draw pile if empty
+        if nightDrawPile.isEmpty && !nightDiscardPile.isEmpty {
+          nightDrawPile = nightDiscardPile.shuffled()
+          nightDiscardPile = []
+        }
+        guard !nightDrawPile.isEmpty else { return nil }
+        currentCard = nightDrawPile.removeFirst()
+      }
+
+      return currentCard
+    }
+
+    /// Draw a card with an injectable shuffle for deterministic testing.
+    /// When the draw pile is empty and discard needs reshuffling, `reshuffleOrder`
+    /// provides the new order instead of random shuffle.
+    @discardableResult
+    mutating func drawCard(reshuffleOrder: [LoD.Card]?) -> LoD.Card? {
+      // Discard previous current card
+      if let current = currentCard {
+        if current.deck == .day {
+          dayDiscardPile.append(current)
+        } else {
+          nightDiscardPile.append(current)
+        }
+        currentCard = nil
+      }
+
+      if drawsFromDayDeck {
+        if dayDrawPile.isEmpty && !dayDiscardPile.isEmpty {
+          dayDrawPile = reshuffleOrder ?? dayDiscardPile.shuffled()
+          dayDiscardPile = []
+        }
+        guard !dayDrawPile.isEmpty else { return nil }
+        currentCard = dayDrawPile.removeFirst()
+      } else {
+        if nightDrawPile.isEmpty && !nightDiscardPile.isEmpty {
+          nightDrawPile = reshuffleOrder ?? nightDiscardPile.shuffled()
+          nightDiscardPile = []
+        }
+        guard !nightDrawPile.isEmpty else { return nil }
+        currentCard = nightDrawPile.removeFirst()
+      }
+
+      return currentCard
+    }
+
+    // MARK: - Quest Resolution (card quests)
+
+    enum QuestResult: Equatable {
+      case success
+      case failure
+      case naturalOneFail
+      case noQuest
+    }
+
+    /// Attempt the quest on the current card.
+    /// Actions grant +1 DRM, heroics grant +2 DRM. Ranger adds +1 DRM to quests.
+    /// Natural 1 always fails. Must roll > quest target.
+    mutating func attemptQuest(
+      isHeroic: Bool,
+      dieRoll: Int,
+      additionalDRM: Int = 0
+    ) -> QuestResult {
+      guard let quest = currentCard?.quest else { return .noQuest }
+      if dieRoll == 1 { return .naturalOneFail }
+      let baseDRM = isHeroic ? 2 : 1
+      let modified = dieRoll + baseDRM + additionalDRM
+      if modified > quest.target {
+        return .success
+      }
+      return .failure
+    }
+
+    // -- Quest Rewards --
+
+    /// Forlorn Hope — advance time marker +1.
+    mutating func questForlornHope() {
+      advanceTime(by: 1)
+    }
+
+    /// Scrolls of the Dead — draw a spell of your choice (mark it known).
+    mutating func questScrollsOfDead(chosenSpell: SpellType) {
+      if spellStatus[chosenSpell] == .faceDown {
+        spellStatus[chosenSpell] = .known
+      }
+    }
+
+    /// Search for the Manastones — +1 arcane energy, +1 divine energy.
+    mutating func questManastones() {
+      arcaneEnergy = min(arcaneEnergy + 1, 6)
+      divineEnergy = min(divineEnergy + 1, 6)
+    }
+
+    /// Arrows of the Dead — gain the Magic Bow item.
+    mutating func questMagicBow() {
+      hasMagicBow = true
+    }
+
+    /// Put Forth the Call — gain +1 defender of player's choice.
+    mutating func questPutForthCall(defender: DefenderType) {
+      if let current = defenders[defender] {
+        defenders[defender] = min(current + 1, defender.maxValue)
+      }
+    }
+
+    /// Last Ditch Efforts — add an unselected hero to reserves.
+    mutating func questLastDitchEfforts(hero: HeroType) {
+      heroLocation[hero] = .reserves
+    }
+
+    /// Last Ditch Efforts penalty — reduce morale by one (if quest not attempted or failed).
+    mutating func questLastDitchPenalty() {
+      morale = morale.lowered()
+    }
+
+    /// The Vorpal Blade — gain the Magic Sword item.
+    mutating func questVorpalBlade() {
+      hasMagicSword = true
+    }
+
+    /// Pillars of the Earth — retreat one army (except Sky) two spaces.
+    mutating func questPillarsOfEarth(slot: ArmySlot) {
+      guard slot.track != .sky else { return }
+      if let pos = armyPosition[slot] {
+        let track = slot.track
+        armyPosition[slot] = min(pos + 2, track.maxSpace)
+      }
+    }
+
+    /// Save the Mirror of the Moon — +2 arcane energy.
+    mutating func questMirrorOfMoon() {
+      arcaneEnergy = min(arcaneEnergy + 2, 6)
+    }
+
+    /// Prophecy Revealed — reveal top 3 Day deck cards, discard one, put rest back on top.
+    mutating func questProphecyRevealed(discardIndex: Int) {
+      let count = min(3, dayDrawPile.count)
+      guard count > 0 else { return }
+      let top = Array(dayDrawPile.prefix(count))
+      dayDrawPile.removeFirst(count)
+      dayDiscardPile.append(top[discardIndex])
+      var remaining: [LoD.Card] = []
+      for (i, card) in top.enumerated() where i != discardIndex {
+        remaining.append(card)
+      }
+      dayDrawPile.insert(contentsOf: remaining, at: 0)
+    }
+
+    // -- Magic Items (quest rewards) --
+
+    enum ItemTiming: Equatable {
+      case before  // +2 DRM
+      case after   // +1 DRM
+    }
+
+    /// Use the Magic Sword: discard before melee attack for +2 DRM, or after for +1 DRM.
+    /// Returns the DRM bonus granted, or 0 if item not held.
+    mutating func useMagicSword(timing: ItemTiming) -> Int {
+      guard hasMagicSword else { return 0 }
+      hasMagicSword = false
+      return timing == .before ? 2 : 1
+    }
+
+    /// Use the Magic Bow: discard before ranged attack for +2 DRM, or after for +1 DRM.
+    /// Returns the DRM bonus granted, or 0 if item not held.
+    mutating func useMagicBow(timing: ItemTiming) -> Int {
+      guard hasMagicBow else { return 0 }
+      hasMagicBow = false
+      return timing == .before ? 2 : 1
+    }
+
+    // MARK: - Housekeeping (rule 3.0 step 5)
+
+    /// Perform housekeeping at the end of a turn.
+    /// Advances time by the current card's time value, resets per-turn tracking,
+    /// and checks for victory.
+    mutating func performHousekeeping() {
+      guard let card = currentCard else { return }
+
+      // Advance time by the card's time value
+      advanceTime(by: card.time)
+
+      // Reset per-turn tracking
+      resetTurnTracking()
+
+      // Check victory (only matters on Final Twilight)
+      checkVictory()
+    }
 
     /// Reset per-turn tracking at the start of a new turn.
     mutating func resetTurnTracking() {
       bloodyBattlePaidThisTurn = false
       paladinRerollUsed = false
       inspireDRMActive = false
+      eventAttackDRMBonus = 0
+      noMeleeThisTurn = false
+      woundedHeroesCannotAct = false
+    }
+
+    // MARK: - DRM Helpers (for RulePages)
+
+    /// Total DRM for an attack action, combining card DRMs, upgrades, event bonuses, and Inspire.
+    func totalAttackDRM(slot: ArmySlot, attackType: AttackType) -> Int {
+      var drm = 0
+      if let card = currentCard {
+        for cardDRM in card.actionDRMs {
+          switch cardDRM.action {
+          case .attack:
+            if cardDRM.track == nil || cardDRM.track == slot.track {
+              drm += cardDRM.value
+            }
+          case .melee:
+            if attackType == .melee && (cardDRM.track == nil || cardDRM.track == slot.track) {
+              drm += cardDRM.value
+            }
+          case .ranged:
+            if attackType == .ranged && (cardDRM.track == nil || cardDRM.track == slot.track) {
+              drm += cardDRM.value
+            }
+          default: break
+          }
+        }
+      }
+      // Upgrade DRM (only for space 1)
+      if armyPosition[slot] == 1 {
+        drm += upgradeDRM(on: slot.track, attackType: attackType)
+      }
+      // Event attack bonus
+      drm += eventAttackDRMBonus
+      // Inspire bonus
+      if inspireDRMActive { drm += 1 }
+      return drm
+    }
+
+    /// Total DRM for a build action from card DRMs and Inspire.
+    func totalBuildDRM() -> Int {
+      var drm = 0
+      if let card = currentCard {
+        for cardDRM in card.actionDRMs where cardDRM.action == .build {
+          drm += cardDRM.value
+        }
+      }
+      if inspireDRMActive { drm += 1 }
+      return drm
+    }
+
+    /// Total DRM for a chant action from card DRMs and Inspire.
+    func totalChantDRM() -> Int {
+      var drm = 0
+      // Priests provide +1 DRM per priest
+      drm += defenders[.priests] ?? 0
+      if let card = currentCard {
+        for cardDRM in card.actionDRMs where cardDRM.action == .chant {
+          drm += cardDRM.value
+        }
+      }
+      if inspireDRMActive { drm += 1 }
+      return drm
+    }
+
+    /// Total DRM for a rally heroic action from card DRMs and Inspire.
+    func totalRallyDRM() -> Int {
+      var drm = 0
+      if let card = currentCard {
+        for cardDRM in card.heroicDRMs where cardDRM.action == .rally {
+          drm += cardDRM.value
+        }
+      }
+      if inspireDRMActive { drm += 1 }
+      return drm
     }
   }
 
