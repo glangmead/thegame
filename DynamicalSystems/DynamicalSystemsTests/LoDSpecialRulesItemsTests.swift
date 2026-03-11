@@ -33,9 +33,9 @@ struct LoDSpecialRulesItemsTests {
     let eastPosBefore = state.armyPosition[.east]!
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .east, dieRoll: 3,
-        bloodyBattleDefender: nil, useMagicSword: .before))
+        bloodyBattleDefender: nil, useMagicSword: .before)))
     // Should have hit — army retreated
     #expect(state.armyPosition[.east]! > eastPosBefore)
     // Sword consumed
@@ -61,9 +61,9 @@ struct LoDSpecialRulesItemsTests {
     let eastPosBefore = state.armyPosition[.east]!
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .east, dieRoll: 3,
-        bloodyBattleDefender: nil, useMagicSword: .after))
+        bloodyBattleDefender: nil, useMagicSword: .after)))
     #expect(state.armyPosition[.east]! > eastPosBefore)
     #expect(state.hasMagicSword == false)
   }
@@ -86,9 +86,9 @@ struct LoDSpecialRulesItemsTests {
     // Use roll 2 instead: roll 2 + bow before (+2) = 4. Goblin str 2. 4 > 2 = hit.
     _ = game.reduce(
       into: &state,
-      action: .rangedAttack(
+      action: .combat(.rangedAttack(
         .east, dieRoll: 2,
-        bloodyBattleDefender: nil, useMagicBow: .before))
+        bloodyBattleDefender: nil, useMagicBow: .before)))
     #expect(state.armyPosition[.east]! > eastPosBefore)
     #expect(state.hasMagicBow == false)
   }
@@ -111,9 +111,9 @@ struct LoDSpecialRulesItemsTests {
     // is it shouldn't crash.
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .east, dieRoll: 2,
-        bloodyBattleDefender: nil, useMagicSword: .before))
+        bloodyBattleDefender: nil, useMagicSword: .before)))
     #expect(state.hasMagicSword == false)
   }
 

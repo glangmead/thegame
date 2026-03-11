@@ -78,7 +78,7 @@ struct LoDRenderingTests {
     let pieces = LoDPieceAdapter.pieces()
     // 6 armies + 3 heroes (greenskin default) + morale + time + 3 defenders + 2 energy + 1 card
     // Actually: 6 armies, up to 6 heroes, morale, time, 3 defenders, 2 energy = 18+
-    let armyLabels: Set = ["Gob", "Orc", "G1", "G2", "Sky", "Ter"]
+    let armyLabels: Set = ["G2", "O3", "G2", "G2", "D4", "T4"]
     let armyPieces = pieces.filter { armyLabels.contains($0.label ?? "") }
     #expect(armyPieces.count == 6)
   }

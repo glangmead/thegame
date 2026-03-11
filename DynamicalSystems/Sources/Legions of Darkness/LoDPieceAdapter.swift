@@ -40,7 +40,7 @@ struct LoDPieceAdapter {
   // MARK: - Pieces
 
   private static let armyLabels: [LoD.ArmySlot: String] = [
-    .east: "Gob", .west: "Orc", .gate1: "G1", .gate2: "G2", .sky: "Sky", .terror: "Ter"
+    .east: "G2", .west: "O3", .gate1: "G2", .gate2: "G2", .sky: "D4", .terror: "T4"
   ]
 
   private static let heroLabels: [LoD.HeroType: String] = [

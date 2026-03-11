@@ -64,7 +64,7 @@ struct LoDComposedGameSpellTests {
 
     let timeBefore = state.timePosition
     // Roll 6 + action DRM 1 = 7 > 6 = success
-    _ = game.reduce(into: &state, action: .questAction(dieRoll: 6, reward: LoD.QuestRewardParams()))
+    _ = game.reduce(into: &state, action: .quest(.quest(isHeroic: false, dieRoll: 6, reward: LoD.QuestRewardParams())))
     #expect(state.timePosition == timeBefore + 1) // Forlorn Hope advances time
   }
 
@@ -86,12 +86,12 @@ struct LoDComposedGameSpellTests {
     // Roll 6 + action DRM 1 = 7. Need > 7, so this fails.
     var reward = LoD.QuestRewardParams()
     reward.chosenSpell = .fireball
-    _ = game.reduce(into: &state, action: .questAction(dieRoll: 6, reward: reward))
+    _ = game.reduce(into: &state, action: .quest(.quest(isHeroic: false, dieRoll: 6, reward: reward)))
     #expect(state.spellStatus[.fireball] == .faceDown) // still face-down (failed)
 
     // Try heroic: roll 6 + heroic DRM 2 = 8 > 7 = success
     _ = game.reduce(into: &state, action: .passActions)
-    _ = game.reduce(into: &state, action: .questHeroic(dieRoll: 6, reward: reward))
+    _ = game.reduce(into: &state, action: .quest(.quest(isHeroic: true, dieRoll: 6, reward: reward)))
     #expect(state.spellStatus[.fireball] == .known) // now known!
   }
 
@@ -109,7 +109,7 @@ struct LoDComposedGameSpellTests {
 
     let timeBefore = state.timePosition
     // Roll 2 + action DRM 1 = 3. Need > 6 = failure.
-    _ = game.reduce(into: &state, action: .questAction(dieRoll: 2, reward: LoD.QuestRewardParams()))
+    _ = game.reduce(into: &state, action: .quest(.quest(isHeroic: false, dieRoll: 2, reward: LoD.QuestRewardParams())))
     #expect(state.timePosition == timeBefore) // no time advance
   }
 
@@ -139,7 +139,7 @@ struct LoDComposedGameSpellTests {
     var params = LoD.SpellCastParams()
     params.targetSlot = .east
     params.dieRolls = [5]
-    _ = game.reduce(into: &state, action: .castSpell(.fireball, heroic: false, params))
+    _ = game.reduce(into: &state, action: .magic(.castSpell(.fireball, heroic: false, params)))
 
     // Fireball costs 1 arcane energy
     #expect(state.arcaneEnergy == arcaneBefore - 1)
@@ -164,7 +164,7 @@ struct LoDComposedGameSpellTests {
     _ = game.reduce(into: &state, action: .drawCard)
 
     // Cast Inspire (divine, cost 3)
-    _ = game.reduce(into: &state, action: .castSpell(.inspire, heroic: false, LoD.SpellCastParams()))
+    _ = game.reduce(into: &state, action: .magic(.castSpell(.inspire, heroic: false, LoD.SpellCastParams())))
     #expect(state.morale == .normal) // raised from low
     #expect(state.inspireDRMActive == true) // +1 DRM to all rolls
     #expect(state.spellStatus[.inspire] == .cast)
@@ -185,13 +185,13 @@ struct LoDComposedGameSpellTests {
 
     // No known spells → no cast actions
     let actionsNoSpells = game.allowedActions(state: state)
-    #expect(!actionsNoSpells.contains(where: { if case .castSpell = $0 { return true }; return false }))
+    #expect(!actionsNoSpells.contains(where: { if case .magic(.castSpell) = $0 { return true }; return false }))
 
     // Learn fireball
     state.spellStatus[.fireball] = .known
 
     let actionsWithSpell = game.allowedActions(state: state)
-    #expect(actionsWithSpell.contains(where: { if case .castSpell = $0 { return true }; return false }))
+    #expect(actionsWithSpell.contains(where: { if case .magic(.castSpell) = $0 { return true }; return false }))
   }
 
   @Test
@@ -210,7 +210,7 @@ struct LoDComposedGameSpellTests {
 
     // Fireball should NOT be offered (insufficient energy)
     let actions = game.allowedActions(state: state)
-    #expect(!actions.contains(where: { if case .castSpell = $0 { return true }; return false }))
+    #expect(!actions.contains(where: { if case .magic(.castSpell) = $0 { return true }; return false }))
   }
 
 }

@@ -191,7 +191,7 @@ struct LoDAuditFixTests2 {
     state.breaches.insert(.east)
     let actions = game.allowedActions(state: state)
     let barricadeActions = actions.filter {
-      if case .buildBarricade = $0 { return true }
+      if case .build(.buildBarricade) = $0 { return true }
       return false
     }
     #expect(!barricadeActions.isEmpty)

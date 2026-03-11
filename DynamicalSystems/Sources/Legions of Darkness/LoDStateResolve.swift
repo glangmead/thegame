@@ -14,36 +14,48 @@ extension LoD.State {
   /// Whether the given action is a die-roll action eligible for Paladin re-roll.
   static func isDieRollAction(_ action: LoD.Action) -> Bool {
     switch action {
-    case .meleeAttack, .rangedAttack, .buildUpgrade, .buildBarricade, .chant, .questAction:
+    case .combat, .build, .magic(.chant), .quest:
       return true
-    case .heroicAttack, .rally, .questHeroic:
+    case .heroic(.heroicAttack), .heroic(.rally):
       return true
     default:
       return false
     }
   }
 
-  /// Replace the die roll in a die-roll action with a new value.
+  // Replace the die roll in a die-roll action with a new value.
+  // swiftlint:disable:next cyclomatic_complexity
   static func withNewDieRoll(_ action: LoD.Action, newDieRoll: Int) -> LoD.Action {
     switch action {
-    case .meleeAttack(let slot, _, let bloodyBattleDef, let magicSword):
-      return .meleeAttack(slot, dieRoll: newDieRoll, bloodyBattleDefender: bloodyBattleDef, useMagicSword: magicSword)
-    case .rangedAttack(let slot, _, let bloodyBattleDef, let magicBow):
-      return .rangedAttack(slot, dieRoll: newDieRoll, bloodyBattleDefender: bloodyBattleDef, useMagicBow: magicBow)
-    case .buildUpgrade(let upgrade, let track, _):
-      return .buildUpgrade(upgrade, track, dieRoll: newDieRoll)
-    case .buildBarricade(let track, _):
-      return .buildBarricade(track, dieRoll: newDieRoll)
-    case .chant:
-      return .chant(dieRoll: newDieRoll)
-    case .questAction(_, let reward):
-      return .questAction(dieRoll: newDieRoll, reward: reward)
-    case .heroicAttack(let hero, let slot, _):
-      return .heroicAttack(hero, slot, dieRoll: newDieRoll)
-    case .rally:
-      return .rally(dieRoll: newDieRoll)
-    case .questHeroic(_, let reward):
-      return .questHeroic(dieRoll: newDieRoll, reward: reward)
+    case .combat(let sub):
+      switch sub {
+      case .meleeAttack(let slot, _, let bloodyBattleDef, let magicSword):
+        return .combat(.meleeAttack(
+          slot, dieRoll: newDieRoll, bloodyBattleDefender: bloodyBattleDef, useMagicSword: magicSword))
+      case .rangedAttack(let slot, _, let bloodyBattleDef, let magicBow):
+        return .combat(.rangedAttack(
+          slot, dieRoll: newDieRoll, bloodyBattleDefender: bloodyBattleDef, useMagicBow: magicBow))
+      }
+    case .build(let sub):
+      switch sub {
+      case .buildUpgrade(let upgrade, let track, _):
+        return .build(.buildUpgrade(upgrade, track, dieRoll: newDieRoll))
+      case .buildBarricade(let track, _):
+        return .build(.buildBarricade(track, dieRoll: newDieRoll))
+      }
+    case .magic(.chant):
+      return .magic(.chant(dieRoll: newDieRoll))
+    case .quest(.quest(let isHeroic, _, let reward)):
+      return .quest(.quest(isHeroic: isHeroic, dieRoll: newDieRoll, reward: reward))
+    case .heroic(let sub):
+      switch sub {
+      case .heroicAttack(let hero, let slot, _):
+        return .heroic(.heroicAttack(hero, slot, dieRoll: newDieRoll))
+      case .rally:
+        return .heroic(.rally(dieRoll: newDieRoll))
+      case .moveHero:
+        return action
+      }
     default:
       return action
     }
@@ -54,35 +66,56 @@ extension LoD.State {
     dieRoll == 0 ? Int.random(in: 1...6) : dieRoll
   }
 
+  // MARK: - Paladin Check Helper
+
+  /// Handle a die-roll action with Paladin re-roll check.
+  /// If Paladin can re-roll, defers the action and switches to paladinReact phase.
+  /// Otherwise resolves immediately via the appropriate phase resolver.
+  mutating func resolveDieRollWithPaladinCheck(
+    _ action: LoD.Action, phase: LoD.Phase
+  ) -> [Log] {
+    if canPaladinReroll {
+      pendingDieRollAction = action
+      phaseBeforePaladinReact = phase
+      self.phase = .paladinReact
+      return [Log(msg: "Paladin may re-roll this die")]
+    }
+    if phase == .action {
+      return resolveActionDieRoll(action)
+    } else {
+      return resolveHeroicDieRoll(action)
+    }
+  }
+
   /// Resolve an action-phase die-roll action. Returns logs.
   mutating func resolveActionDieRoll(_ action: LoD.Action) -> [Log] {
     switch action {
-    case .meleeAttack(let slot, let dieRoll, let bloodyBattleDefender, let useMagicSword):
+    case .combat(.meleeAttack(let slot, let dieRoll, let bloodyBattleDefender, let useMagicSword)):
       return resolveMeleeAttack(slot: slot, dieRoll: Self.effectiveDie(dieRoll),
                                 bloodyBattleDefender: bloodyBattleDefender,
                                 useMagicSword: useMagicSword)
 
-    case .rangedAttack(let slot, let dieRoll, let bloodyBattleDefender, let useMagicBow):
+    case .combat(.rangedAttack(let slot, let dieRoll, let bloodyBattleDefender, let useMagicBow)):
       return resolveRangedAttack(slot: slot, dieRoll: Self.effectiveDie(dieRoll),
                                 bloodyBattleDefender: bloodyBattleDefender,
                                 useMagicBow: useMagicBow)
 
-    case .buildUpgrade(let upgrade, let track, let dieRoll):
+    case .build(.buildUpgrade(let upgrade, let track, let dieRoll)):
       let drm = totalBuildDRM()
       let result = build(upgrade: upgrade, on: track, dieRoll: Self.effectiveDie(dieRoll), drm: drm)
       return [Log(msg: "Build \(upgrade) on \(track): \(result)")]
 
-    case .buildBarricade(let track, let dieRoll):
+    case .build(.buildBarricade(let track, let dieRoll)):
       let drm = totalBuildDRM()
       let result = buildBarricade(on: track, dieRoll: Self.effectiveDie(dieRoll), drm: drm)
       return [Log(msg: "Build barricade on \(track): \(result)")]
 
-    case .chant(let dieRoll):
+    case .magic(.chant(let dieRoll)):
       let drm = totalChantDRM()
       let success = chant(dieRoll: Self.effectiveDie(dieRoll), drm: drm)
       return [Log(msg: "Chant: \(success ? "success" : "failed")")]
 
-    case .questAction(let dieRoll, let reward):
+    case .quest(.quest(let isHeroic, let dieRoll, let reward)) where !isHeroic:
       return resolveQuestAction(dieRoll: Self.effectiveDie(dieRoll), reward: reward, isHeroic: false)
 
     default:
@@ -147,15 +180,15 @@ extension LoD.State {
   /// Resolve a heroic-phase die-roll action. Returns logs.
   mutating func resolveHeroicDieRoll(_ action: LoD.Action) -> [Log] {
     switch action {
-    case .heroicAttack(let hero, let slot, let dieRoll):
+    case .heroic(.heroicAttack(let hero, let slot, let dieRoll)):
       return resolveHeroicAttackAction(hero: hero, slot: slot, dieRoll: Self.effectiveDie(dieRoll))
 
-    case .rally(let dieRoll):
+    case .heroic(.rally(let dieRoll)):
       let drm = totalRallyDRM()
       let success = rally(dieRoll: Self.effectiveDie(dieRoll), drm: drm)
       return [Log(msg: "Rally: \(success ? "success" : "failed")")]
 
-    case .questHeroic(let dieRoll, let reward):
+    case .quest(.quest(let isHeroic, let dieRoll, let reward)) where isHeroic:
       return resolveQuestAction(dieRoll: Self.effectiveDie(dieRoll), reward: reward, isHeroic: true)
 
     default:
@@ -183,9 +216,11 @@ extension LoD.State {
   /// The phase an action belongs to (for returning after Paladin re-roll).
   static func phaseForDieRollAction(_ action: LoD.Action) -> LoD.Phase {
     switch action {
-    case .meleeAttack, .rangedAttack, .buildUpgrade, .buildBarricade, .chant, .questAction:
+    case .combat, .build, .magic(.chant):
       return .action
-    case .heroicAttack, .rally, .questHeroic:
+    case .quest(.quest(let isHeroic, _, _)):
+      return isHeroic ? .heroic : .action
+    case .heroic(.heroicAttack), .heroic(.rally):
       return .heroic
     default:
       return .action

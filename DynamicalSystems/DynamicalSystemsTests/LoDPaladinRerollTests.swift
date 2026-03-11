@@ -33,9 +33,9 @@ struct LoDPaladinRerollTests {
     // Perform a melee attack — should enter paladinReact phase
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .east, dieRoll: 3,
-        bloodyBattleDefender: nil, useMagicSword: nil))
+        bloodyBattleDefender: nil, useMagicSword: nil)))
     #expect(state.phase == .paladinReact)
 
     let allowed = game.allowedActions(state: state)
@@ -62,9 +62,9 @@ struct LoDPaladinRerollTests {
     // Attack with roll 6: card 3 attack DRM -1, so 6 + (-1) = 5 > goblin str 2 → hit
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .east, dieRoll: 6,
-        bloodyBattleDefender: nil, useMagicSword: nil))
+        bloodyBattleDefender: nil, useMagicSword: nil)))
     #expect(state.phase == .paladinReact)
     // Army hasn't been pushed back yet (deferred)
     #expect(state.armyPosition[.east]! == 1)
@@ -93,9 +93,9 @@ struct LoDPaladinRerollTests {
     // Original roll 1 (natural 1 always fails). Army at space 1.
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .east, dieRoll: 1,
-        bloodyBattleDefender: nil, useMagicSword: nil))
+        bloodyBattleDefender: nil, useMagicSword: nil)))
     #expect(state.phase == .paladinReact)
 
     // Re-roll with 6: 6 + (-1) = 5 > 2 → hit
@@ -123,9 +123,9 @@ struct LoDPaladinRerollTests {
     // First attack: enters paladinReact
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .east, dieRoll: 3,
-        bloodyBattleDefender: nil, useMagicSword: nil))
+        bloodyBattleDefender: nil, useMagicSword: nil)))
     #expect(state.phase == .paladinReact)
     _ = game.reduce(into: &state, action: .paladinReroll(newDieRoll: 6))
     #expect(state.paladinRerollUsed == true)
@@ -133,9 +133,9 @@ struct LoDPaladinRerollTests {
     // Second attack: should resolve immediately, no paladinReact
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .west, dieRoll: 6,
-        bloodyBattleDefender: nil, useMagicSword: nil))
+        bloodyBattleDefender: nil, useMagicSword: nil)))
     #expect(state.phase == .action)  // stays in action, not paladinReact
   }
 
@@ -156,9 +156,9 @@ struct LoDPaladinRerollTests {
 
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .east, dieRoll: 6,
-        bloodyBattleDefender: nil, useMagicSword: nil))
+        bloodyBattleDefender: nil, useMagicSword: nil)))
     #expect(state.phase == .action)  // resolved immediately
     #expect(state.armyPosition[.east]! == 2)  // hit resolved
   }
@@ -181,7 +181,7 @@ struct LoDPaladinRerollTests {
     #expect(state.phase == .heroic)
 
     // Heroic attack: should enter paladinReact
-    _ = game.reduce(into: &state, action: .heroicAttack(.paladin, .east, dieRoll: 1))
+    _ = game.reduce(into: &state, action: .heroic(.heroicAttack(.paladin, .east, dieRoll: 1)))
     #expect(state.phase == .paladinReact)
 
     // Re-roll with 6: paladin combatDRM = 1, so 6 + 1 = 7 > goblin str 2 → hit

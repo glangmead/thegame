@@ -74,7 +74,7 @@ struct LoDuditFixTests {
     state.armyPosition[.east] = 1
     let actions = game.allowedActions(state: state)
     let buildActions = actions.filter {
-      if case .buildUpgrade(_, .east, _) = $0 { return true }
+      if case .build(.buildUpgrade(_, .east, _)) = $0 { return true }
       return false
     }
     #expect(buildActions.isEmpty)
@@ -157,7 +157,7 @@ struct LoDuditFixTests {
     // First melee attack should be offered
     var actions = game.allowedActions(state: state)
     let meleeActions = actions.filter {
-      if case .meleeAttack = $0 { return true }
+      if case .combat(.meleeAttack) = $0 { return true }
       return false
     }
     #expect(!meleeActions.isEmpty)
@@ -165,12 +165,12 @@ struct LoDuditFixTests {
     // After 1 melee attack, no more melee should be offered
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .east, dieRoll: 6,
-        bloodyBattleDefender: nil, useMagicSword: nil))
+        bloodyBattleDefender: nil, useMagicSword: nil)))
     actions = game.allowedActions(state: state)
     let meleeActionsAfter = actions.filter {
-      if case .meleeAttack = $0 { return true }
+      if case .combat(.meleeAttack) = $0 { return true }
       return false
     }
     #expect(meleeActionsAfter.isEmpty)
@@ -190,10 +190,10 @@ struct LoDuditFixTests {
     state.defenders[.archers] = 1  // Only 1 ranged attack allowed
 
     // After 1 ranged attack, no more ranged should be offered
-    _ = game.reduce(into: &state, action: .rangedAttack(.east, dieRoll: 6, bloodyBattleDefender: nil, useMagicBow: nil))
+    _ = game.reduce(into: &state, action: .combat(.rangedAttack(.east, dieRoll: 6, bloodyBattleDefender: nil, useMagicBow: nil)))
     let actions = game.allowedActions(state: state)
     let rangedActionsAfter = actions.filter {
-      if case .rangedAttack = $0 { return true }
+      if case .combat(.rangedAttack) = $0 { return true }
       return false
     }
     #expect(rangedActionsAfter.isEmpty)

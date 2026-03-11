@@ -123,7 +123,7 @@ struct LoDView: View {
 
   private var actionList: some View {
     List {
-      MCTSActionSection(model: model, actions: cachedActions) { action in
+      MCTSActionSection(model: model, actions: cachedActions, grouping: { $0.actionGroup }) { action in
         performAction(action)
       }
     }

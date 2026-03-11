@@ -193,3 +193,24 @@ protocol AnytimePlayer {
   associatedtype Action: Hashable
   func recommendation(iters: Int, numRollouts: Int) -> [Action: (Float, Float)]
 }
+
+// MARK: - Action Grouping
+
+protocol ActionGroup: Hashable, CustomStringConvertible {
+  static var groupName: String { get }
+}
+
+protocol GroupedAction {
+  var actionGroup: String { get }
+}
+
+extension GroupedAction {
+  var actionGroup: String {
+    let mirror = Mirror(reflecting: self)
+    guard let child = mirror.children.first,
+          let group = child.value as? any ActionGroup else {
+      return "General"
+    }
+    return type(of: group).groupName
+  }
+}

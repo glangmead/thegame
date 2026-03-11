@@ -46,7 +46,7 @@ struct LoDDieRollTests {
     for _ in 0..<100 {
       var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
       state.armyPosition[.east] = 2  // melee range
-      let action = LoD.Action.meleeAttack(.east, dieRoll: 0, bloodyBattleDefender: nil, useMagicSword: nil)
+      let action = LoD.Action.combat(.meleeAttack(.east, dieRoll: 0, bloodyBattleDefender: nil, useMagicSword: nil))
       let logs = state.resolveActionDieRoll(action)
       let logText = logs.map(\.msg).joined()
       if logText.contains("hit") {
@@ -64,7 +64,7 @@ struct LoDDieRollTests {
     for _ in 0..<100 {
       var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
       state.armyPosition[.east] = 5  // ranged range
-      let action = LoD.Action.rangedAttack(.east, dieRoll: 0, bloodyBattleDefender: nil, useMagicBow: nil)
+      let action = LoD.Action.combat(.rangedAttack(.east, dieRoll: 0, bloodyBattleDefender: nil, useMagicBow: nil))
       let logs = state.resolveActionDieRoll(action)
       let logText = logs.map(\.msg).joined()
       if logText.contains("hit") {
@@ -81,7 +81,7 @@ struct LoDDieRollTests {
       var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
       state.armyPosition[.east] = 2
       state.heroLocation[.warrior] = .onTrack(.east)
-      let action = LoD.Action.heroicAttack(.warrior, .east, dieRoll: 0)
+      let action = LoD.Action.heroic(.heroicAttack(.warrior, .east, dieRoll: 0))
       let logs = state.resolveHeroicDieRoll(action)
       let logText = logs.map(\.msg).joined()
       if logText.contains("hit") {
@@ -98,7 +98,7 @@ struct LoDDieRollTests {
     // Explicit dieRoll=6 against goblin (strength 2) should always hit.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.armyPosition[.east] = 2
-    let action = LoD.Action.meleeAttack(.east, dieRoll: 6, bloodyBattleDefender: nil, useMagicSword: nil)
+    let action = LoD.Action.combat(.meleeAttack(.east, dieRoll: 6, bloodyBattleDefender: nil, useMagicSword: nil))
     let logs = state.resolveActionDieRoll(action)
     let logText = logs.map(\.msg).joined()
     #expect(logText.contains("hit"), "Explicit roll 6 vs strength 2 should hit")
@@ -109,7 +109,7 @@ struct LoDDieRollTests {
     // Explicit dieRoll=1 should always fail (natural 1 rule).
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.armyPosition[.east] = 2
-    let action = LoD.Action.meleeAttack(.east, dieRoll: 1, bloodyBattleDefender: nil, useMagicSword: nil)
+    let action = LoD.Action.combat(.meleeAttack(.east, dieRoll: 1, bloodyBattleDefender: nil, useMagicSword: nil))
     let logs = state.resolveActionDieRoll(action)
     let logText = logs.map(\.msg).joined()
     #expect(logText.contains("natural 1"), "Explicit roll 1 should be natural 1 fail")
@@ -217,7 +217,7 @@ struct LoDDieRollTests {
     // The MCTS should have explored melee/ranged attack actions
     let attackActions = results.keys.filter { action in
       switch action {
-      case .meleeAttack, .rangedAttack: return true
+      case .combat(.meleeAttack), .combat(.rangedAttack): return true
       default: return false
       }
     }

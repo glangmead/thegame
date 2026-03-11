@@ -85,7 +85,14 @@ extension LoD {
   /// All possible actions in the composed game.
   /// Die rolls and random selections are included as parameters so that
   /// the history log is fully deterministic and replayable.
-  indirect enum Action: Hashable, CustomStringConvertible {
+  indirect enum Action: Hashable, CustomStringConvertible, GroupedAction {
+
+    // -- Grouped actions --
+    case combat(CombatAction)
+    case build(BuildAction)
+    case magic(MagicAction)
+    case heroic(HeroicAction)
+    case quest(QuestAction)
 
     // -- Card phase --
     case drawCard
@@ -97,24 +104,11 @@ extension LoD {
     case skipEvent                          // card has no event
     case resolveEvent(EventResolution)      // card has event
 
-    // -- Action phase --
-    case meleeAttack(ArmySlot, dieRoll: Int, bloodyBattleDefender: DefenderType?, useMagicSword: ItemTiming?)
-    case rangedAttack(ArmySlot, dieRoll: Int, bloodyBattleDefender: DefenderType?, useMagicBow: ItemTiming?)
-    case buildUpgrade(UpgradeType, Track, dieRoll: Int)
-    case chant(dieRoll: Int)
-    case memorize(SpellType)
-    case pray(SpellType)
-    case questAction(dieRoll: Int, reward: QuestRewardParams)
-    case castSpell(SpellType, heroic: Bool, SpellCastParams)
-    case buildBarricade(Track, dieRoll: Int) // build barricade on breached wall (rule 6.3)
+    // -- Action phase (ungrouped) --
     case rogueMove(HeroLocation)           // free move, no action cost (rule 10.4)
     case passActions
 
-    // -- Heroic phase --
-    case moveHero(HeroType, HeroLocation)
-    case heroicAttack(HeroType, ArmySlot, dieRoll: Int)
-    case rally(dieRoll: Int)
-    case questHeroic(dieRoll: Int, reward: QuestRewardParams)
+    // -- Heroic phase (ungrouped) --
     case passHeroics
 
     // -- Paladin re-roll (rule 10.2) --
@@ -130,82 +124,24 @@ extension LoD {
 
     var description: String {
       switch self {
+      case .combat(let sub): return sub.description
+      case .build(let sub): return sub.description
+      case .magic(let sub): return sub.description
+      case .heroic(let sub): return sub.description
+      case .quest(let sub): return sub.description
       case .drawCard: return "Draw Card"
       case .advanceArmies: return "Advance Armies"
       case .skipEvent: return "Skip Event"
       case .resolveEvent(let event):
         return event.dieRoll > 0 ? "Resolve Event (roll \(event.dieRoll))" : "Resolve Event"
-      case .meleeAttack(let slot, let roll, _, _):
-        return "Melee: \(slot.rawValue.capitalized) (roll \(roll))"
-      case .rangedAttack(let slot, let roll, _, _):
-        return "Ranged: \(slot.rawValue.capitalized) (roll \(roll))"
-      case .buildUpgrade(let upgrade, let track, let roll):
-        return "Build \(upgrade) on \(track.rawValue.capitalized) (roll \(roll))"
-      case .buildBarricade(let track, let roll):
-        return "Barricade \(track.rawValue.capitalized) (roll \(roll))"
-      case .chant(let roll): return "Chant (roll \(roll))"
-      case .memorize(let spell): return "Memorize \(spell)"
-      case .pray(let spell): return "Pray \(spell)"
-      case .questAction(let roll, _): return "Quest (roll \(roll))"
-      case .castSpell(let spell, let heroic, _):
-        return heroic ? "Heroic Cast \(spell)" : "Cast \(spell)"
       case .rogueMove(let loc): return "Rogue Move → \(loc)"
       case .passActions: return "Pass Actions"
-      case .moveHero(let hero, let loc): return "Move \(hero.rawValue.capitalized) → \(loc)"
-      case .heroicAttack(let hero, let slot, let roll):
-        return "\(hero.rawValue.capitalized) Attack \(slot.rawValue.capitalized) (roll \(roll))"
-      case .rally(let roll): return "Rally (roll \(roll))"
-      case .questHeroic(let roll, _): return "Heroic Quest (roll \(roll))"
       case .passHeroics: return "Pass Heroics"
       case .paladinReroll(let roll): return "Paladin Re-roll (\(roll))"
       case .declineReroll: return "Decline Re-roll"
       case .performHousekeeping: return "End Turn"
       case .claimVictory: return "Victory!"
       case .declareLoss: return "Defeat"
-      }
-    }
-
-    // Lightweight hash: discriminator + primary identifying field only.
-    // Full equality is still checked on collision, so correctness is preserved.
-    // MCTS action spaces are small (5-20), making collisions cheap.
-    // swiftlint:disable:next cyclomatic_complexity
-    func hash(into hasher: inout Hasher) {
-      switch self {
-      case .drawCard: hasher.combine(0)
-      case .advanceArmies: hasher.combine(1)
-      case .skipEvent: hasher.combine(2)
-      case .resolveEvent: hasher.combine(3)
-      case .meleeAttack(let slot, _, _, _):
-        hasher.combine(4); hasher.combine(slot)
-      case .rangedAttack(let slot, _, _, _):
-        hasher.combine(5); hasher.combine(slot)
-      case .buildUpgrade(let upgrade, let track, _):
-        hasher.combine(6); hasher.combine(upgrade); hasher.combine(track)
-      case .chant: hasher.combine(7)
-      case .memorize(let spell):
-        hasher.combine(8); hasher.combine(spell)
-      case .pray(let spell):
-        hasher.combine(9); hasher.combine(spell)
-      case .questAction: hasher.combine(10)
-      case .castSpell(let spell, let heroic, _):
-        hasher.combine(11); hasher.combine(spell); hasher.combine(heroic)
-      case .buildBarricade(let track, _):
-        hasher.combine(12); hasher.combine(track)
-      case .rogueMove(let loc):
-        hasher.combine(13); hasher.combine(loc)
-      case .passActions: hasher.combine(14)
-      case .moveHero(let hero, let loc):
-        hasher.combine(15); hasher.combine(hero); hasher.combine(loc)
-      case .heroicAttack(let hero, let slot, _):
-        hasher.combine(16); hasher.combine(hero); hasher.combine(slot)
-      case .rally: hasher.combine(17)
-      case .questHeroic: hasher.combine(18)
-      case .passHeroics: hasher.combine(19)
-      case .paladinReroll: hasher.combine(20)
-      case .declineReroll: hasher.combine(21)
-      case .performHousekeeping: hasher.combine(22)
-      case .claimVictory: hasher.combine(23)
-      case .declareLoss: hasher.combine(24)
       }
     }
   }

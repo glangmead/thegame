@@ -88,7 +88,7 @@ extension LoD.State {
         // Reached start of turn without finding quest attempt
         questLastDitchPenalty()
         return true
-      case .questAction, .questHeroic:
+      case .quest:
         return false  // quest was attempted
       default:
         continue

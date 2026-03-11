@@ -253,9 +253,9 @@ extension LoD {
         switch action {
         case .skipEvent, .resolveEvent:
           return count
-        case .meleeAttack, .rangedAttack, .buildUpgrade,
-             .buildBarricade, .chant, .memorize, .pray,
-             .questAction, .castSpell:
+        case .combat, .build, .magic:
+          count += 1
+        case .quest(.quest(isHeroic: false, _, _)):
           count += 1
         default:
           break
@@ -271,7 +271,9 @@ extension LoD {
         switch action {
         case .passActions:
           return count
-        case .moveHero, .heroicAttack, .rally, .questHeroic:
+        case .heroic:
+          count += 1
+        case .quest(.quest(isHeroic: true, _, _)):
           count += 1
         default:
           break
@@ -297,7 +299,7 @@ extension LoD {
         switch action {
         case .skipEvent, .resolveEvent:
           return count
-        case .meleeAttack:
+        case .combat(.meleeAttack):
           count += 1
         default:
           break
@@ -313,7 +315,7 @@ extension LoD {
         switch action {
         case .skipEvent, .resolveEvent:
           return count
-        case .rangedAttack:
+        case .combat(.rangedAttack):
           count += 1
         default:
           break

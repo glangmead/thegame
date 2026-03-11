@@ -33,7 +33,10 @@ extension LoD {
     shuffledNightCards: [Card]? = nil
   ) -> ComposedGame<State> {
     oapply(
-      pages: [cardPage, armyPage, eventPage, actionPage, heroicPage, paladinReactPage, housekeepingPage],
+      pages: [cardPage, armyPage, eventPage,
+              combatPage, buildPage, magicPage, questPage,
+              heroicPage, generalPage,
+              paladinReactPage, housekeepingPage],
       priorities: [victoryPage, defeatPage],
       initialState: {
         var state = greenskinSetup(
@@ -63,6 +66,82 @@ extension LoD {
     }
     // Rollout hit max depth without ending (rare)
     return 0.5 * Float(state.timePosition) / 15.0 + 0.25
+  }
+
+  // MARK: - Paladin Re-roll (rule 10.2)
+
+  static var paladinReactPage: RulePage<State, Action> {
+    RulePage(
+      name: "Paladin React",
+      rules: [
+        GameRule(
+          condition: { $0.phase == .paladinReact && $0.pendingDieRollAction != nil },
+          actions: { _ in
+            [.paladinReroll(newDieRoll: 0), .declineReroll]
+          }
+        )
+      ],
+      reduce: { state, action in
+        var logs: [Log] = []
+
+        switch action {
+        case .declineReroll:
+          guard let pending = state.pendingDieRollAction else { return nil }
+          let returnPhase = state.phaseBeforePaladinReact ?? .action
+
+          // Resolve the deferred action
+          if returnPhase == .action {
+            logs += state.resolveActionDieRoll(pending)
+          } else {
+            logs += state.resolveHeroicDieRoll(pending)
+          }
+
+          state.pendingDieRollAction = nil
+          state.phaseBeforePaladinReact = nil
+          state.phase = returnPhase
+          return (logs, [])
+
+        case .paladinReroll(let newDieRoll):
+          guard let pending = state.pendingDieRollAction else { return nil }
+          let returnPhase = state.phaseBeforePaladinReact ?? .action
+
+          // Modify the pending action with the new die roll
+          let modifiedAction = State.withNewDieRoll(pending, newDieRoll: newDieRoll)
+          logs.append(Log(msg: "Paladin re-roll: new die = \(newDieRoll)"))
+
+          // Resolve with the new die roll
+          if returnPhase == .action {
+            logs += state.resolveActionDieRoll(modifiedAction)
+          } else {
+            logs += state.resolveHeroicDieRoll(modifiedAction)
+          }
+
+          state.usePaladinReroll()
+          state.pendingDieRollAction = nil
+          state.phaseBeforePaladinReact = nil
+          state.phase = returnPhase
+          return (logs, [])
+
+        default:
+          return nil
+        }
+      }
+    )
+  }
+
+  // MARK: - Housekeeping
+
+  static var housekeepingPage: RulePage<State, Action> {
+    RulePage(
+      name: "Housekeeping",
+      rules: [],  // automatic — no player choices
+      reduce: { state, action in
+        guard case .performHousekeeping = action else { return nil }
+        state.performHousekeeping()
+        return ([Log(msg: "Housekeeping complete. Time: \(state.timePosition)")],
+                [])  // stop — next allowedActions will offer drawCard
+      }
+    )
   }
 
   // MARK: - Victory / Defeat Priority Pages

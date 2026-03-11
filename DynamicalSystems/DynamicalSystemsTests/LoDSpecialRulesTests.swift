@@ -98,9 +98,9 @@ struct LoDSpecialRulesTests {
     // Melee attack on east, choosing to lose an archer for bloody battle
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .east, dieRoll: 6,
-        bloodyBattleDefender: .archers, useMagicSword: nil))
+        bloodyBattleDefender: .archers, useMagicSword: nil)))
     #expect(state.defenders[.archers] == archersBefore - 1)
   }
 
@@ -126,17 +126,17 @@ struct LoDSpecialRulesTests {
     // First attack — costs a defender
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .east, dieRoll: 6,
-        bloodyBattleDefender: .archers, useMagicSword: nil))
+        bloodyBattleDefender: .archers, useMagicSword: nil)))
     #expect(state.defenders[.archers] == archersBefore - 1)
 
     // Second attack — no additional cost (nil defender)
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .east, dieRoll: 6,
-        bloodyBattleDefender: nil, useMagicSword: nil))
+        bloodyBattleDefender: nil, useMagicSword: nil)))
     #expect(state.defenders[.archers] == archersBefore - 1) // unchanged
   }
 
@@ -162,9 +162,9 @@ struct LoDSpecialRulesTests {
     // Attack west (not marked) — no bloody battle cost
     _ = game.reduce(
       into: &state,
-      action: .meleeAttack(
+      action: .combat(.meleeAttack(
         .west, dieRoll: 6,
-        bloodyBattleDefender: nil, useMagicSword: nil))
+        bloodyBattleDefender: nil, useMagicSword: nil)))
     #expect(state.defenders[.menAtArms] == maaBeforе)
   }
 
