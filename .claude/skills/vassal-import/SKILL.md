@@ -191,6 +191,63 @@ Wrap state mutations in `RulePage` instances:
 before the game stops accepting input. `ended` is set by state mutations;
 `gameAcknowledged` is set by the priority page reducer.
 
+#### Factoring Actions into Sub-Enums
+
+When a game has many action types (e.g., 15+ cases), factor the `Action` enum
+into logical sub-enums grouped by domain. The outer enum becomes a coproduct
+(tagged union) of the inner types:
+
+```swift
+indirect enum Action: Hashable, GroupedAction {
+  case combat(CombatAction)
+  case build(BuildAction)
+  case magic(MagicAction)
+  case heroic(HeroicAction)
+  case quest(QuestAction)
+  // Plus ungrouped top-level cases (drawCard, passActions, etc.)
+}
+```
+
+Each inner enum conforms to `ActionGroup` (defined in `Game.swift`), which
+provides a `groupName` used by the UI for sectioned rendering. The outer enum
+conforms to `GroupedAction`, whose default implementation uses `Mirror` to
+extract the group name from a wrapped sub-enum value, falling back to "General"
+for unwrapped cases.
+
+**Benefits:**
+
+1. **Compositional structure.** Each sub-enum owns its domain's cases and
+   descriptions. Adding a new combat variant means editing only `CombatAction`,
+   not a monolithic 25-case switch. Pattern matching on the outer enum can
+   match at the group level (`case .combat:`) or drill in
+   (`case .combat(.meleeAttack(let slot, ...)):`).
+
+2. **One RulePage per sub-enum.** Each group gets its own page (e.g.,
+   `combatPage`, `buildPage`, `magicPage`). The page's `reduce` matches on
+   its group case and delegates to shared resolution helpers. This replaces
+   a monolithic action page with focused, testable pages.
+
+3. **Grouped UI rendering.** `MCTSActionSection` accepts an optional `grouping`
+   closure. When provided, actions render under section headers (e.g., "Combat",
+   "Fortification", "Magic") instead of a single flat list. The view passes
+   `{ $0.actionGroup }` to enable this. Games with fewer actions can omit the
+   closure for flat rendering.
+
+4. **Shared paladin-style interrupt handling.** When multiple pages need the
+   same die-roll deferral logic (e.g., Paladin re-roll), extract a shared
+   helper like `resolveDieRollWithPaladinCheck(_:phase:)` that each page's
+   reducer calls. This eliminates duplicated re-roll/defer/resolve code.
+
+**When to factor:** Do this when the action count exceeds ~15 cases and there
+are natural domain groupings. For simpler games with 5-10 actions, a flat enum
+and single action page are fine.
+
+**Sub-enum parameters may diverge from the flat version.** Merging similar
+cases is encouraged: e.g., `questAction` + `questHeroic` become
+`QuestAction.quest(isHeroic:dieRoll:reward:)`. Similarly, `memorize(SpellType)`
+can become `MagicAction.memorize(randomSpell: SpellType?)` where `nil` means
+"draw randomly at resolution" and non-nil is the deterministic test path.
+
 ### Phase 6a: MCTS Compatibility
 
 The `OpenLoopMCTS` search uses `state.endedInVictoryFor` and `state.endedInDefeatFor`
