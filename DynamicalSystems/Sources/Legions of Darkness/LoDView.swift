@@ -14,13 +14,22 @@ struct LoDView: View {
   @State private var cachedActions: [LoD.Action] = []
   @State private var logs: [Log] = []
   @State private var selectedTab: PanelTab = .actions
+  @State private var boardMode: BoardMode = .abstract
+  @State private var vassalScene: LoDVassalScene?
+  @State private var vassalGraph: SiteGraph?
+  @State private var vassalAvailable = false
   @Environment(\.horizontalSizeClass) private var sizeClass
   private let graph: SiteGraph
   private let pieces: [GamePiece]
 
   private enum PanelTab: String, CaseIterable {
-    case log = "Log"
     case actions = "Actions"
+    case log = "Log"
+  }
+
+  private enum BoardMode {
+    case abstract
+    case vassal
   }
 
   init() {
@@ -60,12 +69,28 @@ struct LoDView: View {
     }
     .navigationTitle("Legions of Darkness")
     .navigationBarTitleDisplayMode(.inline)
-    .onAppear { refreshActions() }
+    .onAppear {
+      refreshActions()
+      let available = LoDVassalAssetLoader.isAvailable
+      print("Vassal available: \(available), folder: \(String(describing: LoDVassalAssetLoader.moduleFolder))")
+      vassalAvailable = available
+    }
   }
 
   private func boardView(squareSize: CGFloat) -> some View {
-    SpriteView(scene: scene)
-      .frame(width: squareSize, height: squareSize)
+    Group {
+      switch boardMode {
+      case .abstract:
+        SpriteView(scene: scene)
+      case .vassal:
+        if let vScene = vassalScene {
+          SpriteView(scene: vScene)
+        } else {
+          SpriteView(scene: scene)
+        }
+      }
+    }
+    .frame(width: squareSize, height: squareSize)
   }
 
   // MARK: - Panel
@@ -83,9 +108,9 @@ struct LoDView: View {
 
   private var ipadPanel: some View {
     HStack(spacing: 0) {
-      logList
-      Divider()
       actionList
+      Divider()
+      logList
     }
   }
 
@@ -101,8 +126,8 @@ struct LoDView: View {
       .padding(.vertical, 4)
 
       TabView(selection: $selectedTab) {
-        logList.tag(PanelTab.log)
         actionList.tag(PanelTab.actions)
+        logList.tag(PanelTab.log)
       }
       .tabViewStyle(.page(indexDisplayMode: .never))
     }
@@ -138,6 +163,14 @@ struct LoDView: View {
       Label("Time \(model.state.timePosition)/15", systemImage: "clock")
       Spacer()
       Label("Morale: \(model.state.morale.rawValue.capitalized)", systemImage: "heart")
+      if vassalAvailable {
+        Spacer()
+        Button(boardMode == .abstract ? "Map" : "Grid") {
+          toggleBoardMode()
+        }
+        .buttonStyle(.bordered)
+        .font(.caption)
+      }
     }
     .font(.caption.bold())
     .padding(.horizontal)
@@ -150,9 +183,47 @@ struct LoDView: View {
     let newLogs = model.perform(action)
     logs.insert(contentsOf: newLogs, at: 0)
     refreshActions()
-    let section = LoDPieceAdapter.section(from: model.state, graph: graph)
-    let highlights = LoDPieceAdapter.siteHighlights(from: model.state, graph: graph)
-    scene.syncState(pieces: pieces, section: section, siteHighlights: highlights)
+    syncActiveScene()
+  }
+
+  private func syncActiveScene() {
+    switch boardMode {
+    case .abstract:
+      let section = LoDPieceAdapter.section(from: model.state, graph: graph)
+      let highlights = LoDPieceAdapter.siteHighlights(
+        from: model.state, graph: graph)
+      scene.syncState(
+        pieces: pieces, section: section, siteHighlights: highlights)
+    case .vassal:
+      if let vScene = vassalScene, let vGraph = vassalGraph {
+        let section = LoDPieceAdapter.section(from: model.state, graph: vGraph)
+        vScene.syncState(pieces: pieces, section: section)
+      }
+    }
+  }
+
+  private func toggleBoardMode() {
+    switch boardMode {
+    case .abstract:
+      if vassalScene == nil {
+        guard let boardImage = LoDVassalAssetLoader.loadBoardImage() else {
+          print("toggleBoardMode: loadBoardImage() returned nil")
+          return
+        }
+        guard let sitesFile = LoDVassalAssetLoader.loadSites() else {
+          print("toggleBoardMode: loadSites() returned nil, folder: \(String(describing: LoDVassalAssetLoader.moduleFolder))")
+          return
+        }
+        let vScene = LoDVassalScene(boardImage: boardImage, sites: sitesFile)
+        vassalScene = vScene
+        vassalGraph = vScene.vassalGraph
+      }
+      boardMode = .vassal
+      syncActiveScene()
+    case .vassal:
+      boardMode = .abstract
+      syncActiveScene()
+    }
   }
 
   private func refreshActions() {
