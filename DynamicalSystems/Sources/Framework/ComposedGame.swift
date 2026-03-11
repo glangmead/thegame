@@ -19,24 +19,29 @@ struct ComposedGame<State: HistoryTracking>: PlayableGame where State.Action: Ha
   let makeInitialState: () -> State
   let isTerminal: (State) -> Bool
   let phaseForAction: (State.Action) -> State.Phase?
+  var stateEvaluator: ((State) -> Float)?
+  var rolloutPolicy: (([State.Action]) -> State.Action)?
 
   func allowedActions(state: State) -> [State.Action] {
     guard !isTerminal(state) else { return [] }
 
     // Priority pages override everything
-    let urgent = priorities.flatMap { page in
-      page.rules.flatMap { rule in
-        rule.condition(state) ? rule.actions(state) : [State.Action]()
+    var urgent: [State.Action] = []
+    for page in priorities {
+      for rule in page.rules where rule.condition(state) {
+        urgent.append(contentsOf: rule.actions(state))
       }
     }
     if !urgent.isEmpty { return urgent }
 
     // Normal pages contribute rules
-    return pages.flatMap { page in
-      page.rules.flatMap { rule in
-        rule.condition(state) ? rule.actions(state) : [State.Action]()
+    var actions: [State.Action] = []
+    for page in pages {
+      for rule in page.rules where rule.condition(state) {
+        actions.append(contentsOf: rule.actions(state))
       }
     }
+    return actions
   }
 
   func reduce(into state: inout State, action: State.Action) -> [Log] {
@@ -49,9 +54,22 @@ struct ComposedGame<State: HistoryTracking>: PlayableGame where State.Action: Ha
     }
 
     // Dispatch to the first page that handles this action
-    for page in (priorities + pages) {
+    for page in priorities {
       if let (logs, followUps) = page.reduce(&state, action) {
-        return logs + followUps.flatMap { reduce(into: &state, action: $0) }
+        var result = logs
+        for followUp in followUps {
+          result.append(contentsOf: reduce(into: &state, action: followUp))
+        }
+        return result
+      }
+    }
+    for page in pages {
+      if let (logs, followUps) = page.reduce(&state, action) {
+        var result = logs
+        for followUp in followUps {
+          result.append(contentsOf: reduce(into: &state, action: followUp))
+        }
+        return result
       }
     }
     return []
@@ -76,13 +94,17 @@ func oapply<State: HistoryTracking>(
   priorities: [RulePage<State, State.Action>] = [],
   initialState: @escaping () -> State,
   isTerminal: @escaping (State) -> Bool,
-  phaseForAction: @escaping (State.Action) -> State.Phase?
+  phaseForAction: @escaping (State.Action) -> State.Phase?,
+  stateEvaluator: ((State) -> Float)? = nil,
+  rolloutPolicy: (([State.Action]) -> State.Action)? = nil
 ) -> ComposedGame<State> where State.Action: Hashable {
   ComposedGame(
     pages: pages,
     priorities: priorities,
     makeInitialState: initialState,
     isTerminal: isTerminal,
-    phaseForAction: phaseForAction
+    phaseForAction: phaseForAction,
+    stateEvaluator: stateEvaluator,
+    rolloutPolicy: rolloutPolicy
   )
 }

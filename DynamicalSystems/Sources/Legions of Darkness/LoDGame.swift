@@ -47,8 +47,22 @@ extension LoD {
         return state
       },
       isTerminal: { $0.gameAcknowledged },
-      phaseForAction: { nextPhase(for: $0) }
+      phaseForAction: { nextPhase(for: $0) },
+      stateEvaluator: lodStateEvaluator
     )
+  }
+
+  // MARK: - MCTS State Evaluator
+
+  /// Graduated evaluation for MCTS backpropagation.
+  /// Victory = 1.0, defeat = 0.0–0.5 scaled by time survived.
+  private static func lodStateEvaluator(_ state: State) -> Float {
+    if state.endedInVictoryFor.contains(.solo) { return 1.0 }
+    if state.endedInDefeatFor.contains(.solo) {
+      return 0.5 * Float(state.timePosition) / 15.0
+    }
+    // Rollout hit max depth without ending (rare)
+    return 0.5 * Float(state.timePosition) / 15.0 + 0.25
   }
 
   // MARK: - Victory / Defeat Priority Pages

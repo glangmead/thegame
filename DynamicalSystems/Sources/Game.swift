@@ -65,6 +65,13 @@ protocol PlayableGame<State, Action> {
   func newState() -> State
   func allowedActions(state: State) -> [Action]
   func reduce(into: inout State, action: Action) -> [Log]
+  var stateEvaluator: ((State) -> Float)? { get }
+  var rolloutPolicy: (([Action]) -> Action)? { get }
+}
+
+extension PlayableGame {
+  var stateEvaluator: ((State) -> Float)? { nil }
+  var rolloutPolicy: (([Action]) -> Action)? { nil }
 }
 
 struct Log: Hashable, Equatable, Sendable {

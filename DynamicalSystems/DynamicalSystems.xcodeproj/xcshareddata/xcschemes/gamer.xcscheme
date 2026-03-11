@@ -54,7 +54,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "--game BattleCard --num-trials 0 --show-ai-hints true --interactive true --num-mcts-iters 10"
+            argument = "--game LegionsOfDarkness --num-trials 1 --show-ai-hints true --interactive true --num-mcts-iters 100"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

@@ -30,7 +30,7 @@ struct GamerTool: ParsableCommand {
     do {
       switch game {
       case .cantStop:
-        var gameRunner = GameRunner<CantStop.State, CantStop.Action>(
+        var gameRunner = GameRunner(
           reducer: CantStopPages.game(),
           numTrials: numTrials,
           numMCTSIters: numMCTSIters,
@@ -41,7 +41,7 @@ struct GamerTool: ParsableCommand {
         )
         try gameRunner.run()
       case .battleCard:
-        var gameRunner = GameRunner<BattleCard.State, BattleCard.Action>(
+        var gameRunner = GameRunner(
           reducer: BCPages.game(),
           numTrials: numTrials,
           numMCTSIters: numMCTSIters,
@@ -52,7 +52,7 @@ struct GamerTool: ParsableCommand {
         )
         try gameRunner.run()
       case .BCMC:
-        var gameRunner = GameRunner<MalayanCampaign.State, MalayanCampaign.Action>(
+        var gameRunner = GameRunner(
           reducer: MCPages.game(),
           numTrials: numTrials,
           numMCTSIters: numMCTSIters,
@@ -63,15 +63,14 @@ struct GamerTool: ParsableCommand {
         )
         try gameRunner.run()
       case .legionsOfDarkness:
-        var gameRunner = GameRunner<LoD.State, LoD.Action>(
+        var gameRunner = GameRunner(
           reducer: LoD.composedGame(windsOfMagicArcane: 3),
           numTrials: numTrials,
           numMCTSIters: numMCTSIters,
           numRollouts: numRollouts,
           interactive: interactive,
           logFile: logFile,
-          showAIHints: showAIHints,
-          stateEvaluator: lodStateEvaluator
+          showAIHints: showAIHints
         )
         try gameRunner.run()
       }
@@ -79,43 +78,33 @@ struct GamerTool: ParsableCommand {
   }
 }
 
-/// Graduated state evaluation for LoD MCTS.
-/// Victory = 1.0, defeat = 0.0–0.5 scaled by time survived.
-func lodStateEvaluator(_ state: LoD.State) -> Float {
-  if state.endedInVictoryFor.contains(.solo) { return 1.0 }
-  if state.endedInDefeatFor.contains(.solo) {
-    return 0.5 * Float(state.timePosition) / 15.0
-  }
-  // Rollout hit max depth without ending (rare)
-  return 0.5 * Float(state.timePosition) / 15.0 + 0.25
-}
-
 struct GameRunner<
-  State: GameState & TextTableAble & CustomStringConvertible,
-  Action: Hashable & Equatable & CustomStringConvertible
-> {
+  Reducer: PlayableGame
+> where
+  Reducer.State: GameState & TextTableAble & CustomStringConvertible,
+  Reducer.Action: Hashable & Equatable & CustomStringConvertible {
+
+  typealias State = Reducer.State
+  typealias Action = Reducer.Action
+
   private var numTrials: Int = 0
   private var numMCTSIters: Int = 1
   private var numRollouts: Int = 1
   private var interactive: Bool = true
   private var logFile: String = ""
   private var showAIHints: Bool = false
-  private var reducer: any PlayableGame<State, Action>
-  var rolloutPolicy: (([Action]) -> Action)?
-  var stateEvaluator: ((State) -> Float)?
+  private var reducer: Reducer
 
   var colwidths: [Int]
 
   init(
-    reducer: some PlayableGame<State, Action>,
+    reducer: Reducer,
     numTrials: Int,
     numMCTSIters: Int,
     numRollouts: Int,
     interactive: Bool,
     logFile: String,
     showAIHints: Bool,
-    rolloutPolicy: (([Action]) -> Action)? = nil,
-    stateEvaluator: ((State) -> Float)? = nil,
     colwidths: [Int] = [10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
   ) {
     self.reducer = reducer
@@ -125,8 +114,6 @@ struct GameRunner<
     self.interactive = interactive
     self.logFile = logFile
     self.showAIHints = showAIHints
-    self.rolloutPolicy = rolloutPolicy
-    self.stateEvaluator = stateEvaluator
     self.colwidths = colwidths
   }
 
@@ -217,8 +204,6 @@ struct GameRunner<
 
   func treeSearch(state: State) -> [Action: (Float, Float)] {
     let search = OpenLoopMCTS(state: state, reducer: reducer)
-    search.rolloutPolicy = rolloutPolicy
-    search.stateEvaluator = stateEvaluator
     let results = search.recommendation(iters: numMCTSIters, numRollouts: numRollouts)
     if !logFile.isEmpty {
       var logStream: any TextOutputStream = LogDestination(path: logFile)

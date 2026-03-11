@@ -85,7 +85,7 @@ extension LoD {
   /// All possible actions in the composed game.
   /// Die rolls and random selections are included as parameters so that
   /// the history log is fully deterministic and replayable.
-  enum Action: Hashable, CustomStringConvertible {
+  indirect enum Action: Hashable, CustomStringConvertible {
 
     // -- Card phase --
     case drawCard
@@ -162,6 +162,50 @@ extension LoD {
       case .performHousekeeping: return "End Turn"
       case .claimVictory: return "Victory!"
       case .declareLoss: return "Defeat"
+      }
+    }
+
+    // Lightweight hash: discriminator + primary identifying field only.
+    // Full equality is still checked on collision, so correctness is preserved.
+    // MCTS action spaces are small (5-20), making collisions cheap.
+    // swiftlint:disable:next cyclomatic_complexity
+    func hash(into hasher: inout Hasher) {
+      switch self {
+      case .drawCard: hasher.combine(0)
+      case .advanceArmies: hasher.combine(1)
+      case .skipEvent: hasher.combine(2)
+      case .resolveEvent: hasher.combine(3)
+      case .meleeAttack(let slot, _, _, _):
+        hasher.combine(4); hasher.combine(slot)
+      case .rangedAttack(let slot, _, _, _):
+        hasher.combine(5); hasher.combine(slot)
+      case .buildUpgrade(let upgrade, let track, _):
+        hasher.combine(6); hasher.combine(upgrade); hasher.combine(track)
+      case .chant: hasher.combine(7)
+      case .memorize(let spell):
+        hasher.combine(8); hasher.combine(spell)
+      case .pray(let spell):
+        hasher.combine(9); hasher.combine(spell)
+      case .questAction: hasher.combine(10)
+      case .castSpell(let spell, let heroic, _):
+        hasher.combine(11); hasher.combine(spell); hasher.combine(heroic)
+      case .buildBarricade(let track, _):
+        hasher.combine(12); hasher.combine(track)
+      case .rogueMove(let loc):
+        hasher.combine(13); hasher.combine(loc)
+      case .passActions: hasher.combine(14)
+      case .moveHero(let hero, let loc):
+        hasher.combine(15); hasher.combine(hero); hasher.combine(loc)
+      case .heroicAttack(let hero, let slot, _):
+        hasher.combine(16); hasher.combine(hero); hasher.combine(slot)
+      case .rally: hasher.combine(17)
+      case .questHeroic: hasher.combine(18)
+      case .passHeroics: hasher.combine(19)
+      case .paladinReroll: hasher.combine(20)
+      case .declineReroll: hasher.combine(21)
+      case .performHousekeeping: hasher.combine(22)
+      case .claimVictory: hasher.combine(23)
+      case .declareLoss: hasher.combine(24)
       }
     }
   }

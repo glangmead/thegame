@@ -103,22 +103,28 @@ class ActionNode<Action: Hashable & Equatable & CustomStringConvertible, Player:
 }
 
 class OpenLoopMCTS<
-  State: GameState & CustomStringConvertible,
-  Action: Hashable & Equatable & CustomStringConvertible
->: AnytimePlayer {
+  Reducer: PlayableGame
+>: AnytimePlayer where
+  Reducer.State: GameState & CustomStringConvertible,
+  Reducer.Action: Hashable & Equatable & CustomStringConvertible {
+
+  typealias State = Reducer.State
+  typealias Action = Reducer.Action
 
   var rootState: State
   var rootNodes = [State.Player: ActionNode<Action, State.Player>]()
-  var reducer: any PlayableGame<State, Action>
+  var reducer: Reducer
   var rolloutPolicy: (([Action]) -> Action)?
   /// Optional graduated evaluation function. Returns 0.0–1.0 for any terminal
   /// or max-depth state. When provided, backpropagates this value instead of
   /// binary win/loss.
   var stateEvaluator: ((State) -> Float)?
 
-  init(state: State, reducer: any PlayableGame<State, Action>) {
+  init(state: State, reducer: Reducer) {
     self.rootState = state
     self.reducer = reducer
+    self.stateEvaluator = reducer.stateEvaluator
+    self.rolloutPolicy = reducer.rolloutPolicy
     for player in state.players {
       self.rootNodes[player] = ActionNode(action: nil, parent: nil, player: player)
     }
@@ -235,6 +241,7 @@ class OpenLoopMCTS<
             let grandchild = child.children[action]
             if grandchild == nil || grandchild!.visitCount == 0 {
               someUnvisitedGrandchild = true
+              break
             }
           }
           if someUnvisitedGrandchild {
