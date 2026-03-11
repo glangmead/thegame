@@ -20,9 +20,10 @@ struct LoDEventTests {
   func catapultShrapnelLoseArcher() {
     // Roll 1: lose one Archer.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    #expect(state.defenders[.archers] == 2)
+    #expect(state.defenderValue(for: .archers) == 2)
     state.eventCatapultShrapnel(dieRoll: 1)
-    #expect(state.defenders[.archers] == 1)
+    #expect(state.defenderPosition[.archers] == 1) // moved one space
+    #expect(state.defenderValue(for: .archers) == 2) // track [2,2,1,1,0]: still 2
   }
 
   @Test
@@ -30,7 +31,7 @@ struct LoDEventTests {
     // Roll 2-3: lose one Men-at-Arms.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.eventCatapultShrapnel(dieRoll: 2)
-    #expect(state.defenders[.menAtArms] == 2)
+    #expect(state.defenderValue(for: .menAtArms) == 2)
   }
 
   @Test
@@ -38,8 +39,8 @@ struct LoDEventTests {
     // Roll 4-6: no effect.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.eventCatapultShrapnel(dieRoll: 4)
-    #expect(state.defenders[.archers] == 2)
-    #expect(state.defenders[.menAtArms] == 3)
+    #expect(state.defenderValue(for: .archers) == 2)
+    #expect(state.defenderValue(for: .menAtArms) == 3)
   }
 
   // -- Rocks of Ages (card #4) --
@@ -49,7 +50,8 @@ struct LoDEventTests {
     // Roll 1: lose one Priest.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.eventRocksOfAges(dieRoll: 1)
-    #expect(state.defenders[.priests] == 1)
+    #expect(state.defenderPosition[.priests] == 1) // moved one space
+    #expect(state.defenderValue(for: .priests) == 2) // track [2,2,1,0]: still 2
   }
 
   @Test
@@ -57,7 +59,7 @@ struct LoDEventTests {
     // Roll 2-3: lose one Men-at-Arms.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.eventRocksOfAges(dieRoll: 3)
-    #expect(state.defenders[.menAtArms] == 2)
+    #expect(state.defenderValue(for: .menAtArms) == 2)
   }
 
   // -- Reign of Arrows (card #17) --
@@ -67,7 +69,8 @@ struct LoDEventTests {
     // Roll 1: lose one Priest.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.eventReignOfArrows(dieRoll: 1)
-    #expect(state.defenders[.priests] == 1)
+    #expect(state.defenderPosition[.priests] == 1)
+    #expect(state.defenderValue(for: .priests) == 2) // track [2,2,1,0]: still 2
   }
 
   @Test
@@ -75,7 +78,8 @@ struct LoDEventTests {
     // Roll 2-3: lose one Archer.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.eventReignOfArrows(dieRoll: 2)
-    #expect(state.defenders[.archers] == 1)
+    #expect(state.defenderPosition[.archers] == 1)
+    #expect(state.defenderValue(for: .archers) == 2) // track [2,2,1,1,0]: still 2
   }
 
   // -- Trapped by Flames (card #18) --
@@ -85,9 +89,9 @@ struct LoDEventTests {
     // Roll 1-2: lose one Men-at-Arms.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.eventTrappedByFlames(dieRoll: 1)
-    #expect(state.defenders[.menAtArms] == 2)
-    #expect(state.defenders[.archers] == 2) // unchanged
-    #expect(state.defenders[.priests] == 2) // unchanged
+    #expect(state.defenderValue(for: .menAtArms) == 2)
+    #expect(state.defenderValue(for: .archers) == 2) // unchanged
+    #expect(state.defenderValue(for: .priests) == 2) // unchanged
   }
 
   @Test
@@ -95,9 +99,11 @@ struct LoDEventTests {
     // Roll 3-4: lose one Archer AND one Priest.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.eventTrappedByFlames(dieRoll: 3)
-    #expect(state.defenders[.archers] == 1)
-    #expect(state.defenders[.priests] == 1)
-    #expect(state.defenders[.menAtArms] == 3) // unchanged
+    #expect(state.defenderPosition[.archers] == 1)
+    #expect(state.defenderValue(for: .archers) == 2) // track [2,2,1,1,0]: still 2
+    #expect(state.defenderPosition[.priests] == 1)
+    #expect(state.defenderValue(for: .priests) == 2) // track [2,2,1,0]: still 2
+    #expect(state.defenderValue(for: .menAtArms) == 3) // unchanged
   }
 
   @Test
@@ -105,9 +111,9 @@ struct LoDEventTests {
     // Roll 5-6: no effect.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.eventTrappedByFlames(dieRoll: 5)
-    #expect(state.defenders[.menAtArms] == 3)
-    #expect(state.defenders[.archers] == 2)
-    #expect(state.defenders[.priests] == 2)
+    #expect(state.defenderValue(for: .menAtArms) == 3)
+    #expect(state.defenderValue(for: .archers) == 2)
+    #expect(state.defenderValue(for: .priests) == 2)
   }
 
   // -- Distracted Defenders (card #9) --

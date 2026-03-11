@@ -176,16 +176,16 @@ struct LoDPieceAdapter {
     state: LoD.State, graph: SiteGraph,
     piece: (Int) -> GamePiece, section: inout GameSection
   ) {
-    let maaValue = state.defenders[.menAtArms] ?? 0
-    if let siteID = graph.tracks["menAtArms"]?[safe: maaValue] {
+    let maaPos = state.defenderPosition[.menAtArms] ?? LoD.DefenderType.menAtArms.lastPosition
+    if let siteID = graph.tracks["menAtArms"]?[safe: maaPos] {
       section[piece(maaMarkerID)] = .at(siteID)
     }
-    let archerValue = state.defenders[.archers] ?? 0
-    if let siteID = graph.tracks["archers"]?[safe: archerValue] {
+    let archerPos = state.defenderPosition[.archers] ?? LoD.DefenderType.archers.lastPosition
+    if let siteID = graph.tracks["archers"]?[safe: archerPos] {
       section[piece(archerMarkerID)] = .at(siteID)
     }
-    let priestValue = state.defenders[.priests] ?? 0
-    if let siteID = graph.tracks["priests"]?[safe: priestValue] {
+    let priestPos = state.defenderPosition[.priests] ?? LoD.DefenderType.priests.lastPosition
+    if let siteID = graph.tracks["priests"]?[safe: priestPos] {
       section[piece(priestMarkerID)] = .at(siteID)
     }
   }

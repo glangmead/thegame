@@ -137,8 +137,8 @@ struct LoDDieRollTests {
       // Now in event phase — resolve with placeholder die
       _ = game.reduce(into: &state, action: .resolveEvent(LoD.EventResolution()))
 
-      let archers = state.defenders[.archers] ?? 0
-      let maA = state.defenders[.menAtArms] ?? 0
+      let archers = state.defenderValue(for: .archers)
+      let maA = state.defenderValue(for: .menAtArms)
       if archers < 2 { lostArcher = true }
       if maA < 3 { lostMaA = true }
       if archers == 2 && maA == 3 { noLoss = true }

@@ -19,7 +19,7 @@ extension LoD {
             var actions: [Action] = []
 
             // Melee attacks (if allowed this turn, limited by men-at-arms count)
-            let meleeLimit = state.defenders[.menAtArms] ?? 0
+            let meleeLimit = state.defenderValue(for: .menAtArms)
             if !state.noMeleeThisTurn && state.meleeAttacksThisTurn < meleeLimit {
               for slot in ArmySlot.allCases {
                 guard let space = state.armyPosition[slot] else { continue }
@@ -38,7 +38,7 @@ extension LoD {
             }
 
             // Ranged attacks (archers > 0, not Terror track, limited by archers count)
-            let rangedLimit = state.defenders[.archers] ?? 0
+            let rangedLimit = state.defenderValue(for: .archers)
             if rangedLimit > 0 && state.rangedAttacksThisTurn < rangedLimit {
               for slot in ArmySlot.allCases {
                 guard state.armyPosition[slot] != nil else { continue }

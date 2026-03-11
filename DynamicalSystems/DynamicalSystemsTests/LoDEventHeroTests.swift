@@ -124,7 +124,8 @@ struct LoDEventHeroTests {
     state.eventPaleMoonlight()
     #expect(state.arcaneEnergy == min(arcBefore + 1, 6))
     #expect(state.divineEnergy == divBefore - 1)
-    #expect(state.defenders[.priests] == 1)
+    #expect(state.defenderPosition[.priests] == 1) // moved one space
+    #expect(state.defenderValue(for: .priests) == 2) // track [2,2,1,0]: still 2
   }
 
   // -- By the Light of the Moon (card #32) — same as Midnight Magic --

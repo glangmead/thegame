@@ -267,10 +267,10 @@ extension LoD {
     }
 
     // Defenders at max
-    state.defenders = [
-      .menAtArms: LoD.DefenderType.menAtArms.maxValue,
-      .archers: LoD.DefenderType.archers.maxValue,
-      .priests: LoD.DefenderType.priests.maxValue
+    state.defenderPosition = [
+      .menAtArms: LoD.DefenderType.menAtArms.startingPosition,
+      .archers: LoD.DefenderType.archers.startingPosition,
+      .priests: LoD.DefenderType.priests.startingPosition
     ]
 
     // Morale starts Normal (rule 6.1.1)

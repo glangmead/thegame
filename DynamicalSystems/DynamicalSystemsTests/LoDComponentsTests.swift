@@ -115,6 +115,16 @@ struct LoDComponentsTests {
     #expect(LoD.DefenderType.allCases.count == 3)
   }
 
+  @Test func defenderTrackValues() {
+    // Rule 8.2: track values from board
+    #expect(LoD.DefenderType.menAtArms.trackValues == [3, 2, 2, 2, 1, 0])
+    #expect(LoD.DefenderType.archers.trackValues == [2, 2, 1, 1, 0])
+    #expect(LoD.DefenderType.priests.trackValues == [2, 2, 1, 0])
+    #expect(LoD.DefenderType.menAtArms.trackLength == 6)
+    #expect(LoD.DefenderType.archers.trackLength == 5)
+    #expect(LoD.DefenderType.priests.trackLength == 4)
+  }
+
   // MARK: - Morale (rule 6.1.1)
 
   @Test

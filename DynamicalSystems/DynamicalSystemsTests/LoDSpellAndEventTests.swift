@@ -44,32 +44,32 @@ struct LoDSpellAndEventTests {
   func massHealGainsOneDefender() {
     // Normal: gain 1 defender.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    state.defenders[.menAtArms] = 1
+    state.defenderPosition[.menAtArms] = 4
 
     state.applyMassHeal(defenders: [.menAtArms])
-    #expect(state.defenders[.menAtArms] == 2)
+    #expect(state.defenderValue(for: .menAtArms) == 2)
   }
 
   @Test
   func massHealHeroicGainsTwoDifferent() {
     // Heroic (†): gain 2 defenders (different types).
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    state.defenders[.menAtArms] = 1
-    state.defenders[.archers] = 0
+    state.defenderPosition[.menAtArms] = 4
+    state.defenderPosition[.archers] = 4
 
     state.applyMassHeal(defenders: [.menAtArms, .archers])
-    #expect(state.defenders[.menAtArms] == 2)
-    #expect(state.defenders[.archers] == 1)
+    #expect(state.defenderValue(for: .menAtArms) == 2)
+    #expect(state.defenderValue(for: .archers) == 1)
   }
 
   @Test
   func massHealCappedAtMax() {
     // Defender cannot exceed max value.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    #expect(state.defenders[.menAtArms] == 3) // already at max
+    #expect(state.defenderValue(for: .menAtArms) == 3) // already at max
 
     state.applyMassHeal(defenders: [.menAtArms])
-    #expect(state.defenders[.menAtArms] == 3) // still max
+    #expect(state.defenderValue(for: .menAtArms) == 3) // still max
   }
 
   // -- Inspire --
@@ -105,12 +105,12 @@ struct LoDSpellAndEventTests {
   func raiseDeadGainTwoDefenders() {
     // Normal option: gain 2 different defenders.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    state.defenders[.menAtArms] = 1
-    state.defenders[.archers] = 0
+    state.defenderPosition[.menAtArms] = 4
+    state.defenderPosition[.archers] = 4
 
     state.applyRaiseDead(gainDefenders: [.menAtArms, .archers], returnHero: nil)
-    #expect(state.defenders[.menAtArms] == 2)
-    #expect(state.defenders[.archers] == 1)
+    #expect(state.defenderValue(for: .menAtArms) == 2)
+    #expect(state.defenderValue(for: .archers) == 1)
   }
 
   @Test
@@ -129,14 +129,14 @@ struct LoDSpellAndEventTests {
   func raiseDeadHeroicBothOptions() {
     // Heroic (†): gain 2 defenders AND return a dead hero.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    state.defenders[.menAtArms] = 1
-    state.defenders[.archers] = 0
+    state.defenderPosition[.menAtArms] = 4
+    state.defenderPosition[.archers] = 4
     state.heroDead.insert(.wizard)
     state.heroLocation.removeValue(forKey: .wizard)
 
     state.applyRaiseDead(gainDefenders: [.menAtArms, .archers], returnHero: .wizard)
-    #expect(state.defenders[.menAtArms] == 2)
-    #expect(state.defenders[.archers] == 1)
+    #expect(state.defenderValue(for: .menAtArms) == 2)
+    #expect(state.defenderValue(for: .archers) == 1)
     #expect(!state.heroDead.contains(.wizard))
     #expect(state.heroLocation[.wizard] == .reserves)
   }

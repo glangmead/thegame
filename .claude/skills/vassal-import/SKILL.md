@@ -52,6 +52,14 @@ rulebook carefully, section by section. For each rule section, extract:
 rule summaries with details not in the main rules text (e.g., "Paladin — holy" or
 upgrade effects).
 
+**Watch for "printed value" tracks.** Some tracks have values printed at each
+space that are NOT simply 0, 1, 2, 3. Phrases like "refer to the number under
+the X marker" or "the number shown on the space" indicate the track position
+and the game-mechanical value diverge. When you see such a sentence, examine
+the board image to read the printed values at each space, and ask the user to
+verify. Model these as a position index with a value-lookup array, not as a
+simple integer count.
+
 **Card data lives on card images, not in the XML.** For card-driven games, the
 card effects (advances, actions, events, quests, DRMs) are only printed on the
 card art. Read each card image and compile the data into a JSON file stored
@@ -386,6 +394,7 @@ files in `Sources/` are auto-discovered by the main app target. However, the
 | Game missing from CLI | Implemented game not wired into `gamer` tool | Add game enum case + factory to `main.swift` as part of Phase 6a |
 | Placeholder die rolls never randomized | Actions generated with `dieRoll: 0` resolved literally — every attack misses | Use `effectiveDie()`: randomize 0 → 1-6 at resolution time, pass through non-zero for deterministic tests |
 | Force-unwrap on optional die roll | Barricade/grease paths crash when `dieRoll` is `nil` | Use `effectiveDie(dieRoll ?? 0)` instead of `dieRoll!` |
+| Track conflated with value | Defenders stored as count 0-3 (was actually a 6-space track with values [3,2,2,2,1,0]) | When the PDF says "refer to the number under the X marker" or similar, the track positions and game-mechanical values are not the same. Ask the user for the printed value at each space. |
 
 ### Phase 6c: Die Roll Randomization Tests
 

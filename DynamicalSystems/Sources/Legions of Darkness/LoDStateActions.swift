@@ -229,8 +229,8 @@ extension LoD.State {
   /// Gain defenders. Normal: 1 defender. Heroic (†): 2 different defenders.
   mutating func applyMassHeal(defenders gainTypes: [LoD.DefenderType]) {
     for type in gainTypes {
-      if let current = defenders[type] {
-        defenders[type] = min(current + 1, type.maxValue)
+      if let current = defenderPosition[type], current > 0 {
+        defenderPosition[type] = current - 1
       }
     }
   }
@@ -256,8 +256,8 @@ extension LoD.State {
   /// Heroic (†): gain 2 different defenders AND/OR return 1 dead hero.
   mutating func applyRaiseDead(gainDefenders: [LoD.DefenderType], returnHero: LoD.HeroType?) {
     for type in gainDefenders {
-      if let current = defenders[type] {
-        defenders[type] = min(current + 1, type.maxValue)
+      if let current = defenderPosition[type], current > 0 {
+        defenderPosition[type] = current - 1
       }
     }
     if let hero = returnHero {

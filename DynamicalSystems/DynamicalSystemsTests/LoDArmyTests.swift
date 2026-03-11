@@ -189,38 +189,80 @@ struct LoDArmyTests {
 
   @Test
   func defenderLossReducesCount() {
-    // Rule 8.2.1: Losing a defender moves marker one space left.
+    // Rule 8.2.1: Losing a defender increments track position.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    #expect(state.defenders[.menAtArms] == 3)
+    #expect(state.defenderPosition[.menAtArms] == 0)
+    #expect(state.defenderValue(for: .menAtArms) == 3)
 
     state.loseDefender(.menAtArms)
-    #expect(state.defenders[.menAtArms] == 2)
+    #expect(state.defenderPosition[.menAtArms] == 1)
+    #expect(state.defenderValue(for: .menAtArms) == 2)
 
     state.loseDefender(.menAtArms)
-    #expect(state.defenders[.menAtArms] == 1)
+    #expect(state.defenderPosition[.menAtArms] == 2)
+    #expect(state.defenderValue(for: .menAtArms) == 2)
   }
 
   @Test
   func defenderCannotGoBelowZero() {
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    state.defenders[.archers] = 0
+    state.defenderPosition[.archers] = 4 // lastPosition, value 0
 
     state.loseDefender(.archers)
-    #expect(state.defenders[.archers] == 0)
+    #expect(state.defenderPosition[.archers] == 4) // stays at lastPosition
   }
 
   @Test
   func allDefendersLostEndsGame() {
-    // Rule 4.4: If all defenders reduced to 0, game immediately ends in a loss.
+    // Rule 4.4: If all defenders at lastPosition, game immediately ends in a loss.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    state.defenders[.menAtArms] = 0
-    state.defenders[.archers] = 0
-    state.defenders[.priests] = 1
+    state.defenderPosition[.menAtArms] = 5 // lastPosition, value 0
+    state.defenderPosition[.archers] = 4   // lastPosition, value 0
+    state.defenderPosition[.priests] = 2   // value 1, one step from lastPosition
 
     state.loseDefender(.priests)
-    #expect(state.defenders[.priests] == 0)
+    #expect(state.defenderPosition[.priests] == 3) // lastPosition
     #expect(state.allDefendersAtZero)
     #expect(state.ended)
+  }
+
+  @Test
+  func defenderLossTrackProgression() {
+    // Rule 8.2: losing fighters goes 3->2->2->2->1->0
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    #expect(state.defenderValue(for: .menAtArms) == 3)
+    state.loseDefender(.menAtArms)
+    #expect(state.defenderValue(for: .menAtArms) == 2)
+    state.loseDefender(.menAtArms)
+    #expect(state.defenderValue(for: .menAtArms) == 2) // still 2!
+    state.loseDefender(.menAtArms)
+    #expect(state.defenderValue(for: .menAtArms) == 2) // still 2!
+    state.loseDefender(.menAtArms)
+    #expect(state.defenderValue(for: .menAtArms) == 1)
+    state.loseDefender(.menAtArms)
+    #expect(state.defenderValue(for: .menAtArms) == 0)
+  }
+
+  @Test
+  func defenderGainTrackProgression() {
+    // Gaining from worst position back to best
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.defenderPosition[.menAtArms] = LoD.DefenderType.menAtArms.lastPosition
+    #expect(state.defenderValue(for: .menAtArms) == 0)
+    state.applyMassHeal(defenders: [.menAtArms])
+    #expect(state.defenderValue(for: .menAtArms) == 1)
+    state.applyMassHeal(defenders: [.menAtArms])
+    #expect(state.defenderValue(for: .menAtArms) == 2)
+    state.applyMassHeal(defenders: [.menAtArms])
+    #expect(state.defenderValue(for: .menAtArms) == 2) // still 2
+    state.applyMassHeal(defenders: [.menAtArms])
+    #expect(state.defenderValue(for: .menAtArms) == 2) // still 2
+    state.applyMassHeal(defenders: [.menAtArms])
+    #expect(state.defenderValue(for: .menAtArms) == 3)
+    // At position 0 now — gain should clamp
+    state.applyMassHeal(defenders: [.menAtArms])
+    #expect(state.defenderValue(for: .menAtArms) == 3)
+    #expect(state.defenderPosition[.menAtArms] == 0)
   }
 
   @Test

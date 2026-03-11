@@ -132,10 +132,10 @@ struct LoDuditFixTests {
     state.spellStatus[.fireball] = .known
     state.arcaneEnergy = 3
     // Cast Fireball at the bloody battle army — should NOT cost a defender
-    let defendersBefore = state.defenders[.menAtArms]!
+    let defendersBefore = state.defenderValue(for: .menAtArms)
     _ = state.castSpell(.fireball)
     _ = state.applyFireball(on: .east, dieRoll: 6)
-    #expect(state.defenders[.menAtArms] == defendersBefore)  // No defender lost
+    #expect(state.defenderValue(for: .menAtArms) == defendersBefore)  // No defender lost
   }
 
   // MARK: - Audit Fix #3: Defender Limits on Attacks (rule 8.2)
@@ -151,7 +151,7 @@ struct LoDuditFixTests {
     )
     var state = game.newState()
     _ = game.reduce(into: &state, action: .drawCard)
-    state.defenders[.menAtArms] = 1  // Only 1 melee attack allowed
+    state.defenderPosition[.menAtArms] = 4  // Only 1 melee attack allowed
     state.armyPosition[.east] = 2  // In melee range
 
     // First melee attack should be offered
@@ -187,7 +187,7 @@ struct LoDuditFixTests {
     )
     var state = game.newState()
     _ = game.reduce(into: &state, action: .drawCard)
-    state.defenders[.archers] = 1  // Only 1 ranged attack allowed
+    state.defenderPosition[.archers] = 2  // Only 1 ranged attack allowed
 
     // After 1 ranged attack, no more ranged should be offered
     _ = game.reduce(into: &state, action: .combat(.rangedAttack(.east, dieRoll: 6, bloodyBattleDefender: nil, useMagicBow: nil)))

@@ -59,9 +59,12 @@ struct LoDSetupTests {
     // All defenders start at maximum (rule 2.0 step 3).
     let state = LoD.greenskinSetup(windsOfMagicArcane: 3)
 
-    #expect(state.defenders[.menAtArms] == 3)
-    #expect(state.defenders[.archers] == 2)
-    #expect(state.defenders[.priests] == 2)
+    #expect(state.defenderPosition[.menAtArms] == 0)
+    #expect(state.defenderPosition[.archers] == 0)
+    #expect(state.defenderPosition[.priests] == 0)
+    #expect(state.defenderValue(for: .menAtArms) == 3)
+    #expect(state.defenderValue(for: .archers) == 2)
+    #expect(state.defenderValue(for: .priests) == 2)
   }
 
   @Test
@@ -169,10 +172,10 @@ struct LoDSetupTests {
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     #expect(!state.allDefendersAtZero)
 
-    // Reduce all to zero
-    state.defenders[.menAtArms] = 0
-    state.defenders[.archers] = 0
-    state.defenders[.priests] = 0
+    // Move all to last position (value 0)
+    state.defenderPosition[.menAtArms] = 5
+    state.defenderPosition[.archers] = 4
+    state.defenderPosition[.priests] = 3
     #expect(state.allDefendersAtZero)
   }
 
@@ -180,9 +183,9 @@ struct LoDSetupTests {
   func allDefendersAtZeroPartial() {
     // If even one defender remains, not all at zero.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    state.defenders[.menAtArms] = 0
-    state.defenders[.archers] = 0
-    state.defenders[.priests] = 1
+    state.defenderPosition[.menAtArms] = 5  // last position → value 0
+    state.defenderPosition[.archers] = 4   // last position → value 0
+    state.defenderPosition[.priests] = 2   // position 2 → value 1, not at last position
     #expect(!state.allDefendersAtZero)
   }
 

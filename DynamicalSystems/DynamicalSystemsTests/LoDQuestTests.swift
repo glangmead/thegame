@@ -146,20 +146,20 @@ struct LoDQuestTests {
   func questPutForthCallGainsDefender() {
     // Put Forth the Call reward: +1 defender of choice.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    state.defenders[.archers] = 1
+    state.defenderPosition[.archers] = 2
 
     state.questPutForthCall(defender: .archers)
-    #expect(state.defenders[.archers] == 2)
+    #expect(state.defenderValue(for: .archers) == 2)
   }
 
   @Test
   func questPutForthCallCapped() {
     // Defender cannot exceed max value.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    #expect(state.defenders[.archers] == 2) // already at max
+    #expect(state.defenderValue(for: .archers) == 2) // already at max
 
     state.questPutForthCall(defender: .archers)
-    #expect(state.defenders[.archers] == 2) // stays at max
+    #expect(state.defenderValue(for: .archers) == 2) // stays at max
   }
 
   @Test

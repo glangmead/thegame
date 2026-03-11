@@ -175,8 +175,8 @@ struct LoDComposedGameTests {
     _ = game.reduce(into: &state, action: .resolveEvent(resolution))
     #expect(state.phase == .action)
     // Defenders unchanged (roll 4-6 = no effect)
-    #expect(state.defenders[.archers] == 2)
-    #expect(state.defenders[.menAtArms] == 3)
+    #expect(state.defenderValue(for: .archers) == 2)
+    #expect(state.defenderValue(for: .menAtArms) == 3)
   }
 
   @Test
@@ -195,7 +195,8 @@ struct LoDComposedGameTests {
     var resolution = LoD.EventResolution()
     resolution.dieRoll = 1
     _ = game.reduce(into: &state, action: .resolveEvent(resolution))
-    #expect(state.defenders[.archers] == 1)
+    #expect(state.defenderPosition[.archers] == 1)
+    #expect(state.defenderValue(for: .archers) == 2) // track [2,2,1,1,0]: still 2
   }
 
 }

@@ -112,18 +112,21 @@ struct LoDGraph {
       xStart: 0, cell: cell, yVal: yPos(statusRow), tag: "morale"
     )
 
-    // Defenders (row 7)
-    graph.tracks["menAtArms"] = addIndexedTrack(
-      &graph, prefix: "M", range: 0...3,
+    // Defenders (row 7) — track values from board (rule 8.2)
+    // Fighters (Max Melee Attacks): 6 spaces [3, 2, 2, 2, 1, 0]
+    graph.tracks["menAtArms"] = addLabeledTrack(
+      &graph, labels: ["F0:3", "F1:2", "F2:2", "F3:2", "F4:1", "F5:0"],
       xStart: 0, cell: cell, yVal: yPos(7), tag: "defender"
     )
-    graph.tracks["archers"] = addIndexedTrack(
-      &graph, prefix: "A", range: 0...2,
-      xStart: 5, cell: cell, yVal: yPos(7), tag: "defender"
+    // Archers (Max Ranged Attacks): 5 spaces [2, 2, 1, 1, 0]
+    graph.tracks["archers"] = addLabeledTrack(
+      &graph, labels: ["A0:2", "A1:2", "A2:1", "A3:1", "A4:0"],
+      xStart: 7, cell: cell, yVal: yPos(7), tag: "defender"
     )
-    graph.tracks["priests"] = addIndexedTrack(
-      &graph, prefix: "P", range: 0...2,
-      xStart: 9, cell: cell, yVal: yPos(7), tag: "defender"
+    // Priests (Chant DRM): 4 spaces [2, 2, 1, 0]
+    graph.tracks["priests"] = addLabeledTrack(
+      &graph, labels: ["P0:2", "P1:2", "P2:1", "P3:0"],
+      xStart: 13, cell: cell, yVal: yPos(7), tag: "defender"
     )
 
     // Energy (row 8)
@@ -245,7 +248,7 @@ struct LoDGraph {
       HeaderLabel(col: 9, row: 3, name: "Sky"),
       HeaderLabel(col: 9, row: 4, name: "Terror"),
       HeaderLabel(col: 3, row: 6, name: "Morale"),
-      HeaderLabel(col: 12, row: 7, name: "Defenders"),
+      HeaderLabel(col: 17, row: 7, name: "Defenders"),
       HeaderLabel(col: 7, row: 8, name: "Arcane"),
       HeaderLabel(col: 15, row: 8, name: "Divine"),
       HeaderLabel(col: 0, row: 9, name: "Time"),

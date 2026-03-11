@@ -50,12 +50,12 @@ struct LoDAuditFixTests2 {
   func massHealHeroicRequiresDifferentDefenders() {
     // Rule 9.3: Heroic Mass Heal gives +1 to 2 DIFFERENT defender types.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    state.defenders[.menAtArms] = 1
-    state.defenders[.archers] = 1
+    state.defenderPosition[.menAtArms] = 4
+    state.defenderPosition[.archers] = 2
     // Two different types should work
     state.applyMassHeal(defenders: [.menAtArms, .archers])
-    #expect(state.defenders[.menAtArms] == 2)
-    #expect(state.defenders[.archers] == 2)
+    #expect(state.defenderValue(for: .menAtArms) == 2)
+    #expect(state.defenderValue(for: .archers) == 2)
   }
 
   // MARK: - Audit Fix #14: Raise Dead Normal vs Heroic (rule 9.3)

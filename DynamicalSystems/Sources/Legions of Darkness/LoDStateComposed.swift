@@ -260,7 +260,7 @@ extension LoD.State {
   func totalChantDRM() -> Int {
     var drm = 0
     // Priests provide +1 DRM per priest
-    drm += defenders[.priests] ?? 0
+    drm += defenderValue(for: .priests)
     if let card = currentCard {
       for cardDRM in card.actionDRMs where cardDRM.action == .chant {
         drm += cardDRM.value

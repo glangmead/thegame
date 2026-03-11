@@ -65,10 +65,10 @@ extension LoD {
 
     // MARK: - Defenders
 
-    var defenders: [DefenderType: Int] = [
-      .menAtArms: DefenderType.menAtArms.maxValue,
-      .archers: DefenderType.archers.maxValue,
-      .priests: DefenderType.priests.maxValue
+    var defenderPosition: [DefenderType: Int] = [
+      .menAtArms: DefenderType.menAtArms.startingPosition,
+      .archers: DefenderType.archers.startingPosition,
+      .priests: DefenderType.priests.startingPosition
     ]
 
     // MARK: - Morale
@@ -207,7 +207,13 @@ extension LoD {
 
     /// Whether all defenders are at zero (defeat condition per rule 4.4 / 11.1).
     var allDefendersAtZero: Bool {
-      defenders.values.allSatisfy { $0 == 0 }
+      DefenderType.allCases.allSatisfy { defenderPosition[$0] == $0.lastPosition }
+    }
+
+    /// Look up the capability value (max attacks or chant DRM) at the current track position.
+    func defenderValue(for type: DefenderType) -> Int {
+      let position = defenderPosition[type] ?? type.lastPosition
+      return type.trackValues[position]
     }
 
     /// Current time space type.

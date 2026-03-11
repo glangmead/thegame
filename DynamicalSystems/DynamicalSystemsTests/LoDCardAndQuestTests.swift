@@ -90,9 +90,9 @@ struct LoDCardAndQuestTests {
   func defeatByAllDefendersLostOutcome() {
     // All defenders reduced to 0 → defeat.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    state.defenders[.menAtArms] = 0
-    state.defenders[.archers] = 0
-    state.defenders[.priests] = 1
+    state.defenderPosition[.menAtArms] = 5
+    state.defenderPosition[.archers] = 4
+    state.defenderPosition[.priests] = 2
 
     state.loseDefender(.priests)
     #expect(state.ended)
@@ -104,14 +104,15 @@ struct LoDCardAndQuestTests {
   func partialDefenderLossNotDefeat() {
     // Some defenders remain → game continues.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    state.defenders[.menAtArms] = 0
-    state.defenders[.archers] = 0
-    state.defenders[.priests] = 2
+    state.defenderPosition[.menAtArms] = 5
+    state.defenderPosition[.archers] = 4
+    state.defenderPosition[.priests] = 0
 
     state.loseDefender(.priests)
     #expect(!state.ended)
     #expect(state.outcome == .ongoing)
-    #expect(state.defenders[.priests] == 1)
+    #expect(state.defenderPosition[.priests] == 1)
+    #expect(state.defenderValue(for: .priests) == 2) // track [2,2,1,0]: still 2
   }
 
   // MARK: - Card Data Model

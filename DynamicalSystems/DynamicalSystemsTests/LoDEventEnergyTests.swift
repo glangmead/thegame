@@ -19,8 +19,10 @@ struct LoDEventEnergyTests {
     // Player chooses: lose 2 defenders.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.eventDeserters(loseTwoDefenders: (.menAtArms, .archers))
-    #expect(state.defenders[.menAtArms] == 2)
-    #expect(state.defenders[.archers] == 1)
+    #expect(state.defenderPosition[.menAtArms] == 1)
+    #expect(state.defenderValue(for: .menAtArms) == 2) // track [3,2,2,2,1,0]: pos 1 = 2
+    #expect(state.defenderPosition[.archers] == 1)
+    #expect(state.defenderValue(for: .archers) == 2) // track [2,2,1,1,0]: still 2
   }
 
   @Test
@@ -118,7 +120,7 @@ struct LoDEventEnergyTests {
     #expect(results.count == 1) // 3 - 2 = 1
     #expect(state.armyPosition[.east] == 4) // 5 → 4
     #expect(state.heroWounded.contains(.warrior))
-    #expect(state.defenders[.menAtArms] == 2)
+    #expect(state.defenderValue(for: .menAtArms) == 2)
   }
 
   // -- Bump in the Night (card #36) --

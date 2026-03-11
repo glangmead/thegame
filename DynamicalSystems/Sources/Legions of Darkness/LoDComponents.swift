@@ -139,14 +139,21 @@ struct LoDComponents: GameComponents {
   enum DefenderType: String, CaseIterable, Equatable, Hashable {
     case menAtArms, archers, priests
 
-    /// Starting and maximum value for this defender.
-    var maxValue: Int {
+    /// Printed values at each track position (index 0 = starting/best).
+    var trackValues: [Int] {
       switch self {
-      case .menAtArms: return 3
-      case .archers: return 2
-      case .priests: return 2
+      case .menAtArms: return [3, 2, 2, 2, 1, 0]
+      case .archers: return [2, 2, 1, 1, 0]
+      case .priests: return [2, 2, 1, 0]
       }
     }
+
+    var trackLength: Int { trackValues.count }
+    var startingPosition: Int { 0 }
+    var lastPosition: Int { trackLength - 1 }
+
+    /// Starting capability value (equivalent to old maxValue).
+    var maxValue: Int { trackValues[0] }
   }
 
   // MARK: - Morale (rule 6.1.1)

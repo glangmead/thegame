@@ -93,7 +93,7 @@ struct LoDSpecialRulesTests {
 
     // East army at space 1 (melee range)
     state.armyPosition[.east] = 1
-    let archersBefore = state.defenders[.archers]!
+    let archersPosBefore = state.defenderPosition[.archers]!
 
     // Melee attack on east, choosing to lose an archer for bloody battle
     _ = game.reduce(
@@ -101,7 +101,7 @@ struct LoDSpecialRulesTests {
       action: .combat(.meleeAttack(
         .east, dieRoll: 6,
         bloodyBattleDefender: .archers, useMagicSword: nil)))
-    #expect(state.defenders[.archers] == archersBefore - 1)
+    #expect(state.defenderPosition[.archers] == archersPosBefore + 1)
   }
 
   @Test
@@ -121,7 +121,7 @@ struct LoDSpecialRulesTests {
     var state = game.newState()
     _ = game.reduce(into: &state, action: .drawCard)
     state.armyPosition[.east] = 1
-    let archersBefore = state.defenders[.archers]!
+    let archersPosBefore = state.defenderPosition[.archers]!
 
     // First attack — costs a defender
     _ = game.reduce(
@@ -129,7 +129,7 @@ struct LoDSpecialRulesTests {
       action: .combat(.meleeAttack(
         .east, dieRoll: 6,
         bloodyBattleDefender: .archers, useMagicSword: nil)))
-    #expect(state.defenders[.archers] == archersBefore - 1)
+    #expect(state.defenderPosition[.archers] == archersPosBefore + 1)
 
     // Second attack — no additional cost (nil defender)
     _ = game.reduce(
@@ -137,7 +137,7 @@ struct LoDSpecialRulesTests {
       action: .combat(.meleeAttack(
         .east, dieRoll: 6,
         bloodyBattleDefender: nil, useMagicSword: nil)))
-    #expect(state.defenders[.archers] == archersBefore - 1) // unchanged
+    #expect(state.defenderPosition[.archers] == archersPosBefore + 1) // unchanged
   }
 
   @Test
@@ -157,7 +157,7 @@ struct LoDSpecialRulesTests {
     var state = game.newState()
     _ = game.reduce(into: &state, action: .drawCard)
     state.armyPosition[.west] = 1
-    let maaBeforе = state.defenders[.menAtArms]!
+    let maaValueBefore = state.defenderValue(for: .menAtArms)
 
     // Attack west (not marked) — no bloody battle cost
     _ = game.reduce(
@@ -165,7 +165,7 @@ struct LoDSpecialRulesTests {
       action: .combat(.meleeAttack(
         .west, dieRoll: 6,
         bloodyBattleDefender: nil, useMagicSword: nil)))
-    #expect(state.defenders[.menAtArms] == maaBeforе)
+    #expect(state.defenderValue(for: .menAtArms) == maaValueBefore)
   }
 
 }

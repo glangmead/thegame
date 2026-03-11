@@ -152,8 +152,8 @@ extension LoD.State {
 
   /// Put Forth the Call — gain +1 defender of player's choice.
   mutating func questPutForthCall(defender: LoD.DefenderType) {
-    if let current = defenders[defender] {
-      defenders[defender] = min(current + 1, defender.maxValue)
+    if let current = defenderPosition[defender], current > 0 {
+      defenderPosition[defender] = current - 1
     }
   }
 

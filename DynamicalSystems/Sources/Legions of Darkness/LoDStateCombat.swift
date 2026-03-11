@@ -151,8 +151,8 @@ extension LoD.State {
 
   /// Lose one defender of the specified type (rule 8.2.1).
   mutating func loseDefender(_ type: LoD.DefenderType) {
-    if let current = defenders[type], current > 0 {
-      defenders[type] = current - 1
+    if let current = defenderPosition[type], current < type.lastPosition {
+      defenderPosition[type] = current + 1
     }
     if allDefendersAtZero {
       endInDefeat()

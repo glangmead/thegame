@@ -160,9 +160,9 @@ struct LoDHousekeepingTests {
     // defenders → defeat.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.armyPosition[.terror] = 1
-    state.defenders[.menAtArms] = 0
-    state.defenders[.archers] = 0
-    state.defenders[.priests] = 1
+    state.defenderPosition[.menAtArms] = 5
+    state.defenderPosition[.archers] = 4
+    state.defenderPosition[.priests] = 2
 
     // Terror tries to advance past space 1 → defenderLoss result
     let result = state.advanceArmy(.terror)

@@ -82,9 +82,9 @@ extension LoD.State: TextTableAble {
 
     let resources = TextTable<LoD.State> { state in
       [
-        Column(title: "MaA", value: state.defenders[.menAtArms] ?? 0),
-        Column(title: "Arch", value: state.defenders[.archers] ?? 0),
-        Column(title: "Priest", value: state.defenders[.priests] ?? 0),
+        Column(title: "MaA", value: state.defenderValue(for: .menAtArms)),
+        Column(title: "Arch", value: state.defenderValue(for: .archers)),
+        Column(title: "Priest", value: state.defenderValue(for: .priests)),
         Column(title: "Arcane", value: state.arcaneEnergy),
         Column(title: "Divine", value: state.divineEnergy)
       ]

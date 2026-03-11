@@ -19,7 +19,7 @@ extension LoD {
             var actions: [Action] = []
 
             // Chant (if priests > 0)
-            if (state.defenders[.priests] ?? 0) > 0 {
+            if state.defenderValue(for: .priests) > 0 {
               actions.append(.magic(.chant(dieRoll: 0)))
             }
 
