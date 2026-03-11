@@ -180,6 +180,25 @@ enum CantStopPages {
     return col
   }
 
+  // MARK: - MCTS State Evaluator
+
+  /// Graduated evaluation: average fraction climbed of the top 3 columns
+  /// (by committed placeholder position, ranked by progress).
+  /// Evaluates from player1's perspective.
+  private static func cantStopStateEvaluator(_ state: CantStop.State) -> Float {
+    let player = CantStop.Player.player1
+    if state.endedInVictoryFor.contains(player) { return 1.0 }
+    if state.endedInDefeatFor.contains(player) { return 0.0 }
+    let heights = CantStop.colHeights()
+    var fractions = [Float]()
+    for col in CantStop.Column.allCases where col != .none {
+      let row = state.position[CantStop.Piece.placeholder(player, col)]?.row ?? 0
+      fractions.append(Float(row) / Float(heights[col]!))
+    }
+    fractions.sort(by: >)
+    return fractions.prefix(3).reduce(0, +) / 3.0
+  }
+
   static func game() -> ComposedGame<CantStop.State> {
     oapply(
       pages: [
@@ -199,7 +218,8 @@ enum CantStopPages {
       phaseForAction: { action in
         if case .setPhase(let phase) = action { return phase }
         return nil
-      }
+      },
+      stateEvaluator: cantStopStateEvaluator
     )
   }
 }

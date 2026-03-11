@@ -331,6 +331,34 @@ enum MCPages {
     )
   }
 
+  // MARK: - MCTS State Evaluator
+
+  /// Graduated evaluation: victory = 1.0, defeat scaled by how far the
+  /// least-advanced Japanese unit progressed toward Singapore.
+  private static func mcStateEvaluator(_ state: MalayanCampaign.State) -> Float {
+    if state.endedInVictoryFor.contains(.solo) { return 1.0 }
+    let trunk = japaneseProgress(state, piece: .japTrunk,
+                                 road: MalayanCampaignComponents.trunkRoad)
+    let eastern = japaneseProgress(state, piece: .japEastern,
+                                   road: MalayanCampaignComponents.easternRoad)
+    let leastProgress = min(trunk, eastern)
+    if state.endedInDefeatFor.contains(.solo) {
+      return 0.5 * leastProgress
+    }
+    // Non-terminal (rollout hit max depth)
+    return 0.5 * leastProgress + 0.25
+  }
+
+  private static func japaneseProgress(
+    _ state: MalayanCampaign.State,
+    piece: MalayanCampaignComponents.Piece,
+    road: [MalayanCampaignComponents.Location]
+  ) -> Float {
+    guard let loc = state.location(of: piece),
+          let idx = road.firstIndex(of: loc) else { return 0 }
+    return Float(idx) / Float(road.count - 1)
+  }
+
   static func game() -> ComposedGame<MalayanCampaign.State> {
     oapply(
       pages: [
@@ -353,7 +381,8 @@ enum MCPages {
       phaseForAction: { action in
         if case .setPhase(let phase) = action { return phase }
         return nil
-      }
+      },
+      stateEvaluator: mcStateEvaluator
     )
   }
 }

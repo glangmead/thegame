@@ -218,6 +218,24 @@ enum BCPages {
     )
   }
 
+  // MARK: - MCTS State Evaluator
+
+  /// Graduated evaluation: victory = 1.0, defeat scaled by 30 Corps progress.
+  private static func bcStateEvaluator(_ state: BattleCard.State) -> Float {
+    if state.endedInVictoryFor.contains(.solo) { return 1.0 }
+    let corpsProgress: Float
+    if case .onTrack(let pos) = state.position[.thirtycorps] {
+      corpsProgress = Float(pos) / 4.0  // track positions 0-4
+    } else {
+      corpsProgress = 0
+    }
+    if state.endedInDefeatFor.contains(.solo) {
+      return 0.5 * corpsProgress
+    }
+    // Non-terminal (rollout hit max depth)
+    return 0.5 * corpsProgress + 0.25
+  }
+
   static func game() -> ComposedGame<BattleCard.State> {
     oapply(
       pages: [
@@ -242,7 +260,8 @@ enum BCPages {
       phaseForAction: { action in
         if case .setPhase(let phase) = action { return phase }
         return nil
-      }
+      },
+      stateEvaluator: bcStateEvaluator
     )
   }
 }
