@@ -113,7 +113,7 @@ struct LoDView: View {
   private var logList: some View {
     List {
       Section("Log") {
-        ForEach(logs, id: \.msg) { log in
+        ForEach(Array(logs.enumerated()), id: \.offset) { _, log in
           Text(log.msg)
             .font(.caption)
         }
@@ -123,12 +123,8 @@ struct LoDView: View {
 
   private var actionList: some View {
     List {
-      Section("Actions") {
-        ForEach(cachedActions, id: \.self) { action in
-          Button(action.description) {
-            performAction(action)
-          }
-        }
+      MCTSActionSection(model: model, actions: cachedActions) { action in
+        performAction(action)
       }
     }
   }
@@ -152,7 +148,7 @@ struct LoDView: View {
 
   private func performAction(_ action: LoD.Action) {
     let newLogs = model.perform(action)
-    logs = newLogs
+    logs.insert(contentsOf: newLogs, at: 0)
     refreshActions()
     let section = LoDPieceAdapter.section(from: model.state, graph: graph)
     let highlights = LoDPieceAdapter.siteHighlights(from: model.state, graph: graph)

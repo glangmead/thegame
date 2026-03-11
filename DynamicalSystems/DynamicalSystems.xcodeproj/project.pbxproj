@@ -143,6 +143,7 @@
 				Framework/GameSceneSync.swift,
 				Framework/GameSection.swift,
 				Framework/HistoryTracking.swift,
+				Framework/MCTSActionSection.swift,
 				Framework/RulePage.swift,
 				Framework/SceneConfig.swift,
 				Framework/SiteGraph.swift,

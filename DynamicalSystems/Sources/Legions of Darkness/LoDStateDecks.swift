@@ -18,8 +18,8 @@ extension LoD.State {
     shuffledDayCards: [LoD.Card]? = nil,
     shuffledNightCards: [LoD.Card]? = nil
   ) {
-    dayDrawPile = shuffledDayCards ?? LoD.dayCards
-    nightDrawPile = shuffledNightCards ?? LoD.nightCards
+    dayDrawPile = shuffledDayCards ?? LoD.dayCards.shuffled()
+    nightDrawPile = shuffledNightCards ?? LoD.nightCards.shuffled()
     dayDiscardPile = []
     nightDiscardPile = []
     currentCard = nil

@@ -48,9 +48,15 @@ extension LoD {
     }
     if let event = card.event {
       logs.append(Log(msg: "  Event: \(event.title)"))
+      logs.append(Log(msg: "    \(event.text)"))
     }
     if let quest = card.quest {
       logs.append(Log(msg: "  Quest: \(quest.title) (target \(quest.target))"))
+      logs.append(Log(msg: "    \(quest.text)"))
+      logs.append(Log(msg: "    Reward: \(quest.reward)"))
+      if let penalty = quest.penalty {
+        logs.append(Log(msg: "    Penalty: \(penalty)"))
+      }
     }
     if let bloodyBattle = card.bloodyBattle {
       logs.append(Log(msg: "  Bloody battle: \(bloodyBattle.rawValue)"))

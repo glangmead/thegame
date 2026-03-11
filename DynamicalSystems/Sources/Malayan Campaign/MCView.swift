@@ -62,12 +62,8 @@ struct MCView: View {
             }
           }
         }
-        Section("Actions") {
-          ForEach(cachedActions, id: \.self) { action in
-            Button(action.description) {
-              performAction(action)
-            }
-          }
+        MCTSActionSection(model: model, actions: cachedActions) { action in
+          performAction(action)
         }
       }
     }
