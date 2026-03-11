@@ -187,8 +187,9 @@ struct LoDComposedGameSpellTests {
     let actionsNoSpells = game.allowedActions(state: state)
     #expect(!actionsNoSpells.contains(where: { if case .magic(.castSpell) = $0 { return true }; return false }))
 
-    // Learn fireball
+    // Learn fireball and place wizard on east (needed for targeting)
     state.spellStatus[.fireball] = .known
+    state.heroLocation[.wizard] = .onTrack(.east)
 
     let actionsWithSpell = game.allowedActions(state: state)
     #expect(actionsWithSpell.contains(where: { if case .magic(.castSpell) = $0 { return true }; return false }))

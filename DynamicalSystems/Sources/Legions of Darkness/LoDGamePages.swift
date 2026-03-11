@@ -119,12 +119,11 @@ extension LoD {
       rules: [
         GameRule(
           condition: { state in
-            state.phase == .event && state.currentCard?.event != nil
+            state.phase == .event && state.currentCard?.event != nil && !state.isInSubResolution
           },
-          actions: { _ in
-            // Offer resolveEvent with placeholder resolution.
-            // The caller fills in die rolls and choices.
-            [.resolveEvent(EventResolution())]
+          actions: { state in
+            guard let card = state.currentCard else { return [] }
+            return state.concreteEventResolutions(for: card).map { .resolveEvent($0) }
           }
         )
       ],
@@ -212,17 +211,11 @@ extension LoD {
             state.eventMidnightMagic(dieRoll: resolution.dieRoll)
             logs.append(Log(msg: "Midnight Magic: rolled \(resolution.dieRoll)"))
 
-          case 29: // Death and Despair
-            let results = state.eventDeathAndDespair(
-              dieRoll: resolution.dieRoll,
-              heroesToWound: resolution.sacrificedHeroes,
-              defendersToLose: resolution.sacrificedDefenders,
-              chosenSlot: resolution.chosenSlot,
-              dieRollForBarricade: resolution.barricadeDieRoll
-            )
-            for result in results {
-              logs.append(Log(msg: "Death and Despair: \(result)"))
-            }
+          case 29: // Death and Despair — enters multi-step sub-resolution
+            state.deathAndDespairState = DeathAndDespairState(dieRoll: resolution.dieRoll)
+            logs.append(Log(
+              msg: "Death and Despair: rolled \(resolution.dieRoll). Choose sacrifices to reduce advance."
+            ))
 
           case 30: // Assassin's Creedo
             state.eventAssassinsCreedo(dieRoll: resolution.dieRoll, chosenHero: resolution.chosenHero)

@@ -93,6 +93,9 @@ extension LoD {
     case magic(MagicAction)
     case heroic(HeroicAction)
     case quest(QuestAction)
+    case chainLightning(ChainLightningAction)
+    case fortune(FortuneAction)
+    case deathAndDespair(DeathAndDespairAction)
 
     // -- Card phase --
     case drawCard
@@ -129,6 +132,9 @@ extension LoD {
       case .magic(let sub): return sub.description
       case .heroic(let sub): return sub.description
       case .quest(let sub): return sub.description
+      case .chainLightning(let sub): return sub.description
+      case .fortune(let sub): return sub.description
+      case .deathAndDespair(let sub): return sub.description
       case .drawCard: return "Draw Card"
       case .advanceArmies: return "Advance Armies"
       case .skipEvent: return "Skip Event"

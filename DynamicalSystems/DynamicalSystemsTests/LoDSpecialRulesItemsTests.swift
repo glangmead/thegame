@@ -24,7 +24,7 @@ struct LoDSpecialRulesItemsTests {
       shuffledNightCards: LoD.nightCards
     )
     var state = game.newState()
-    state.hasMagicSword = true
+    state.magicSwordState = LoD.MagicItemState()
     state.armyPosition[.east] = 1 // melee range
     _ = game.reduce(into: &state, action: .drawCard)
 
@@ -39,7 +39,7 @@ struct LoDSpecialRulesItemsTests {
     // Should have hit — army retreated
     #expect(state.armyPosition[.east]! > eastPosBefore)
     // Sword consumed
-    #expect(state.hasMagicSword == false)
+    #expect(state.magicSwordState == nil)
   }
 
   @Test
@@ -52,7 +52,7 @@ struct LoDSpecialRulesItemsTests {
       shuffledNightCards: LoD.nightCards
     )
     var state = game.newState()
-    state.hasMagicSword = true
+    state.magicSwordState = LoD.MagicItemState()
     state.armyPosition[.east] = 1
 
     _ = game.reduce(into: &state, action: .drawCard)
@@ -65,7 +65,7 @@ struct LoDSpecialRulesItemsTests {
         .east, dieRoll: 3,
         bloodyBattleDefender: nil, useMagicSword: .after)))
     #expect(state.armyPosition[.east]! > eastPosBefore)
-    #expect(state.hasMagicSword == false)
+    #expect(state.magicSwordState == nil)
   }
 
   @Test
@@ -78,7 +78,7 @@ struct LoDSpecialRulesItemsTests {
       shuffledNightCards: LoD.nightCards
     )
     var state = game.newState()
-    state.hasMagicBow = true
+    state.magicBowState = LoD.MagicItemState()
     _ = game.reduce(into: &state, action: .drawCard)
 
     let eastPosBefore = state.armyPosition[.east]!
@@ -90,7 +90,7 @@ struct LoDSpecialRulesItemsTests {
         .east, dieRoll: 2,
         bloodyBattleDefender: nil, useMagicBow: .before)))
     #expect(state.armyPosition[.east]! > eastPosBefore)
-    #expect(state.hasMagicBow == false)
+    #expect(state.magicBowState == nil)
   }
 
   @Test
@@ -103,7 +103,7 @@ struct LoDSpecialRulesItemsTests {
       shuffledNightCards: LoD.nightCards
     )
     var state = game.newState()
-    state.hasMagicSword = false
+    state.magicSwordState = nil
     state.armyPosition[.east] = 1
     _ = game.reduce(into: &state, action: .drawCard)
 
@@ -114,7 +114,7 @@ struct LoDSpecialRulesItemsTests {
       action: .combat(.meleeAttack(
         .east, dieRoll: 2,
         bloodyBattleDefender: nil, useMagicSword: .before)))
-    #expect(state.hasMagicSword == false)
+    #expect(state.magicSwordState == nil)
   }
 
   // MARK: - Acid Upgrade Free Attack (rule 6.3)

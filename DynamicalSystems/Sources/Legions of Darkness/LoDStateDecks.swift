@@ -147,7 +147,7 @@ extension LoD.State {
 
   /// Arrows of the Dead — gain the Magic Bow item.
   mutating func questMagicBow() {
-    hasMagicBow = true
+    magicBowState = LoD.MagicItemState()
   }
 
   /// Put Forth the Call — gain +1 defender of player's choice.
@@ -169,7 +169,7 @@ extension LoD.State {
 
   /// The Vorpal Blade — gain the Magic Sword item.
   mutating func questVorpalBlade() {
-    hasMagicSword = true
+    magicSwordState = LoD.MagicItemState()
   }
 
   /// Pillars of the Earth — retreat one army (except Sky) two spaces.
@@ -205,16 +205,16 @@ extension LoD.State {
   /// Use the Magic Sword: discard before melee attack for +2 DRM, or after for +1 DRM.
   /// Returns the DRM bonus granted, or 0 if item not held.
   mutating func useMagicSword(timing: LoD.ItemTiming) -> Int {
-    guard hasMagicSword else { return 0 }
-    hasMagicSword = false
+    guard magicSwordState != nil else { return 0 }
+    magicSwordState = nil
     return timing == .before ? 2 : 1
   }
 
   /// Use the Magic Bow: discard before ranged attack for +2 DRM, or after for +1 DRM.
   /// Returns the DRM bonus granted, or 0 if item not held.
   mutating func useMagicBow(timing: LoD.ItemTiming) -> Int {
-    guard hasMagicBow else { return 0 }
-    hasMagicBow = false
+    guard magicBowState != nil else { return 0 }
+    magicBowState = nil
     return timing == .before ? 2 : 1
   }
 }

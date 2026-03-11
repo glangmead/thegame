@@ -136,10 +136,10 @@ struct LoDQuestTests {
   func questMagicBowGivesItem() {
     // Arrows of the Dead reward: gain Magic Bow.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    #expect(!state.hasMagicBow)
+    #expect(state.magicBowState == nil)
 
     state.questMagicBow()
-    #expect(state.hasMagicBow)
+    #expect(state.magicBowState != nil)
   }
 
   @Test
@@ -186,10 +186,10 @@ struct LoDQuestTests {
   func questVorpalBladeGivesItem() {
     // The Vorpal Blade reward: gain Magic Sword.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    #expect(!state.hasMagicSword)
+    #expect(state.magicSwordState == nil)
 
     state.questVorpalBlade()
-    #expect(state.hasMagicSword)
+    #expect(state.magicSwordState != nil)
   }
 
   @Test

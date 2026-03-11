@@ -17,6 +17,7 @@ extension LoD {
         GameRule(
           condition: {
             $0.phase == .action && $0.actionBudgetRemaining > 0 && $0.currentCard?.quest != nil
+              && !$0.isInSubResolution
           },
           actions: { _ in
             [.quest(.quest(isHeroic: false, dieRoll: 0, reward: QuestRewardParams()))]
@@ -26,6 +27,7 @@ extension LoD {
         GameRule(
           condition: {
             $0.phase == .heroic && $0.heroicBudgetRemaining > 0 && $0.currentCard?.quest != nil
+              && !$0.isInSubResolution
           },
           actions: { _ in
             [.quest(.quest(isHeroic: true, dieRoll: 0, reward: QuestRewardParams()))]

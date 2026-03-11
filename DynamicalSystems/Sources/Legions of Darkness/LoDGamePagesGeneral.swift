@@ -15,7 +15,7 @@ extension LoD {
       rules: [
         // Action phase: budget > 0 — offer rogue move + pass
         GameRule(
-          condition: { $0.phase == .action && $0.actionBudgetRemaining > 0 },
+          condition: { $0.phase == .action && $0.actionBudgetRemaining > 0 && !$0.isInSubResolution },
           actions: { state in
             var actions: [Action] = []
 
@@ -33,7 +33,7 @@ extension LoD {
         ),
         // Action phase: budget exhausted — only rogue move + pass
         GameRule(
-          condition: { $0.phase == .action && $0.actionBudgetRemaining == 0 },
+          condition: { $0.phase == .action && $0.actionBudgetRemaining == 0 && !$0.isInSubResolution },
           actions: { state in
             var actions: [Action] = []
             if state.heroLocation[.rogue] != nil && !state.heroDead.contains(.rogue) {
@@ -48,12 +48,12 @@ extension LoD {
         ),
         // Heroic phase: budget exhausted — only pass
         GameRule(
-          condition: { $0.phase == .heroic && $0.heroicBudgetRemaining == 0 },
+          condition: { $0.phase == .heroic && $0.heroicBudgetRemaining == 0 && !$0.isInSubResolution },
           actions: { _ in [.passHeroics] }
         ),
         // Heroic phase: budget > 0 — offer pass
         GameRule(
-          condition: { $0.phase == .heroic && $0.heroicBudgetRemaining > 0 },
+          condition: { $0.phase == .heroic && $0.heroicBudgetRemaining > 0 && !$0.isInSubResolution },
           actions: { _ in [.passHeroics] }
         )
       ],

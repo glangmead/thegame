@@ -14,7 +14,7 @@ extension LoD {
       name: "Heroic Phase",
       rules: [
         GameRule(
-          condition: { $0.phase == .heroic && $0.heroicBudgetRemaining > 0 },
+          condition: { $0.phase == .heroic && $0.heroicBudgetRemaining > 0 && !$0.isInSubResolution },
           actions: { state in
             var actions: [Action] = []
             let heroes = state.livingHeroes.filter { hero in

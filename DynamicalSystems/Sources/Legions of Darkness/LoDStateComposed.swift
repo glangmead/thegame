@@ -124,15 +124,13 @@ extension LoD.State {
       }
 
     case .chainLightning:
-      let targets = zip(params.targetSlots, params.dieRolls).map { (slot: $0.0, dieRoll: $0.1) }
-      let results = applyChainLightning(targets: targets, heroic: heroic)
-      for (index, result) in results.enumerated() {
-        logs.append(Log(msg: "Chain Lightning bolt \(index+1): \(result)"))
-      }
+      chainLightningState = LoD.ChainLightningState(heroic: heroic)
+      logs.append(Log(msg: "Chain Lightning: choose bolt targets one at a time"))
 
     case .fortune:
-      applyFortune(newOrder: params.newOrder, discardIndex: params.discardIndex)
-      logs.append(Log(msg: "Fortune applied"))
+      let cards = fortunePeek()
+      fortuneState = LoD.FortuneState(heroic: heroic, drawnCards: cards)
+      logs.append(Log(msg: "Fortune: viewing \(cards.count) cards"))
 
     case .cureWounds:
       applyCureWounds(heroes: params.heroes)

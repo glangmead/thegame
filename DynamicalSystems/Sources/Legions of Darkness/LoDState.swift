@@ -9,6 +9,10 @@ import Foundation
 
 extension LoD {
 
+  /// State for a consumable magic item (Sword or Bow).
+  /// Non-nil means the item is held. Consumed on use.
+  struct MagicItemState: Equatable, Hashable, Sendable {}
+
   struct State: Equatable, Sendable, HistoryTracking, GameState, CustomStringConvertible {
 
     // MARK: - GameComponents typealiases
@@ -152,11 +156,22 @@ extension LoD {
 
     // MARK: - Items (quest rewards)
 
-    /// Whether the player holds the Magic Sword (from The Vorpal Blade quest).
-    var hasMagicSword: Bool = false
+    /// State for the Magic Sword item (non-nil = held). Consumed on use.
+    var magicSwordState: MagicItemState?
 
-    /// Whether the player holds the Magic Bow (from Arrows of the Dead quest).
-    var hasMagicBow: Bool = false
+    /// State for the Magic Bow item (non-nil = held). Consumed on use.
+    var magicBowState: MagicItemState?
+
+    // MARK: - Sub-resolution state (multi-step pages)
+
+    var chainLightningState: ChainLightningState?
+    var fortuneState: FortuneState?
+    var deathAndDespairState: DeathAndDespairState?
+
+    /// Whether a multi-step sub-resolution is in progress, blocking normal action pages.
+    var isInSubResolution: Bool {
+      chainLightningState != nil || fortuneState != nil || deathAndDespairState != nil
+    }
 
     // MARK: - Victory / defeat (rule 11.0)
 

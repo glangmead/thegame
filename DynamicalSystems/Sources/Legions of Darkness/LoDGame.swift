@@ -34,6 +34,7 @@ extension LoD {
   ) -> ComposedGame<State> {
     oapply(
       pages: [cardPage, armyPage, eventPage,
+              chainLightningPage, fortunePage, deathAndDespairPage,
               combatPage, buildPage, magicPage, questPage,
               heroicPage, generalPage,
               paladinReactPage, housekeepingPage],

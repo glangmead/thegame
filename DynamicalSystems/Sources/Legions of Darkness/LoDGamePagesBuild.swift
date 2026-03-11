@@ -14,7 +14,7 @@ extension LoD {
       name: "Fortification",
       rules: [
         GameRule(
-          condition: { $0.phase == .action && $0.actionBudgetRemaining > 0 },
+          condition: { $0.phase == .action && $0.actionBudgetRemaining > 0 && !$0.isInSubResolution },
           actions: { state in
             var actions: [Action] = []
 

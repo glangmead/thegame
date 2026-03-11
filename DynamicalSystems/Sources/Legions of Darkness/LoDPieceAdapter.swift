@@ -323,10 +323,10 @@ struct LoDPieceAdapter {
   private static func highlightItems(
     state: LoD.State, highlights: inout [SiteID: SKColor]
   ) {
-    if state.hasMagicSword {
+    if state.magicSwordState != nil {
       highlights[LoDGraph.sword] = SKColor.yellow.withAlphaComponent(0.3)
     }
-    if state.hasMagicBow {
+    if state.magicBowState != nil {
       highlights[LoDGraph.bow] = SKColor.yellow.withAlphaComponent(0.3)
     }
   }

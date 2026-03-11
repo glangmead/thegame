@@ -14,7 +14,7 @@ extension LoD {
       name: "Magic",
       rules: [
         GameRule(
-          condition: { $0.phase == .action && $0.actionBudgetRemaining > 0 },
+          condition: { $0.phase == .action && $0.actionBudgetRemaining > 0 && !$0.isInSubResolution },
           actions: { state in
             var actions: [Action] = []
 
@@ -33,16 +33,18 @@ extension LoD {
               actions.append(.magic(.pray(randomSpell: nil)))
             }
 
-            // Cast known spells with sufficient energy
+            // Cast known spells with sufficient energy — enumerate concrete params
             for spell in state.knownSpells {
               let cost = spell.energyCost
               let hasEnergy = spell.isArcane
                 ? state.arcaneEnergy >= cost
                 : state.divineEnergy >= cost
               if hasEnergy {
-                actions.append(.magic(.castSpell(spell, heroic: false, SpellCastParams())))
+                let normalActions = state.concreteSpellActions(spell: spell, heroic: false)
+                actions.append(contentsOf: normalActions)
                 if state.canHeroicCast(spell) {
-                  actions.append(.magic(.castSpell(spell, heroic: true, SpellCastParams())))
+                  let heroicActions = state.concreteSpellActions(spell: spell, heroic: true)
+                  actions.append(contentsOf: heroicActions)
                 }
               }
             }
