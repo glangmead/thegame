@@ -82,7 +82,7 @@ extension GameScene {
 
       case .dieShowing(let face, let site):
         if let label = node.childNode(withName: "dieLabel") as? SKLabelNode {
-          label.text = face > 0 ? "\(face)" : ""
+          label.updateSystemText(face > 0 ? "\(face)" : "")
         }
         if let site, let dest = siteNodes[site] {
           let pos = CGPoint(

@@ -184,9 +184,8 @@ class LoDVassalScene: SKScene {
     node.name = "piece_\(piece.id)"
     if let label = piece.label {
       let labelNode = SKLabelNode(text: label)
-      labelNode.fontName = "Helvetica-Bold"
-      labelNode.fontSize = radius * 0.7
-      labelNode.fontColor = .white
+      labelNode.applySystemFont(
+        size: radius * 0.7, weight: .bold, color: .white)
       labelNode.verticalAlignmentMode = .center
       node.addChild(labelNode)
     }
@@ -200,9 +199,8 @@ class LoDVassalScene: SKScene {
     node.strokeColor = .black
     node.name = "card_\(piece.id)"
     let label = SKLabelNode(text: "?")
-    label.fontName = "Helvetica"
-    label.fontSize = min(size.width, size.height) * 0.3
-    label.fontColor = .black
+    label.applySystemFont(
+      size: min(size.width, size.height) * 0.3, color: .black)
     label.verticalAlignmentMode = .center
     label.name = "cardLabel"
     node.addChild(label)
@@ -311,7 +309,7 @@ class LoDVassalScene: SKScene {
         }
       case .cardState(let name, let faceUp, let site):
         if let label = node.childNode(withName: "cardLabel") as? SKLabelNode {
-          label.text = faceUp ? name : "?"
+          label.updateSystemText(faceUp ? name : "?")
         }
         if let site, let dest = siteNodes[site] {
           node.run(SKAction.move(to: dest.position, duration: anim))

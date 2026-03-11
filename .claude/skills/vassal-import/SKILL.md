@@ -41,12 +41,62 @@ to see the Components → State → Engine → Pages → Graph → SceneConfig p
 See [vassal_reference_manual.md](vassal_reference_manual.md) for how to interpret the XML.
 
 **Rules PDF gives verbs — and is the primary source of truth.** Read the entire
-rulebook carefully, section by section. For each rule section, extract:
+rulebook carefully, section by section. **Account for every single sentence.**
+For each rule section, extract:
 - The exact mechanic (what triggers it, what it does, what limits apply)
 - Edge cases mentioned in the text (e.g., "except magical attacks")
 - Constraints that are easy to miss (e.g., "once per turn", "only on wall tracks")
 - Cross-references to other rules (e.g., "see section 6.3 for upgrades")
 - DRM bonuses scattered across different sections (these are the most commonly missed)
+- **Nested decision points and multi-step resolution sequences** (see below)
+
+**Identify every nested choice system.** Many rules create multi-step resolution
+sequences where the player must see intermediate results before making the next
+decision. These are the hardest mechanics to implement correctly because they
+require the game state to pause mid-resolution and present a sub-menu of choices.
+For each rule, ask: "Does this create a sequence where the player acts, observes
+a result, then acts again?" Catalog every instance:
+
+- **Sequential attacks with observation:** "Make N attacks, one at a time" means
+  the player sees each attack result before choosing the next target. This cannot
+  be implemented as an atomic function that takes all targets upfront.
+- **Conditional branches mid-resolution:** "If the attack fails, you may re-roll"
+  requires the player to see the failure before deciding. "Roll the die; you may
+  sacrifice units to reduce the result" requires seeing the roll first.
+- **Choice-then-subchoice:** "Gain a defender OR return a dead hero" is a branch;
+  each branch may itself require a choice (which defender type? which hero?).
+  Heroic versions often upgrade exclusive-OR to inclusive-AND/OR, creating
+  compound choices.
+- **Reactive interrupts:** "After any die roll, you may re-roll once per turn"
+  creates a potential decision point after every die roll in the entire game.
+- **Free-form interleaving:** "The Rogue can move at any point during the action
+  phase without using an action" means extra choice points between every action.
+
+**Survey cards for the same patterns.** If a game has event cards, quest cards,
+item cards, or spell cards, their text often contains miniature decision systems:
+nested choices, conditional branches, timing decisions ("use before or after an
+attack"), and variable-investment mechanics ("spend N actions for +N DRM, then
+roll"). Read every card and flag any that create sub-phases of play. Cards are
+the most common source of missed nested choices because their text is terse and
+effects are spread across many individual cards rather than consolidated in one
+rule section.
+
+**Produce a nested-choice inventory.** Before writing any code, compile a list of
+every mechanic that requires mid-resolution player input. Classify each as:
+1. **Multi-step sequential** — player must observe intermediate state (e.g.,
+   "make 3 attacks, choosing targets after each result")
+2. **Branching with sub-choices** — player picks a path, then makes further
+   decisions within that path (e.g., "gain defenders OR return a hero")
+3. **Conditional reaction** — player decides after seeing a random outcome
+   (e.g., "if attack fails, may re-roll")
+4. **Reactive interrupt** — can trigger at many points during play (e.g.,
+   paladin re-roll, rogue free movement)
+5. **Variable investment** — player chooses how many resources to spend before
+   a single roll (e.g., "spend actions/heroics for DRM, then roll")
+
+This inventory drives the state-machine design: each multi-step mechanic needs
+intermediate game states with their own `allowedActions`, not a single atomic
+action enum case with all parameters baked in.
 
 **Read the Player Aid / reference card images too.** They often contain compact
 rule summaries with details not in the main rules text (e.g., "Paladin — holy" or
@@ -177,6 +227,18 @@ implementation. This audit typically finds 10-15 issues per game. Common categor
 - Build Barricade (repair a breach) — a separate action from Build Upgrade
 - Specific free actions triggered by upgrades or hero abilities
 
+**Atomic implementation of multi-step mechanics:**
+- A spell says "make 3 attacks, choosing targets after each result" but the action
+  enum takes all 3 targets at once — the player never sees intermediate results
+- An event says "roll die, then sacrifice units to reduce the advance" but the
+  action takes sacrifices alongside the die roll — the player should see the roll first
+- A quest reward says "draw a spell of your choice" but the choice is a parameter
+  on the quest action — it should be a nested sub-phase with its own allowedActions
+- Any "if X fails, you may Y" conditional requires seeing the failure before deciding
+- Check every spell, event card, and ability for sentences containing "then",
+  "one at a time", "you may", "of your choice", or "after seeing the result" —
+  these signal that atomic parameter-passing is wrong and a state machine is needed
+
 **Magical exemptions:**
 - "Magical attacks don't trigger bloody battle defender cost"
 - Spell attacks vs physical attacks having different rules
@@ -198,6 +260,122 @@ Wrap state mutations in `RulePage` instances:
 `isTerminal` so that priority pages can offer `claimVictory` / `declareLoss`
 before the game stops accepting input. `ended` is set by state mutations;
 `gameAcknowledged` is set by the priority page reducer.
+
+#### Composable Page State and Actions (TCA-Style Embedding)
+
+The overall game State is a **product** of all page states, and the overall
+Action enum is a **coproduct** of all page action types. This follows the
+composition pattern from The Composable Architecture (TCA): each stateful
+page declares its own `State` struct and `Action` enum. The global State
+gets one `Optional` field per stateful page; the global Action gets one
+case per page action type. No changes to the `RulePage` framework are
+needed — the composition is entirely at the game level.
+
+**Litmus test — when does a page need local state?** A page needs its own
+state if **either:**
+
+1. **Multi-step resolution (Prong 1):** Resolution requires multiple
+   round-trips with the player where later choices depend on intermediate
+   outcomes that don't exist yet when the first action is chosen. Example:
+   "make 3 attacks, choosing targets after each result" — the result of
+   attack 1 affects the player's choice for attack 2.
+
+2. **Feature-scoped persistence (Prong 2):** The page introduces persistent
+   bookkeeping that no other page would need if this page didn't exist.
+   Example: a magic item's existence and per-turn usage tracking are
+   meaningless outside that item's RulePage. Moving the item's state from
+   the global struct to an `Optional` page field means the state vanishes
+   when the feature is inactive.
+
+**Everything else** — branch-then-pick, path choices, hero selection,
+defender type selection — is fully captured by enumerating all valid
+concrete parameterized actions. No local state needed; just generate N
+action values, one per valid combination, in the page's `actions` closure.
+
+**Pattern for multi-step pages:**
+
+```swift
+// 1. Define page-local state and actions
+struct ChainLightningState: Equatable, Hashable {
+  let heroic: Bool
+  var boltIndex: Int = 0
+  var results: [AttackResult] = []
+}
+
+enum ChainLightningAction: ActionGroup, Hashable {
+  static let groupName = "Chain Lightning"
+  case targetBolt(ArmySlot, dieRoll: Int)
+}
+
+// 2. Embed in global types
+// In State: var chainLightningState: ChainLightningState?
+// In Action: case chainLightning(ChainLightningAction)
+
+// 3. Guard other pages with isInSubResolution
+var isInSubResolution: Bool {
+  chainLightningState != nil || fortuneState != nil // etc.
+}
+
+// 4. Write a RulePage whose condition checks its own state
+static var chainLightningPage: RulePage<State, Action> {
+  RulePage(
+    name: "Chain Lightning",
+    rules: [
+      GameRule(
+        condition: { $0.chainLightningState != nil },
+        actions: { state in /* enumerate targets for current bolt */ }
+      )
+    ],
+    reduce: { state, action in
+      guard case .chainLightning(let sub) = action else { return nil }
+      // resolve bolt, update page state, clear when complete
+    }
+  )
+}
+
+// 5. Activation: the casting page sets up the sub-state instead of
+//    resolving atomically
+case .chainLightning:
+  state.chainLightningState = ChainLightningState(heroic: heroic)
+```
+
+**Pattern for feature-scoped persistent pages:**
+
+```swift
+// 1. Define minimal page state (existence = feature is active)
+struct MagicItemState: Equatable, Hashable { }
+
+// 2. Embed as Optional in global State
+// var magicSwordState: MagicItemState?
+
+// 3. Quest reward activates: magicSwordState = MagicItemState()
+// 4. Item use consumes: magicSwordState = nil
+// 5. Other pages read the Optional to know if the feature is available
+```
+
+**Concrete action enumeration for choice-having mechanics:**
+
+When a spell, event, or ability involves player choices but does NOT need
+multi-step resolution (i.e., the entire decision can be captured in one
+action value), enumerate all valid concrete parameterized actions in the
+page's `actions` closure. Do NOT offer a single action with empty/default
+parameters — MCTS and the UI need to see every valid choice as a distinct
+action.
+
+```swift
+// Bad: one action with empty params (MCTS can't explore choices)
+actions.append(.magic(.castSpell(.raiseDead, heroic: false, SpellCastParams())))
+
+// Good: one action per valid combination
+for pair in defenderPairs {
+  actions.append(.magic(.castSpell(.raiseDead, heroic: false,
+    SpellCastParams(defenders: [pair.0, pair.1]))))
+}
+for hero in deadHeroes {
+  actions.append(.magic(.castSpell(.raiseDead, heroic: false,
+    SpellCastParams(returnHero: hero))))
+}
+```
 
 #### Factoring Actions into Sub-Enums
 
@@ -393,6 +571,8 @@ files in `Sources/` are auto-discovered by the main app target. However, the
 | Empty MCTS reward signal | `endedInVictoryFor`/`endedInDefeatFor` never set (MCTS sees all-zero values) | Set these arrays at every `ended = true` site; write an MCTS smoke test |
 | Game missing from CLI | Implemented game not wired into `gamer` tool | Add game enum case + factory to `main.swift` as part of Phase 6a |
 | Placeholder die rolls never randomized | Actions generated with `dieRoll: 0` resolved literally — every attack misses | Use `effectiveDie()`: randomize 0 → 1-6 at resolution time, pass through non-zero for deterministic tests |
+| Multi-step mechanic implemented atomically | Chain Lightning takes all 3 targets upfront — player never sees attack 1 before choosing target 2 | Identify every "one at a time" / "then choose" / "you may re-roll" sentence; implement as state-machine sub-phases with intermediate `allowedActions` |
+| Card text creates hidden sub-phases | Quest reward "draw a spell of your choice" baked into quest action params — no nested choice | Read every card; any "of your choice", "you may", or "then" on a card creates a sub-phase needing its own `allowedActions` |
 | Force-unwrap on optional die roll | Barricade/grease paths crash when `dieRoll` is `nil` | Use `effectiveDie(dieRoll ?? 0)` instead of `dieRoll!` |
 | Track conflated with value | Defenders stored as count 0-3 (was actually a 6-space track with values [3,2,2,2,1,0]) | When the PDF says "refer to the number under the X marker" or similar, the track positions and game-mechanical values are not the same. Ask the user for the printed value at each space. |
 

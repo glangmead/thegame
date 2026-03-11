@@ -6,6 +6,27 @@
 //
 
 import SpriteKit
+import UIKit
+
+extension SKLabelNode {
+  func applySystemFont(
+    size: CGFloat, weight: UIFont.Weight = .regular, color: UIColor
+  ) {
+    let font = UIFont.systemFont(ofSize: size, weight: weight)
+    attributedText = NSAttributedString(
+      string: text ?? "",
+      attributes: [.font: font, .foregroundColor: color])
+  }
+
+  func updateSystemText(_ newText: String) {
+    guard let existing = attributedText, existing.length > 0 else {
+      text = newText
+      return
+    }
+    let attrs = existing.attributes(at: 0, effectiveRange: nil)
+    attributedText = NSAttributedString(string: newText, attributes: attrs)
+  }
+}
 
 class GameScene<
   State: GameState & CustomStringConvertible,
@@ -93,9 +114,8 @@ class GameScene<
 
       if site.tags.contains("header") {
         let labelNode = SKLabelNode(text: site.label ?? "")
-        labelNode.fontName = "Helvetica-Bold"
-        labelNode.fontSize = cellSize * 0.4
-        labelNode.fontColor = .darkGray
+        labelNode.applySystemFont(
+          size: cellSize * 0.4, weight: .bold, color: .darkGray)
         labelNode.horizontalAlignmentMode = .left
         labelNode.verticalAlignmentMode = .center
         labelNode.position = CGPoint(
@@ -122,9 +142,8 @@ class GameScene<
 
       if let label = site.label {
         let labelNode = SKLabelNode(text: label)
-        labelNode.fontName = "Helvetica"
-        labelNode.fontSize = fontSize
-        labelNode.fontColor = .darkGray
+        labelNode.applySystemFont(
+          size: fontSize, color: .darkGray)
         labelNode.horizontalAlignmentMode = .center
         labelNode.verticalAlignmentMode = .top
         labelNode.position = CGPoint(x: cellSize / 2, y: cellSize - 2)
@@ -145,9 +164,8 @@ class GameScene<
       node.name = "piece_\(piece.id)"
       if let label = piece.label {
         let labelNode = SKLabelNode(text: label)
-        labelNode.fontName = "Helvetica-Bold"
-        labelNode.fontSize = radius * 0.8
-        labelNode.fontColor = .white
+        labelNode.applySystemFont(
+          size: radius * 0.8, weight: .bold, color: .white)
         labelNode.horizontalAlignmentMode = .center
         labelNode.verticalAlignmentMode = .center
         labelNode.name = "pieceLabel"
@@ -180,9 +198,8 @@ class GameScene<
     node.strokeColor = .black
     let faceLabel = SKLabelNode(text: "")
     faceLabel.name = "dieLabel"
-    faceLabel.fontColor = .white
-    faceLabel.fontSize = size * 0.45
-    faceLabel.fontName = "Helvetica-Bold"
+    faceLabel.applySystemFont(
+      size: size * 0.45, weight: .bold, color: .white)
     faceLabel.verticalAlignmentMode = .center
     faceLabel.horizontalAlignmentMode = .center
     faceLabel.position = CGPoint(x: 0, y: size * 0.05)
@@ -190,9 +207,8 @@ class GameScene<
     if let pieceLabel {
       let nameLabel = SKLabelNode(text: pieceLabel)
       nameLabel.name = "pieceLabel"
-      nameLabel.fontColor = .white
-      nameLabel.fontSize = size * 0.28
-      nameLabel.fontName = "Helvetica"
+      nameLabel.applySystemFont(
+        size: size * 0.28, color: .white)
       nameLabel.verticalAlignmentMode = .top
       nameLabel.horizontalAlignmentMode = .center
       nameLabel.position = CGPoint(x: 0, y: -size * 0.15)
