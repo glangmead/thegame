@@ -240,6 +240,8 @@ struct LoDPieceAdapter {
       section[piece(currentCardID)] = .cardState(
         name: card.title,
         faceUp: true,
+        isRed: false,
+        rotation: 0,
         at: LoDGraph.currentCard
       )
     }

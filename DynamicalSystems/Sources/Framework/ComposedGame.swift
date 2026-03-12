@@ -17,13 +17,19 @@ struct ComposedGame<State: HistoryTracking>: PlayableGame where State.Action: Ha
   let pages: [RulePage<State, State.Action>]
   let priorities: [RulePage<State, State.Action>]
   let makeInitialState: () -> State
-  let isTerminal: (State) -> Bool
+  let terminalCheck: (State) -> Bool
+  let rolloutTerminalCheck: ((State) -> Bool)?
   let phaseForAction: (State.Action) -> State.Phase?
   var stateEvaluator: ((State) -> Float)?
   var rolloutPolicy: (([State.Action]) -> State.Action)?
 
+  func isTerminal(state: State) -> Bool { terminalCheck(state) }
+  func isRolloutTerminal(state: State) -> Bool {
+    rolloutTerminalCheck?(state) ?? terminalCheck(state)
+  }
+
   func allowedActions(state: State) -> [State.Action] {
-    guard !isTerminal(state) else { return [] }
+    guard !isTerminal(state: state) else { return [] }
 
     // Priority pages override everything
     var urgent: [State.Action] = []
@@ -94,6 +100,7 @@ func oapply<State: HistoryTracking>(
   priorities: [RulePage<State, State.Action>] = [],
   initialState: @escaping () -> State,
   isTerminal: @escaping (State) -> Bool,
+  isRolloutTerminal: ((State) -> Bool)? = nil,
   phaseForAction: @escaping (State.Action) -> State.Phase?,
   stateEvaluator: ((State) -> Float)? = nil,
   rolloutPolicy: (([State.Action]) -> State.Action)? = nil
@@ -102,7 +109,8 @@ func oapply<State: HistoryTracking>(
     pages: pages,
     priorities: priorities,
     makeInitialState: initialState,
-    isTerminal: isTerminal,
+    terminalCheck: isTerminal,
+    rolloutTerminalCheck: isRolloutTerminal,
     phaseForAction: phaseForAction,
     stateEvaluator: stateEvaluator,
     rolloutPolicy: rolloutPolicy

@@ -9,7 +9,7 @@
 import SwiftUI
 
 /// Open the existential `any PlayableGame` so OpenLoopMCTS gets a concrete Reducer type.
-private func mctsRecommendation<Game: PlayableGame>(
+func mctsRecommendation<Game: PlayableGame>(
   state: Game.State, game: Game, iters: Int
 ) -> [Game.Action: (Float, Float)]
 where Game.State: GameState & CustomStringConvertible,

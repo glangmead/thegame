@@ -22,6 +22,9 @@ struct DynamicalSystemsApp: App {
           NavigationLink("Battle Card: Malayan Campaign") {
             MCView()
           }
+          NavigationLink("Hearts") {
+            HeartsView(config: Hearts.HeartsConfig(humanSeat: .south))
+          }
           NavigationLink("Legions of Darkness") {
             LoDView()
           }

@@ -65,11 +65,14 @@ protocol PlayableGame<State, Action> {
   func newState() -> State
   func allowedActions(state: State) -> [Action]
   func reduce(into: inout State, action: Action) -> [Log]
+  func isTerminal(state: State) -> Bool
+  func isRolloutTerminal(state: State) -> Bool
   var stateEvaluator: ((State) -> Float)? { get }
   var rolloutPolicy: (([Action]) -> Action)? { get }
 }
 
 extension PlayableGame {
+  func isRolloutTerminal(state: State) -> Bool { isTerminal(state: state) }
   var stateEvaluator: ((State) -> Float)? { nil }
   var rolloutPolicy: (([Action]) -> Action)? { nil }
 }

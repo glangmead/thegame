@@ -177,13 +177,18 @@ class GameScene<
       node.name = "die_\(piece.id)"
       return node
     case .card:
-      let node = SKShapeNode(rectOf: CGSize(
-        width: cellSize * 0.8,
-        height: cellSize * 1.2
-      ))
+      let width = cellSize * 0.8
+      let height = cellSize * 1.2
+      let node = SKShapeNode(rectOf: CGSize(width: width, height: height))
       node.fillColor = .white
       node.strokeColor = .black
       node.name = "card_\(piece.id)"
+      let label = SKLabelNode(text: "?")
+      label.applySystemFont(size: width * 0.4, color: .black)
+      label.horizontalAlignmentMode = .center
+      label.verticalAlignmentMode = .center
+      label.name = "cardLabel"
+      node.addChild(label)
       return node
     }
   }
@@ -232,6 +237,7 @@ class GameScene<
     case "red": return .red
     case "blue": return .blue
     case "green": return .green
+    case "darkgreen": return SKColor(red: 0.0, green: 0.4, blue: 0.0, alpha: 1.0)
     case "yellow": return .yellow
     case "gray", "grey": return .gray
     case "lightgray", "lightgrey": return .lightGray

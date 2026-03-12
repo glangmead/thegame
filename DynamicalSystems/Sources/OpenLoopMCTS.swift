@@ -174,7 +174,7 @@ class OpenLoopMCTS<
   // swiftlint:disable:next cyclomatic_complexity function_body_length
   func recommendation(iters: Int, numRollouts: Int = 1) -> [Action: (Float, Float)] {
     var result = [Action: (Float, Float)]()
-    guard !rootState.ended else {
+    guard !reducer.isRolloutTerminal(state: rootState) else {
       return result
     }
 
@@ -196,7 +196,7 @@ class OpenLoopMCTS<
 
       // Explore a tree for each player, even though the player of rootState is "the player".
       //
-      while rolloutDepth < maxRolloutDepth && !state.ended {
+      while rolloutDepth < maxRolloutDepth && !reducer.isRolloutTerminal(state: state) {
         let player = state.player
 
         // Pick one next action for the current player.

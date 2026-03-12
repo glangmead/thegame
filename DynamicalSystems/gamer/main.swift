@@ -15,6 +15,7 @@ enum Games: String, Codable, ExpressibleByArgument {
   case battleCard = "BattleCard"
   case BCMC = "MalayanCampaign"
   case legionsOfDarkness = "LegionsOfDarkness"
+  case hearts = "Hearts"
 }
 
 struct GamerTool: ParsableCommand {
@@ -65,6 +66,18 @@ struct GamerTool: ParsableCommand {
       case .legionsOfDarkness:
         var gameRunner = GameRunner(
           reducer: LoD.composedGame(windsOfMagicArcane: 3),
+          numTrials: numTrials,
+          numMCTSIters: numMCTSIters,
+          numRollouts: numRollouts,
+          interactive: interactive,
+          logFile: logFile,
+          showAIHints: showAIHints
+        )
+        try gameRunner.run()
+      case .hearts:
+        var gameRunner = GameRunner(
+          reducer: Hearts.composedGame(
+            config: Hearts.HeartsConfig(humanSeat: nil)),
           numTrials: numTrials,
           numMCTSIters: numMCTSIters,
           numRollouts: numRollouts,
@@ -163,6 +176,9 @@ struct GameRunner<
 
   func getAction(state: State, auto: Bool) -> Action? {
     let actions = reducer.allowedActions(state: state)
+    guard !actions.isEmpty else { return nil }
+    if actions.count == 1 { return actions[0] }
+
     let results = treeSearch(state: state)
     let ratio: ((Float, Float)) -> Float = { valCount in
       let val = valCount.0

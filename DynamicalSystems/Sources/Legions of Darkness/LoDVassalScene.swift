@@ -307,7 +307,7 @@ class LoDVassalScene: SKScene {
             y: dest.position.y + offset.y)
           node.run(SKAction.move(to: pos, duration: anim))
         }
-      case .cardState(let name, let faceUp, let site):
+      case .cardState(let name, let faceUp, _, _, let site):
         if let label = node.childNode(withName: "cardLabel") as? SKLabelNode {
           label.updateSystemText(faceUp ? name : "?")
         }

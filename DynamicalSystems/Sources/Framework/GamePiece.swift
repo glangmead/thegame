@@ -36,14 +36,15 @@ enum PieceValue: Codable, Equatable, Hashable {
   // swiftlint:disable:next identifier_name
   case at(SiteID)
   case dieShowing(face: Int, at: SiteID?) // swiftlint:disable:this identifier_name
-  case cardState(name: String, faceUp: Bool, at: SiteID?) // swiftlint:disable:this identifier_name
+  // swiftlint:disable:next identifier_name
+  case cardState(name: String, faceUp: Bool, isRed: Bool, rotation: CGFloat, at: SiteID?)
 
   /// The site this piece occupies, regardless of kind.
   var site: SiteID? {
     switch self {
     case .at(let siteID): return siteID
     case .dieShowing(_, let siteID): return siteID
-    case .cardState(_, _, let siteID): return siteID
+    case .cardState(_, _, _, _, let siteID): return siteID
     }
   }
 }
