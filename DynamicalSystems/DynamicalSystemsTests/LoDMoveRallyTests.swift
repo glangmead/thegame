@@ -88,6 +88,15 @@ struct LoDMoveRallyTests {
   }
 
   @Test
+  func paladinInReservesGivesRallyDRM() {
+    // Rule 10.2: Paladin adds +1 rally DRM regardless of location
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3, heroes: [.warrior, .paladin, .cleric])
+    state.heroLocation[.paladin] = .reserves
+    let drm = state.totalRallyDRM()
+    #expect(drm == 1, "Paladin should give +1 rally DRM even from reserves")
+  }
+
+  @Test
   func rallyMoraleCapped() {
     // Morale already high → stays high.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)

@@ -69,8 +69,29 @@ extension LoD {
   static var armyPage: RulePage<State, Action> {
     RulePage(
       name: "Army Phase",
-      rules: [],  // automatic — no player choices
+      rules: [
+        // Bloody battle Gate tie — player chooses placement
+        GameRule(
+          condition: { $0.phase == .army && $0.pendingBloodyBattleChoices != nil },
+          actions: { state in
+            (state.pendingBloodyBattleChoices ?? []).map { .chooseBloodyBattle($0) }
+          }
+        )
+      ],
       reduce: { state, action in
+        // Handle bloody battle choice
+        if case .chooseBloodyBattle(let slot) = action {
+          state.bloodyBattleArmy = slot
+          state.pendingBloodyBattleChoices = nil
+          let logs = [Log(msg: "Bloody battle marker placed on \(slot)")]
+          if state.currentCard?.event != nil {
+            state.phase = .event
+            return (logs, [])
+          } else {
+            return (logs, [.skipEvent])
+          }
+        }
+
         guard case .advanceArmies(let acidAttackDieRolls) = action else { return nil }
         var logs: [Log] = []
         if let card = state.currentCard {
@@ -84,7 +105,8 @@ extension LoD {
                 state.upgrades[slot.track] == .acid,
                 !state.acidUsedThisTurn,
                 let dieRoll = acidAttackDieRolls[slot] {
-                let attackResult = state.resolveAttack(on: slot, attackType: .melee, dieRoll: dieRoll, drm: 0)
+                let attackResult = state.resolveAttack(
+                  on: slot, attackType: .melee, dieRoll: dieRoll, drm: 0)
                 state.acidUsedThisTurn = true
                 logs.append(Log(msg: "Acid free melee attack on \(slot): \(attackResult)"))
               }
@@ -92,14 +114,32 @@ extension LoD {
           }
           // Set bloody battle marker if card specifies it
           if let bloodyBattleTrack = card.bloodyBattle {
-            for slot in ArmySlot.allCases where slot.track == bloodyBattleTrack {
-              if state.armyPosition[slot] != nil {
-                state.bloodyBattleArmy = slot
-                logs.append(Log(msg: "Bloody battle marker placed on \(slot)"))
-                break
+            let slotsOnTrack = ArmySlot.allCases.filter {
+              $0.track == bloodyBattleTrack && state.armyPosition[$0] != nil
+            }
+            if bloodyBattleTrack == .gate && slotsOnTrack.count == 2 {
+              let pos1 = state.armyPosition[slotsOnTrack[0]]!
+              let pos2 = state.armyPosition[slotsOnTrack[1]]!
+              if pos1 == pos2 {
+                // Tied — player chooses
+                state.pendingBloodyBattleChoices = slotsOnTrack
+                logs.append(Log(msg: "Bloody battle: Gate armies tied — choose placement"))
+              } else {
+                // Pick closest
+                let closest = pos1 < pos2 ? slotsOnTrack[0] : slotsOnTrack[1]
+                state.bloodyBattleArmy = closest
+                logs.append(Log(msg: "Bloody battle marker placed on \(closest)"))
               }
+            } else if let first = slotsOnTrack.first {
+              state.bloodyBattleArmy = first
+              logs.append(Log(msg: "Bloody battle marker placed on \(first)"))
             }
           }
+        }
+        // If pending BB choice, stay in army phase for player input
+        if state.pendingBloodyBattleChoices != nil {
+          state.phase = .army
+          return (logs, [])
         }
         // Transition: if card has event, offer resolveEvent; otherwise skip
         if state.currentCard?.event != nil {
@@ -130,6 +170,7 @@ extension LoD {
       reduce: { state, action in
         switch action {
         case .skipEvent:
+          state.snapshotActionBudget = state.actionBudget
           return ([Log(msg: "No event this turn")], [])
 
         case .resolveEvent(var resolution):
@@ -254,6 +295,7 @@ extension LoD {
             logs.append(Log(msg: "Unknown event on card \(card.number)"))
           }
 
+          state.snapshotActionBudget = state.actionBudget
           return (logs, [])
 
         default:

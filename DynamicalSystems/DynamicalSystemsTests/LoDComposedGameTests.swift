@@ -3,7 +3,7 @@
 //  DynamicalSystems
 //
 //  Tests for LoD composed game (oapply): event phase, action phase,
-//  heroic phase, budget tracking, quest rewards, spell casting.
+//  budget tracking, quest rewards, spell casting.
 //
 
 import Testing
@@ -48,8 +48,8 @@ struct LoDComposedGameTests {
   @Test
   func composedGameFullTurnCascade() {
     // Use card #2 (no event) so drawCard cascades: drawCard → advanceArmies → skipEvent.
-    // Then player explicitly passes actions and heroics.
-    // passHeroics cascades to performHousekeeping automatically.
+    // Then player explicitly ends turn.
+    // endPlayerTurn cascades to performHousekeeping automatically.
     let card2 = LoD.dayCards.first { $0.number == 2 }!
     let game = LoD.composedGame(
       windsOfMagicArcane: 3,
@@ -66,27 +66,21 @@ struct LoDComposedGameTests {
     #expect(state.currentCard != nil)
     #expect(state.history.count == 3) // drawCard, advanceArmies, skipEvent
 
-    // Step 2: pass actions → phase becomes heroic
-    _ = game.reduce(into: &state, action: .passActions)
-    #expect(state.phase == .heroic)
-    #expect(state.history.count == 4)
-
-    // Step 3: pass heroics → cascades to housekeeping → phase becomes card
-    _ = game.reduce(into: &state, action: .passHeroics)
+    // Step 2: end player turn → cascades to housekeeping → phase becomes card
+    _ = game.reduce(into: &state, action: .endPlayerTurn)
     #expect(state.phase == .card)
-    #expect(state.history.count == 6) // +passHeroics, +performHousekeeping
+    #expect(state.history.count == 5) // +endPlayerTurn, +performHousekeeping
 
     #expect(state.history[0] == .drawCard)
     #expect(state.history[1] == .advanceArmies(acidAttackDieRolls: [:]))
     #expect(state.history[2] == .skipEvent)
-    #expect(state.history[3] == .passActions)
-    #expect(state.history[4] == .passHeroics)
-    #expect(state.history[5] == .performHousekeeping)
+    #expect(state.history[3] == .endPlayerTurn)
+    #expect(state.history[4] == .performHousekeeping)
   }
 
   @Test
   func composedGameTimeAdvancesOverTurns() {
-    // Card #3 ("All is Quiet") has no event, no advances, time: 1.
+    // Card #3 ("All is Quiet") has no event, no advances, time: 1, bloodyBattle: gate.
     // Safe for multiple turns without triggering breaches.
     let card3 = LoD.dayCards.first { $0.number == 3 }!
     let game = LoD.composedGame(
@@ -101,13 +95,14 @@ struct LoDComposedGameTests {
       let actions = game.allowedActions(state: state)
       #expect(actions.contains(.drawCard))
       _ = game.reduce(into: &state, action: .drawCard)
-      _ = game.reduce(into: &state, action: .passActions)
-      _ = game.reduce(into: &state, action: .passHeroics)
+      // Card #3 has gate bloody battle — resolve pending choice if needed
+      if state.pendingBloodyBattleChoices != nil {
+        _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+      }
+      _ = game.reduce(into: &state, action: .endPlayerTurn)
     }
 
     #expect(state.timePosition == initialTime + 5) // card3.time = 1 × 5 turns
-    // 6 history entries per turn × 5 turns
-    #expect(state.history.count == 30)
   }
 
   @Test

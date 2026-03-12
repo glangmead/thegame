@@ -60,6 +60,10 @@ struct LoDComposedGameSpellTests {
     )
     var state = game.newState()
     _ = game.reduce(into: &state, action: .drawCard)
+    // Resolve Gate bloody battle tie if needed (card #3 has gate BB)
+    if state.pendingBloodyBattleChoices != nil {
+      _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+    }
     #expect(state.phase == .action)
 
     let timeBefore = state.timePosition
@@ -90,7 +94,6 @@ struct LoDComposedGameSpellTests {
     #expect(state.spellStatus[.fireball] == .faceDown) // still face-down (failed)
 
     // Try heroic: roll 6 + heroic DRM 2 = 8 > 7 = success
-    _ = game.reduce(into: &state, action: .passActions)
     _ = game.reduce(into: &state, action: .quest(.quest(isHeroic: true, dieRoll: 6, reward: reward)))
     #expect(state.spellStatus[.fireball] == .known) // now known!
   }
@@ -131,6 +134,10 @@ struct LoDComposedGameSpellTests {
     state.armyPosition[.east] = 3
 
     _ = game.reduce(into: &state, action: .drawCard)
+    // Resolve Gate bloody battle tie if needed (card #3 has gate BB)
+    if state.pendingBloodyBattleChoices != nil {
+      _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+    }
     #expect(state.phase == .action)
 
     let arcaneBefore = state.arcaneEnergy
@@ -182,6 +189,10 @@ struct LoDComposedGameSpellTests {
     var state = game.newState()
 
     _ = game.reduce(into: &state, action: .drawCard)
+    // Resolve Gate bloody battle tie if needed (card #3 has gate BB)
+    if state.pendingBloodyBattleChoices != nil {
+      _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+    }
 
     // No known spells → no cast actions
     let actionsNoSpells = game.allowedActions(state: state)

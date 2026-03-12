@@ -29,11 +29,10 @@ struct LoDSpecialRulesTests {
     var state = game.newState()
     _ = game.reduce(into: &state, action: .drawCard)
 
-    // Skip quest — just pass actions and heroics
-    _ = game.reduce(into: &state, action: .passActions)
+    // Skip quest — just end turn
     #expect(state.morale == .normal) // not yet penalized
 
-    _ = game.reduce(into: &state, action: .passHeroics)
+    _ = game.reduce(into: &state, action: .endPlayerTurn)
     // Housekeeping should apply penalty: morale lowered
     #expect(state.morale == .low)
   }

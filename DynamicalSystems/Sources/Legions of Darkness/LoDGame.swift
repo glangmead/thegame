@@ -17,8 +17,7 @@ extension LoD {
     case .drawCard: return .army
     case .advanceArmies: return .event
     case .skipEvent, .resolveEvent: return .action
-    case .passActions: return .heroic
-    case .passHeroics: return .housekeeping
+    case .endPlayerTurn: return .housekeeping
     case .performHousekeeping: return .card
     default: return nil  // stay in current phase
     }
@@ -90,11 +89,11 @@ extension LoD {
           guard let pending = state.pendingDieRollAction else { return nil }
           let returnPhase = state.phaseBeforePaladinReact ?? .action
 
-          // Resolve the deferred action
-          if returnPhase == .action {
-            logs += state.resolveActionDieRoll(pending)
-          } else {
+          // Resolve the deferred action based on action type
+          if State.isHeroicDieRollAction(pending) {
             logs += state.resolveHeroicDieRoll(pending)
+          } else {
+            logs += state.resolveActionDieRoll(pending)
           }
 
           state.pendingDieRollAction = nil
@@ -110,11 +109,11 @@ extension LoD {
           let modifiedAction = State.withNewDieRoll(pending, newDieRoll: newDieRoll)
           logs.append(Log(msg: "Paladin re-roll: new die = \(newDieRoll)"))
 
-          // Resolve with the new die roll
-          if returnPhase == .action {
-            logs += state.resolveActionDieRoll(modifiedAction)
-          } else {
+          // Resolve with the new die roll based on action type
+          if State.isHeroicDieRollAction(modifiedAction) {
             logs += state.resolveHeroicDieRoll(modifiedAction)
+          } else {
+            logs += state.resolveActionDieRoll(modifiedAction)
           }
 
           state.usePaladinReroll()

@@ -2,7 +2,7 @@
 //  LoDGamePagesGeneral.swift
 //  DynamicalSystems
 //
-//  Legions of Darkness — General rule page (rogue move, pass actions/heroics).
+//  Legions of Darkness — General rule page (rogue move, end player turn).
 //
 
 import Foundation
@@ -13,9 +13,9 @@ extension LoD {
     RulePage(
       name: "General",
       rules: [
-        // Action phase: budget > 0 — offer rogue move + pass
+        // Player turn: always offer rogue move + end turn
         GameRule(
-          condition: { $0.phase == .action && $0.actionBudgetRemaining > 0 && !$0.isInSubResolution },
+          condition: { $0.phase == .action && !$0.isInSubResolution },
           actions: { state in
             var actions: [Action] = []
 
@@ -27,52 +27,19 @@ extension LoD {
               actions.append(.rogueMove(.reserves))
             }
 
-            actions.append(.passActions)
+            actions.append(.endPlayerTurn)
             return actions
           }
-        ),
-        // Action phase: budget exhausted — only rogue move + pass
-        GameRule(
-          condition: { $0.phase == .action && $0.actionBudgetRemaining == 0 && !$0.isInSubResolution },
-          actions: { state in
-            var actions: [Action] = []
-            if state.heroLocation[.rogue] != nil && !state.heroDead.contains(.rogue) {
-              for track in Track.allCases {
-                actions.append(.rogueMove(.onTrack(track)))
-              }
-              actions.append(.rogueMove(.reserves))
-            }
-            actions.append(.passActions)
-            return actions
-          }
-        ),
-        // Heroic phase: budget exhausted — only pass
-        GameRule(
-          condition: { $0.phase == .heroic && $0.heroicBudgetRemaining == 0 && !$0.isInSubResolution },
-          actions: { _ in [.passHeroics] }
-        ),
-        // Heroic phase: budget > 0 — offer pass
-        GameRule(
-          condition: { $0.phase == .heroic && $0.heroicBudgetRemaining > 0 && !$0.isInSubResolution },
-          actions: { _ in [.passHeroics] }
         )
       ],
       reduce: { state, action in
-        var logs: [Log] = []
-
         switch action {
         case .rogueMove(let location):
           state.moveHero(.rogue, to: location)
-          logs.append(Log(msg: "Rogue moved to \(location) (free)"))
-          return (logs, [])
+          return ([Log(msg: "Rogue moved to \(location) (free)")], [])
 
-        case .passActions:
-          logs.append(Log(msg: "Actions passed"))
-          return (logs, [])
-
-        case .passHeroics:
-          logs.append(Log(msg: "Heroics passed"))
-          return (logs, [.performHousekeeping])
+        case .endPlayerTurn:
+          return ([Log(msg: "Player turn ended")], [.performHousekeeping])
 
         default:
           return nil

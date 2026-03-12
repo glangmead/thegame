@@ -236,4 +236,58 @@ struct LoDActionTests {
     #expect(success == .success(.acid, .east))
   }
 
+  // MARK: - Morale Budget Snapshot (rule 6.1.1)
+
+  @Test
+  func inspireMidTurnDoesNotIncreaseActionBudget() {
+    // Rule 6.1.1: morale changes during a turn don't affect action points until next turn
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.phase = .action
+    state.morale = .normal // actionModifier = 0
+    // Use a card that gives 4 actions
+    guard let card = LoD.dayCards.first(where: { $0.actions == 4 }) else {
+      Issue.record("No card with 4 actions found")
+      return
+    }
+    state.currentCard = card
+    // Snapshot the budget at turn start
+    state.snapshotActionBudget = state.actionBudget
+    #expect(state.actionBudgetRemaining == 4)
+
+    // Raise morale to High (actionModifier = +1) via Inspire
+    state.morale = .high
+    // Budget should still be 4, not 5
+    #expect(state.actionBudgetRemaining == 4,
+      "Mid-turn morale change should not affect action budget")
+  }
+
+  @Test
+  func rallyMidTurnDoesNotReduceActionBudget() {
+    // Rule 6.1.1: morale drop mid-turn shouldn't reduce budget either
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.phase = .action
+    state.morale = .high // actionModifier = +1
+    guard let card = LoD.dayCards.first(where: { $0.actions == 3 }) else {
+      Issue.record("No card with 3 actions found")
+      return
+    }
+    state.currentCard = card
+    // Snapshot: 3 + 1(high) = 4
+    state.snapshotActionBudget = state.actionBudget
+    #expect(state.actionBudgetRemaining == 4)
+
+    // Morale drops to Normal mid-turn
+    state.morale = .normal
+    // Budget should still be 4
+    #expect(state.actionBudgetRemaining == 4)
+  }
+
+  @Test
+  func snapshotClearedInHousekeeping() {
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.snapshotActionBudget = 5
+    state.resetTurnTracking()
+    #expect(state.snapshotActionBudget == nil)
+  }
+
 }

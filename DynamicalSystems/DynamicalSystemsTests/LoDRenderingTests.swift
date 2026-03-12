@@ -89,7 +89,7 @@ struct LoDRenderingTests {
     let graph = LoDGraph.board()
     let section = LoDPieceAdapter.section(from: state, graph: graph)
     // East army at space 6 → east track index 5
-    let eastPiece = LoDPieceAdapter.pieces().first { $0.label == "Gob" }!
+    let eastPiece = LoDPieceAdapter.pieces().first { $0.label == "G2" }!
     let eastValue = section[eastPiece]
     let expectedSite = graph.tracks["east"]![5]  // index 5 = space 6
     #expect(eastValue?.site == expectedSite)

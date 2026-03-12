@@ -45,8 +45,8 @@ extension LoD.State {
       }
     case .magic(.chant):
       return .magic(.chant(dieRoll: newDieRoll))
-    case .quest(.quest(let isHeroic, _, let reward)):
-      return .quest(.quest(isHeroic: isHeroic, dieRoll: newDieRoll, reward: reward))
+    case .quest(.quest(let isHeroic, _, let reward, let pointsSpent)):
+      return .quest(.quest(isHeroic: isHeroic, dieRoll: newDieRoll, reward: reward, pointsSpent: pointsSpent))
     case .heroic(let sub):
       switch sub {
       case .heroicAttack(let hero, let slot, _):
@@ -68,9 +68,18 @@ extension LoD.State {
 
   // MARK: - Paladin Check Helper
 
+  /// Whether the given action should be resolved by the heroic resolver.
+  static func isHeroicDieRollAction(_ action: LoD.Action) -> Bool {
+    switch action {
+    case .heroic(.heroicAttack), .heroic(.rally): return true
+    case .quest(.quest(isHeroic: true, _, _, _)): return true
+    default: return false
+    }
+  }
+
   /// Handle a die-roll action with Paladin re-roll check.
   /// If Paladin can re-roll, defers the action and switches to paladinReact phase.
-  /// Otherwise resolves immediately via the appropriate phase resolver.
+  /// Otherwise resolves immediately via the appropriate resolver.
   mutating func resolveDieRollWithPaladinCheck(
     _ action: LoD.Action, phase: LoD.Phase
   ) -> [Log] {
@@ -80,10 +89,10 @@ extension LoD.State {
       self.phase = .paladinReact
       return [Log(msg: "Paladin may re-roll this die")]
     }
-    if phase == .action {
-      return resolveActionDieRoll(action)
-    } else {
+    if Self.isHeroicDieRollAction(action) {
       return resolveHeroicDieRoll(action)
+    } else {
+      return resolveActionDieRoll(action)
     }
   }
 
@@ -115,8 +124,9 @@ extension LoD.State {
       let success = chant(dieRoll: Self.effectiveDie(dieRoll), drm: drm)
       return [Log(msg: "Chant: \(success ? "success" : "failed")")]
 
-    case .quest(.quest(let isHeroic, let dieRoll, let reward)) where !isHeroic:
-      return resolveQuestAction(dieRoll: Self.effectiveDie(dieRoll), reward: reward, isHeroic: false)
+    case .quest(.quest(let isHeroic, let dieRoll, let reward, let pointsSpent)) where !isHeroic:
+      return resolveQuestAction(
+        dieRoll: Self.effectiveDie(dieRoll), reward: reward, isHeroic: false, pointsSpent: pointsSpent)
 
     default:
       return []
@@ -166,9 +176,10 @@ extension LoD.State {
   }
 
   private mutating func resolveQuestAction(
-    dieRoll: Int, reward: LoD.QuestRewardParams, isHeroic: Bool
+    dieRoll: Int, reward: LoD.QuestRewardParams, isHeroic: Bool, pointsSpent: Int
   ) -> [Log] {
-    let result = attemptQuest(isHeroic: isHeroic, dieRoll: dieRoll, additionalDRM: questDRM())
+    let result = attemptQuest(
+      isHeroic: isHeroic, dieRoll: dieRoll, additionalDRM: questDRM(), pointsSpent: pointsSpent)
     let label = isHeroic ? "heroic" : "action"
     var logs = [Log(msg: "Quest (\(label)): \(result)")]
     if result == .success {
@@ -188,8 +199,9 @@ extension LoD.State {
       let success = rally(dieRoll: Self.effectiveDie(dieRoll), drm: drm)
       return [Log(msg: "Rally: \(success ? "success" : "failed")")]
 
-    case .quest(.quest(let isHeroic, let dieRoll, let reward)) where isHeroic:
-      return resolveQuestAction(dieRoll: Self.effectiveDie(dieRoll), reward: reward, isHeroic: true)
+    case .quest(.quest(let isHeroic, let dieRoll, let reward, let pointsSpent)) where isHeroic:
+      return resolveQuestAction(
+        dieRoll: Self.effectiveDie(dieRoll), reward: reward, isHeroic: true, pointsSpent: pointsSpent)
 
     default:
       return []
@@ -213,18 +225,10 @@ extension LoD.State {
     return logs
   }
 
-  /// The phase an action belongs to (for returning after Paladin re-roll).
+  /// The phase to return to after Paladin re-roll. Always .action in the merged phase.
   static func phaseForDieRollAction(_ action: LoD.Action) -> LoD.Phase {
-    switch action {
-    case .combat, .build, .magic(.chant):
-      return .action
-    case .quest(.quest(let isHeroic, _, _)):
-      return isHeroic ? .heroic : .action
-    case .heroic(.heroicAttack), .heroic(.rally):
-      return .heroic
-    default:
-      return .action
-    }
+    _ = action // all die-roll actions now occur in .action phase
+    return .action
   }
 }
 
@@ -293,6 +297,40 @@ extension LoD {
 
     state.phase = .card
 
+    return state
+  }
+
+  // MARK: - Greenskin Random Setup (Scenario 1 card variant)
+
+  /// Greenskin Random Set Up table (Scenario 1 card).
+  private static func greenskinRandomArmyTypes(dieRoll: Int) -> [LoD.ArmySlot: LoD.ArmyType] {
+    switch dieRoll {
+    case 1:
+      [.east: .goblin, .west: .goblin, .gate1: .orc, .gate2: .orc, .terror: .troll, .sky: .dragon]
+    case 2:
+      [.east: .orc, .west: .goblin, .gate1: .orc, .gate2: .goblin, .terror: .troll, .sky: .dragon]
+    case 3:
+      [.east: .goblin, .west: .orc, .gate1: .orc, .gate2: .goblin, .terror: .troll, .sky: .dragon]
+    case 4:
+      [.east: .orc, .west: .orc, .gate1: .goblin, .gate2: .goblin, .terror: .troll, .sky: .dragon]
+    case 5:
+      [.east: .goblin, .west: .orc, .gate1: .orc, .gate2: .troll, .terror: .orc, .sky: .dragon]
+    case 6:
+      [.east: .orc, .west: .goblin, .gate1: .goblin, .gate2: .troll, .terror: .goblin, .sky: .dragon]
+    default:
+      greenskinRandomArmyTypes(dieRoll: 1)
+    }
+  }
+
+  /// Create the initial state for the Greenskin Horde scenario with random army placement.
+  /// Uses the standard setup positions but randomized army types per the Scenario 1 card table.
+  static func greenskinRandomSetup(
+    dieRoll: Int,
+    windsOfMagicArcane: Int,
+    heroes: [LoD.HeroType] = [.warrior, .wizard, .cleric]
+  ) -> State {
+    var state = greenskinSetup(windsOfMagicArcane: windsOfMagicArcane, heroes: heroes)
+    state.armyType = greenskinRandomArmyTypes(dieRoll: dieRoll)
     return state
   }
 }

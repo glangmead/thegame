@@ -14,7 +14,7 @@ extension LoD {
       name: "Heroic Phase",
       rules: [
         GameRule(
-          condition: { $0.phase == .heroic && $0.heroicBudgetRemaining > 0 && !$0.isInSubResolution },
+          condition: { $0.phase == .action && $0.heroicBudgetRemaining > 0 && !$0.isInSubResolution },
           actions: { state in
             var actions: [Action] = []
             let heroes = state.livingHeroes.filter { hero in
@@ -58,7 +58,7 @@ extension LoD {
           return (logs, [])
 
         case .heroic(.heroicAttack), .heroic(.rally):
-          let heroicLogs = state.resolveDieRollWithPaladinCheck(action, phase: .heroic)
+          let heroicLogs = state.resolveDieRollWithPaladinCheck(action, phase: .action)
           return (heroicLogs, [])
 
         default:

@@ -107,12 +107,12 @@ extension LoD {
     case skipEvent                          // card has no event
     case resolveEvent(EventResolution)      // card has event
 
-    // -- Action phase (ungrouped) --
+    // -- Player turn (ungrouped) --
     case rogueMove(HeroLocation)           // free move, no action cost (rule 10.4)
-    case passActions
+    case endPlayerTurn
 
-    // -- Heroic phase (ungrouped) --
-    case passHeroics
+    // -- Bloody battle placement choice (Gate tie) --
+    case chooseBloodyBattle(ArmySlot)
 
     // -- Paladin re-roll (rule 10.2) --
     case paladinReroll(newDieRoll: Int)
@@ -140,9 +140,9 @@ extension LoD {
       case .skipEvent: return "Skip Event"
       case .resolveEvent(let event):
         return event.dieRoll > 0 ? "Resolve Event (roll \(event.dieRoll))" : "Resolve Event"
+      case .chooseBloodyBattle(let slot): return "Place Bloody Battle on \(slot)"
       case .rogueMove(let loc): return "Rogue Move → \(loc)"
-      case .passActions: return "Pass Actions"
-      case .passHeroics: return "Pass Heroics"
+      case .endPlayerTurn: return "End Turn"
       case .paladinReroll(let roll): return "Paladin Re-roll (\(roll))"
       case .declineReroll: return "Decline Re-roll"
       case .performHousekeeping: return "End Turn"

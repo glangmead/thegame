@@ -2,7 +2,7 @@
 //  LoDComposedGameActionTests.swift
 //  DynamicalSystems
 //
-//  Tests for LoD composed game action phase and heroic phase.
+//  Tests for LoD composed game action phase (actions and heroics interleaved).
 //
 
 import Testing
@@ -33,42 +33,45 @@ struct LoDComposedGameActionTests {
     _ = game.reduce(into: &state, action: .magic(.chant(dieRoll: 6)))
     #expect(state.actionBudgetRemaining == 3)
 
-    // Pass with budget remaining
+    // End turn with budget remaining
     let actions = game.allowedActions(state: state)
-    #expect(actions.contains(.passActions))
+    #expect(actions.contains(.endPlayerTurn))
   }
 
   @Test
   func composedGameActionBudgetExhausted() {
-    // Use a card with 1 action point. After one action, only pass is offered.
-    // Card #26 has 1 action point.
+    // Use a card with 1 action point. After one action, action-cost options
+    // (combat, build, magic, non-heroic quest) should not be offered,
+    // but heroic options remain if heroic budget > 0.
+    // Card #26 has 1 action, 3 heroics, event "Council of Heroes".
     let card26 = LoD.nightCards.first { $0.number == 26 }!
-    // We need to be on a night time space to draw night cards.
-    // Instead, just set up manually.
     let game = LoD.composedGame(
       windsOfMagicArcane: 3,
-      shuffledDayCards: [card26], // Put night card in day pile for test
+      shuffledDayCards: [card26],
       shuffledNightCards: LoD.nightCards
     )
     var state = game.newState()
 
-    // Card 26 has event "Council of Heroes", so we need to resolve it.
     _ = game.reduce(into: &state, action: .drawCard)
-
-    // Card 26 has event, so we're in event phase
     if state.phase == .event {
       _ = game.reduce(into: &state, action: .resolveEvent(LoD.EventResolution()))
     }
     #expect(state.phase == .action)
-    #expect(state.actionBudget == 1)
+    #expect(state.actionBudgetRemaining == 1)
 
-    // Do one chant
+    // Do one chant — exhausts action budget
     _ = game.reduce(into: &state, action: .magic(.chant(dieRoll: 6)))
     #expect(state.actionBudgetRemaining == 0)
+    #expect(state.heroicBudgetRemaining == 3)
 
-    // Only pass should be offered
+    // Action-cost options gone, heroic options remain
     let actions = game.allowedActions(state: state)
-    #expect(actions == [.passActions])
+    #expect(!actions.contains(where: { if case .combat = $0 { return true }; return false }))
+    #expect(!actions.contains(where: { if case .build = $0 { return true }; return false }))
+    #expect(!actions.contains(where: { if case .magic = $0 { return true }; return false }))
+    #expect(actions.contains(.endPlayerTurn))
+    // Heroic actions still available
+    #expect(actions.contains(where: { if case .heroic = $0 { return true }; return false }))
   }
 
   @Test
@@ -86,6 +89,10 @@ struct LoDComposedGameActionTests {
     state.armyPosition[.east] = 2
 
     _ = game.reduce(into: &state, action: .drawCard)
+    // Resolve Gate bloody battle tie if needed (card #3 has gate BB)
+    if state.pendingBloodyBattleChoices != nil {
+      _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+    }
     #expect(state.phase == .action)
 
     // Melee attack on east with a strong roll
@@ -115,17 +122,21 @@ struct LoDComposedGameActionTests {
 
     // Ranged attack on east army (at space 5 after advance)
     let eastPos = state.armyPosition[.east]!
-    _ = game.reduce(into: &state, action: .combat(.rangedAttack(.east, dieRoll: 6, bloodyBattleDefender: nil, useMagicBow: nil)))
+    _ = game.reduce(
+      into: &state,
+      action: .combat(.rangedAttack(
+        .east, dieRoll: 6,
+        bloodyBattleDefender: nil, useMagicBow: nil)))
 
     // Roll 6 + card2 gate DRM (doesn't apply to east) vs goblin str 2 → hit
     #expect(state.armyPosition[.east]! > eastPos)
   }
 
-  // MARK: - Heroic Phase Tests
+  // MARK: - Heroic Action Tests
 
   @Test
-  func composedGameHeroicPhase() {
-    // After passing actions, we enter heroic phase.
+  func composedGameHeroicActionsInActionPhase() {
+    // Heroic actions are available in the action phase alongside regular actions.
     let card2 = LoD.dayCards.first { $0.number == 2 }!
     let game = LoD.composedGame(
       windsOfMagicArcane: 3,
@@ -134,14 +145,13 @@ struct LoDComposedGameActionTests {
     )
     var state = game.newState()
     _ = game.reduce(into: &state, action: .drawCard)
-    _ = game.reduce(into: &state, action: .passActions)
-    #expect(state.phase == .heroic)
+    #expect(state.phase == .action)
     #expect(state.heroicBudget == 2) // card 2 has heroics: 2
     #expect(state.heroicBudgetRemaining == 2)
 
     let actions = game.allowedActions(state: state)
-    // Should offer moveHero, rally, passHeroics, etc.
-    #expect(actions.contains(.passHeroics))
+    // Should offer moveHero, rally, endPlayerTurn, etc.
+    #expect(actions.contains(.endPlayerTurn))
     #expect(actions.contains(where: { if case .heroic(.moveHero) = $0 { return true }; return false }))
     #expect(actions.contains(where: { if case .heroic(.rally) = $0 { return true }; return false }))
   }
@@ -160,8 +170,7 @@ struct LoDComposedGameActionTests {
     state.armyPosition[.east] = 3
 
     _ = game.reduce(into: &state, action: .drawCard)
-    _ = game.reduce(into: &state, action: .passActions)
-    #expect(state.phase == .heroic)
+    #expect(state.phase == .action)
 
     // Move warrior to east track
     _ = game.reduce(into: &state, action: .heroic(.moveHero(.warrior, .onTrack(.east))))
@@ -171,10 +180,6 @@ struct LoDComposedGameActionTests {
     // Heroic attack with warrior on east army
     _ = game.reduce(into: &state, action: .heroic(.heroicAttack(.warrior, .east, dieRoll: 5)))
     #expect(state.heroicBudgetRemaining == 0)
-
-    // Budget exhausted → only pass offered
-    let actions = game.allowedActions(state: state)
-    #expect(actions == [.passHeroics])
   }
 
   @Test
@@ -189,7 +194,6 @@ struct LoDComposedGameActionTests {
     state.morale = .low
 
     _ = game.reduce(into: &state, action: .drawCard)
-    _ = game.reduce(into: &state, action: .passActions)
 
     // Rally with high roll → morale should raise
     _ = game.reduce(into: &state, action: .heroic(.rally(dieRoll: 6)))
@@ -197,8 +201,8 @@ struct LoDComposedGameActionTests {
   }
 
   @Test
-  func composedGameHeroicPassCascadesToHousekeeping() {
-    // passHeroics should auto-cascade to performHousekeeping.
+  func composedGameEndTurnCascadesToHousekeeping() {
+    // endPlayerTurn should auto-cascade to performHousekeeping.
     let card2 = LoD.dayCards.first { $0.number == 2 }!
     let game = LoD.composedGame(
       windsOfMagicArcane: 3,
@@ -207,8 +211,7 @@ struct LoDComposedGameActionTests {
     )
     var state = game.newState()
     _ = game.reduce(into: &state, action: .drawCard)
-    _ = game.reduce(into: &state, action: .passActions)
-    _ = game.reduce(into: &state, action: .passHeroics)
+    _ = game.reduce(into: &state, action: .endPlayerTurn)
 
     // Should be back to card phase after housekeeping
     #expect(state.phase == .card)

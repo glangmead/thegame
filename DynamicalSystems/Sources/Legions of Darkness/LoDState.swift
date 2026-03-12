@@ -154,6 +154,10 @@ extension LoD {
     /// Whether wounded heroes cannot act this turn (Council of Heroes).
     var woundedHeroesCannotAct: Bool = false
 
+    /// Snapshot of action budget at start of player turn (rule 6.1.1).
+    /// Mid-turn morale changes don't affect budget until next turn.
+    var snapshotActionBudget: Int?
+
     // MARK: - Items (quest rewards)
 
     /// State for the Magic Sword item (non-nil = held). Consumed on use.
@@ -168,9 +172,13 @@ extension LoD {
     var fortuneState: FortuneState?
     var deathAndDespairState: DeathAndDespairState?
 
+    /// Pending player choice for bloody battle marker when Gate armies are tied.
+    var pendingBloodyBattleChoices: [ArmySlot]?
+
     /// Whether a multi-step sub-resolution is in progress, blocking normal action pages.
     var isInSubResolution: Bool {
       chainLightningState != nil || fortuneState != nil || deathAndDespairState != nil
+        || pendingBloodyBattleChoices != nil
     }
 
     // MARK: - Victory / defeat (rule 11.0)
@@ -276,8 +284,8 @@ extension LoD {
           return count
         case .combat, .build, .magic:
           count += 1
-        case .quest(.quest(isHeroic: false, _, _)):
-          count += 1
+        case .quest(.quest(isHeroic: false, _, _, let pointsSpent)):
+          count += pointsSpent
         default:
           break
         }
@@ -285,17 +293,17 @@ extension LoD {
       return count
     }
 
-    /// Count heroic-phase actions taken this turn (since last .passActions).
+    /// Count heroic actions taken this turn (since last event resolution).
     var heroicPointsSpent: Int {
       var count = 0
       for action in history.reversed() {
         switch action {
-        case .passActions:
+        case .skipEvent, .resolveEvent:
           return count
         case .heroic:
           count += 1
-        case .quest(.quest(isHeroic: true, _, _)):
-          count += 1
+        case .quest(.quest(isHeroic: true, _, _, let pointsSpent)):
+          count += pointsSpent
         default:
           break
         }
@@ -304,8 +312,10 @@ extension LoD {
     }
 
     /// Remaining action points this turn.
+    /// Uses snapshot if available (rule 6.1.1: mid-turn morale changes don't affect budget).
     var actionBudgetRemaining: Int {
-      max(actionBudget - actionPointsSpent, 0)
+      let budget = snapshotActionBudget ?? actionBudget
+      return max(budget - actionPointsSpent, 0)
     }
 
     /// Remaining heroic points this turn.

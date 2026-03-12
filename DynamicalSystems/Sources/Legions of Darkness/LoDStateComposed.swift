@@ -191,6 +191,7 @@ extension LoD.State {
     eventAttackDRMBonus = 0
     noMeleeThisTurn = false
     woundedHeroesCannotAct = false
+    snapshotActionBudget = nil
   }
 
   // MARK: - DRM Helpers (for RulePages)
@@ -276,11 +277,9 @@ extension LoD.State {
         drm += cardDRM.value
       }
     }
-    // Paladin on a wall track gives +1 to rally (rule 10.2)
-    if let paladinLoc = heroLocation[.paladin], !heroDead.contains(.paladin) {
-      if case .onTrack(let track) = paladinLoc, track.isWall {
-        drm += 1
-      }
+    // Paladin gives +1 to rally regardless of location (rule 10.2)
+    if heroLocation[.paladin] != nil, !heroDead.contains(.paladin) {
+      drm += 1
     }
     if inspireDRMActive { drm += 1 }
     return drm

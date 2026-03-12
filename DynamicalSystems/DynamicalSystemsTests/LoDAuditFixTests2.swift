@@ -188,6 +188,10 @@ struct LoDAuditFixTests2 {
     )
     var state = game.newState()
     _ = game.reduce(into: &state, action: .drawCard)
+    // Card #3 has gate BB; default positions tied → resolve choice first
+    if state.pendingBloodyBattleChoices != nil {
+      _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+    }
     state.breaches.insert(.east)
     let actions = game.allowedActions(state: state)
     let barricadeActions = actions.filter {
@@ -195,6 +199,125 @@ struct LoDAuditFixTests2 {
       return false
     }
     #expect(!barricadeActions.isEmpty)
+  }
+
+  // MARK: - Barricade Test Verification (rule 4.1.3)
+
+  @Test
+  func barricadeTestRollAtStrengthBreaksThrough() {
+    // Rule 4.1.3: Army must roll Strength or less to advance to 0
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.breaches.insert(.east)
+    state.barricades.insert(.east)
+    state.armyPosition[.east] = 1
+    // Goblin strength = 2, roll 2 (equal) => breaks through
+    let result = state.advanceArmy(.east, dieRoll: 2)
+    #expect(result == .armyBrokeBarricade(.east))
+    #expect(state.ended)
+  }
+
+  @Test
+  func barricadeTestRollAboveStrengthBlocks() {
+    // Rule 4.1.3: Roll > strength => army doesn't advance, barricade flips to breach
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.breaches.insert(.east)
+    state.barricades.insert(.east)
+    state.armyPosition[.east] = 1
+    // Goblin strength = 2, roll 3 => blocked
+    let result = state.advanceArmy(.east, dieRoll: 3)
+    #expect(result == .barricadeHeld(.east))
+    #expect(state.armyPosition[.east] == 1, "Army stays at space 1")
+    #expect(!state.barricades.contains(.east), "Barricade consumed")
+    #expect(state.breaches.contains(.east), "Track is now breached")
+    #expect(!state.ended)
+  }
+
+  @Test
+  func barricadeTestRollBelowStrengthBreaksThrough() {
+    // Rule 4.1.3: Roll 1 against strength 2 => breaks through
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.breaches.insert(.east)
+    state.barricades.insert(.east)
+    state.armyPosition[.east] = 1
+    // Goblin strength = 2, roll 1 => breaks through
+    let result = state.advanceArmy(.east, dieRoll: 1)
+    #expect(result == .armyBrokeBarricade(.east))
+    #expect(state.ended)
+  }
+
+  // MARK: - Audit Fix #9: Bloody Battle Gate Tie (rule 4.3)
+
+  @Test
+  func gateBloodyBattleTieSetsSubResolution() {
+    // When both Gate armies equidistant, pendingBloodyBattleChoices should be set
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    #expect(state.pendingBloodyBattleChoices == nil)
+    state.pendingBloodyBattleChoices = [.gate1, .gate2]
+    #expect(state.isInSubResolution)
+  }
+
+  @Test
+  func composedGameGateBloodyBattleTieOffersChoice() {
+    // Use card #3 which has gate bloody battle and no advances
+    let card3 = LoD.dayCards.first { $0.number == 3 }!
+    #expect(card3.bloodyBattle == .gate)
+    let game = LoD.composedGame(
+      windsOfMagicArcane: 3,
+      shuffledDayCards: Array(repeating: card3, count: 20),
+      shuffledNightCards: LoD.nightCards
+    )
+    var state = game.newState()
+    // Set gate armies equidistant BEFORE drawCard (which chains to advanceArmies)
+    state.armyPosition[.gate1] = 3
+    state.armyPosition[.gate2] = 3
+    _ = game.reduce(into: &state, action: .drawCard)
+    // Should offer choice, not auto-place
+    let actions = game.allowedActions(state: state)
+    #expect(actions.contains(.chooseBloodyBattle(.gate1)))
+    #expect(actions.contains(.chooseBloodyBattle(.gate2)))
+  }
+
+  @Test
+  func composedGameGateBloodyBattleNotTiedPicksClosest() {
+    // When gate armies not tied, auto-pick closest
+    let card3 = LoD.dayCards.first { $0.number == 3 }!
+    let game = LoD.composedGame(
+      windsOfMagicArcane: 3,
+      shuffledDayCards: Array(repeating: card3, count: 20),
+      shuffledNightCards: LoD.nightCards
+    )
+    var state = game.newState()
+    // gate1 closer than gate2, set BEFORE drawCard
+    state.armyPosition[.gate1] = 2
+    state.armyPosition[.gate2] = 4
+    _ = game.reduce(into: &state, action: .drawCard)
+    // Should auto-place on gate1 (closest) and proceed
+    #expect(state.bloodyBattleArmy == .gate1)
+    #expect(state.pendingBloodyBattleChoices == nil)
+  }
+
+  @Test
+  func composedGameChooseBloodyBattleResolvesAndTransitions() {
+    // After choosing, should clear pending state and transition
+    let card3 = LoD.dayCards.first { $0.number == 3 }!
+    let game = LoD.composedGame(
+      windsOfMagicArcane: 3,
+      shuffledDayCards: Array(repeating: card3, count: 20),
+      shuffledNightCards: LoD.nightCards
+    )
+    var state = game.newState()
+    // Set gate armies equidistant BEFORE drawCard
+    state.armyPosition[.gate1] = 3
+    state.armyPosition[.gate2] = 3
+    _ = game.reduce(into: &state, action: .drawCard)
+    // Should be pending BB choice
+    #expect(state.pendingBloodyBattleChoices != nil)
+    // Choose gate2
+    _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate2))
+    #expect(state.bloodyBattleArmy == .gate2)
+    #expect(state.pendingBloodyBattleChoices == nil)
+    // Card #3 has no event → should have transitioned past event to action
+    #expect(state.phase == .action)
   }
 
   // MARK: - Audit Fix #10: Multi-Point Quest Spending (rule 7.0)
@@ -214,6 +337,33 @@ struct LoDAuditFixTests2 {
     // With 2 points: roll 5 + 2 = 7 > 6 → success
     let result2 = state.attemptQuest(isHeroic: false, dieRoll: 5, additionalDRM: 0, pointsSpent: 2)
     #expect(result2 == .success)
+  }
+
+  @Test
+  func questHeroicMultiPointGivesDoubleDRM() {
+    // Rule 7.0: Heroic quest spending gives +2 DRM per point
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    let card3 = LoD.dayCards.first { $0.number == 3 }!
+    state.currentCard = card3
+    let target = card3.quest!.target  // 6
+    // roll (target-3) + 2*2 = target-3+4 = target+1 > target => success
+    let result = state.attemptQuest(isHeroic: true, dieRoll: target - 3, pointsSpent: 2)
+    #expect(result == .success)
+  }
+
+  @Test
+  func questMultiPointSpendingCostsMultipleBudgetPoints() {
+    // Rule 7.0: Spending N points on quest costs N from the budget
+    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
+    state.phase = .action
+    let card3 = LoD.dayCards.first { $0.number == 3 }!
+    state.currentCard = card3
+    state.snapshotActionBudget = state.actionBudget
+    state.history.append(.skipEvent)
+    // Spend 2 action points on quest
+    state.history.append(.quest(.quest(
+      isHeroic: false, dieRoll: 4, reward: LoD.QuestRewardParams(), pointsSpent: 2)))
+    #expect(state.actionPointsSpent == 2)
   }
 
 }

@@ -107,13 +107,14 @@ extension LoD {
   enum QuestAction: ActionGroup, CustomStringConvertible {
     static let groupName = "Quest"
 
-    case quest(isHeroic: Bool, dieRoll: Int, reward: QuestRewardParams)
+    case quest(isHeroic: Bool, dieRoll: Int, reward: QuestRewardParams, pointsSpent: Int = 1)
 
     var description: String {
       switch self {
-      case .quest(let isHeroic, let roll, _):
+      case .quest(let isHeroic, let roll, _, let pts):
         let label = isHeroic ? "Heroic Quest" : "Quest"
-        return roll > 0 ? "\(label) (roll \(roll))" : label
+        let spendLabel = pts > 1 ? " (spend \(pts))" : ""
+        return roll > 0 ? "\(label)\(spendLabel) (roll \(roll))" : "\(label)\(spendLabel)"
       }
     }
   }

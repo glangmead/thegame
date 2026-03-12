@@ -2,7 +2,7 @@
 //  LoDGamePagesQuest.swift
 //  DynamicalSystems
 //
-//  Legions of Darkness — Quest rule page (action and heroic phase quests).
+//  Legions of Darkness — Quest rule page (action and heroic quests in unified player turn).
 //
 
 import Foundation
@@ -13,31 +13,32 @@ extension LoD {
     RulePage(
       name: "Quest",
       rules: [
-        // Action phase quest
         GameRule(
           condition: {
-            $0.phase == .action && $0.actionBudgetRemaining > 0 && $0.currentCard?.quest != nil
-              && !$0.isInSubResolution
+            $0.phase == .action && $0.currentCard?.quest != nil && !$0.isInSubResolution
+              && ($0.actionBudgetRemaining > 0 || $0.heroicBudgetRemaining > 0)
           },
-          actions: { _ in
-            [.quest(.quest(isHeroic: false, dieRoll: 0, reward: QuestRewardParams()))]
-          }
-        ),
-        // Heroic phase quest
-        GameRule(
-          condition: {
-            $0.phase == .heroic && $0.heroicBudgetRemaining > 0 && $0.currentCard?.quest != nil
-              && !$0.isInSubResolution
-          },
-          actions: { _ in
-            [.quest(.quest(isHeroic: true, dieRoll: 0, reward: QuestRewardParams()))]
+          actions: { state in
+            var actions: [Action] = []
+            // Action-point spending: +1 DRM per point (rule 7.0)
+            let maxAction = state.actionBudgetRemaining
+            for pts in 1...max(1, maxAction) {
+              actions.append(.quest(.quest(
+                isHeroic: false, dieRoll: 0, reward: QuestRewardParams(), pointsSpent: pts)))
+            }
+            // Heroic-point spending: +2 DRM per point (rule 7.0)
+            let maxHeroic = state.heroicBudgetRemaining
+            for pts in 1...max(1, maxHeroic) {
+              actions.append(.quest(.quest(
+                isHeroic: true, dieRoll: 0, reward: QuestRewardParams(), pointsSpent: pts)))
+            }
+            return actions
           }
         )
       ],
       reduce: { state, action in
         guard case .quest = action else { return nil }
-        let phase: Phase = state.phase == .heroic ? .heroic : .action
-        let logs = state.resolveDieRollWithPaladinCheck(action, phase: phase)
+        let logs = state.resolveDieRollWithPaladinCheck(action, phase: .action)
         return (logs, [])
       }
     )

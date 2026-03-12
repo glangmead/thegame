@@ -28,6 +28,10 @@ struct LoDPaladinRerollTests {
     var state = game.newState()
     state.armyPosition[.east] = 1  // melee range
     _ = game.reduce(into: &state, action: .drawCard)
+    // Resolve Gate bloody battle tie if needed (card #3 has gate BB)
+    if state.pendingBloodyBattleChoices != nil {
+      _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+    }
     #expect(state.phase == .action)
 
     // Perform a melee attack — should enter paladinReact phase
@@ -153,6 +157,10 @@ struct LoDPaladinRerollTests {
     state.heroDead.insert(.paladin)
     state.armyPosition[.east] = 1
     _ = game.reduce(into: &state, action: .drawCard)
+    // Resolve Gate bloody battle tie if needed (card #3 has gate BB)
+    if state.pendingBloodyBattleChoices != nil {
+      _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+    }
 
     _ = game.reduce(
       into: &state,
@@ -164,7 +172,7 @@ struct LoDPaladinRerollTests {
   }
 
   @Test
-  func paladinRerollWorksInHeroicPhase() {
+  func paladinRerollWorksForHeroicAttack() {
     // Paladin re-roll also works for heroic attacks.
     let card3 = LoD.dayCards.first { $0.number == 3 }!
     let game = LoD.composedGame(
@@ -177,8 +185,11 @@ struct LoDPaladinRerollTests {
     state.heroLocation[.paladin] = .onTrack(.east)
     state.armyPosition[.east] = 3
     _ = game.reduce(into: &state, action: .drawCard)
-    _ = game.reduce(into: &state, action: .passActions)
-    #expect(state.phase == .heroic)
+    // Resolve Gate bloody battle tie if needed (card #3 has gate BB)
+    if state.pendingBloodyBattleChoices != nil {
+      _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+    }
+    #expect(state.phase == .action)
 
     // Heroic attack: should enter paladinReact
     _ = game.reduce(into: &state, action: .heroic(.heroicAttack(.paladin, .east, dieRoll: 1)))
@@ -186,7 +197,7 @@ struct LoDPaladinRerollTests {
 
     // Re-roll with 6: paladin combatDRM = 1, so 6 + 1 = 7 > goblin str 2 → hit
     _ = game.reduce(into: &state, action: .paladinReroll(newDieRoll: 6))
-    #expect(state.phase == .heroic)  // returns to heroic phase
+    #expect(state.phase == .action)  // returns to action phase
     #expect(state.armyPosition[.east]! == 4)  // pushed back
   }
 

@@ -33,8 +33,7 @@ struct LoDGameLoopTests {
       let actions = game.allowedActions(state: state)
       #expect(actions.contains(.drawCard), "Turn \(turn): expected drawCard in \(state.phase)")
       _ = game.reduce(into: &state, action: .drawCard)
-      _ = game.reduce(into: &state, action: .passActions)
-      _ = game.reduce(into: &state, action: .passHeroics)
+      _ = game.reduce(into: &state, action: .endPlayerTurn)
     }
 
     // After 15 turns with time: 1 each, we should be at Final Twilight
@@ -70,8 +69,7 @@ struct LoDGameLoopTests {
     var turnCount = 0
     while !state.ended && turnCount < 20 {
       _ = game.reduce(into: &state, action: .drawCard)
-      _ = game.reduce(into: &state, action: .passActions)
-      _ = game.reduce(into: &state, action: .passHeroics)
+      _ = game.reduce(into: &state, action: .endPlayerTurn)
       turnCount += 1
     }
 

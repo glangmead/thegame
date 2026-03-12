@@ -35,7 +35,7 @@ struct LoDSubResolutionIntegrationTests {
     // Normal actions should be available again
     let postActions = game.allowedActions(state: state)
     let hasCombat = postActions.contains { if case .combat = $0 { return true }; return false }
-    let hasPass = postActions.contains { if case .passActions = $0 { return true }; return false }
+    let hasPass = postActions.contains { if case .endPlayerTurn = $0 { return true }; return false }
     #expect(hasCombat || hasPass, "Normal actions should resume after sub-resolution")
   }
 

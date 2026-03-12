@@ -42,7 +42,44 @@ See [vassal_reference_manual.md](vassal_reference_manual.md) for how to interpre
 
 **Rules PDF gives verbs — and is the primary source of truth.** Read the entire
 rulebook carefully, section by section. **Account for every single sentence.**
-For each rule section, extract:
+
+**Produce a sentence-level JSON as the primary Phase 1 deliverable.** Extract
+every sentence from the rulebook into a JSON array stored at
+`docs/<game>_rules_sentences.json`. Each entry has:
+
+```json
+{
+  "section": "4.1.2",
+  "sentence": "The first time an army would advance from the 1 to the 0 space, instead remove any upgrade on that track from the game and add a breach marker to that track's castle circle.",
+  "category": "rule",
+  "status": "not_started",
+  "evaluation": ""
+}
+```
+
+Fields:
+- `section`: rule number from the PDF
+- `sentence`: the exact sentence text
+- `category`: one of `rule` (requires implementation), `flavor` (no implementation),
+  `formatting` (visual/typographic convention), `example` (illustrative only),
+  `cross_reference` (just points to another section)
+- `status`: one of `not_started`, `implemented`, `partially_implemented`,
+  `not_implemented` (consciously skipped), `not_applicable`
+- `evaluation`: free text noting which code/tests handle this sentence, or why
+  it's skipped. Include file names, function names, and test names.
+
+This JSON is the single source of truth for coverage. It serves as:
+- The study artifact (Phase 1) — forces you to read every sentence
+- The implementation checklist (Phases 3–5) — update status as you go
+- The audit checklist (Phase 5a) — scan for `not_started` entries
+- The deliverable for user review — they can see exactly what's covered
+
+Categorizing sentences is fast and valuable. Roughly 30% of sentences will be
+`flavor`, `formatting`, `example`, or `cross_reference` — marking them upfront
+prevents wasted effort during implementation. The remaining `rule` sentences are
+your implementation backlog.
+
+For each `rule` sentence, also extract during this read:
 - The exact mechanic (what triggers it, what it does, what limits apply)
 - Edge cases mentioned in the text (e.g., "except magical attacks")
 - Constraints that are easy to miss (e.g., "once per turn", "only on wall tracks")
@@ -188,18 +225,41 @@ Implement rules as mutating functions on the State struct. Work section by secti
 2. Write the test (red) with a rule citation comment
 3. Implement to make the test pass (green)
 4. Run `RunSomeTests` to verify
-5. Move to the next rule
+5. Update the sentence JSON: set `status` to `implemented` and fill in
+   `evaluation` with the test name(s) and source file(s) that cover the sentence
+6. Move to the next rule
+
+**The sentence JSON drives the work.** Filter for `category: "rule"` entries
+with `status: "not_started"` to find what's left. Working section by section
+through the JSON ensures nothing is skipped. At the end of each work session,
+the JSON reflects exactly what has and hasn't been covered.
 
 **Do not present each test to the user for confirmation.** Work autonomously
 through the rules. The user will review the code at natural milestones (end of a
 phase, end of a major rule section). Report progress as a summary table of tests
 added and rules covered.
 
-### Phase 5a: Audit — Re-Read the Entire PDF
+### Phase 5a: Audit — Scan the Sentence JSON
 
-**This is the most critical phase.** After the initial implementation pass, re-read
-the rules PDF from cover to cover and compare every statement against the existing
-implementation. This audit typically finds 10-15 issues per game. Common categories:
+**This is the most critical phase.** After the initial implementation pass, scan
+the sentence JSON for gaps. The mechanical process:
+
+1. Filter for all entries with `category: "rule"` and `status: "not_started"`.
+   These are rules you missed entirely. For each, decide: implement it, or mark
+   `not_implemented` with a justification (e.g., "Undead scenario not yet scoped").
+
+2. Filter for `status: "implemented"`. For each, re-read the original sentence
+   and verify the `evaluation` field is accurate. Check that the cited tests
+   actually test what the sentence says. This is where subtle misimplementations
+   surface — the sentence says X, the code does something close but not quite X.
+
+3. Filter for `status: "partially_implemented"`. These are known gaps. Decide
+   whether to finish them now or defer.
+
+4. Produce a summary file (`docs/<game>_rules_audit_summary.md`) listing
+   "Not Implemented" and "Potential Issues" sections, with sentence references.
+
+This audit typically finds 10-15 issues per game. Common categories:
 
 **Mechanic misclassification:**
 - Upgrade was implemented as a DRM when it's actually a breach-prevention roll
@@ -500,20 +560,27 @@ SpriteKit rendering using Vassal board/piece images. This phase uses `SceneConfi
 
 ## Rules PDF Reading Strategy
 
-The PDF should be read **at least three times** during implementation:
+The PDF should be read **at least three times** during implementation. The
+sentence-level JSON turns each read into a concrete, traceable activity.
 
-1. **First read (Phase 1):** Survey pass. Understand the game's structure, phases,
-   and major mechanics. Take notes on rule sections and cross-references.
+1. **First read (Phase 1) — Extraction.** Read cover-to-cover and extract every
+   sentence into the JSON. Categorize each as `rule`, `flavor`, `formatting`,
+   `example`, or `cross_reference`. Set all `rule` entries to `status: "not_started"`.
+   This produces the implementation backlog. Also identify nested-choice mechanics
+   and catalog them separately (see Phase 1 details).
 
-2. **Second read (Phase 5):** Implementation pass. Read each section immediately
-   before writing its tests and implementation. Pay attention to:
-   - Exact wording of constraints ("must", "may", "cannot", "once per turn")
-   - Parenthetical exceptions ("except magical attacks")
-   - References to other sections ("see 6.3")
+2. **Second read (Phase 5) — Implementation.** Work through `rule` entries section
+   by section. Before writing each test, re-read the sentence. After the test
+   passes, update the JSON entry's `status` to `implemented` and fill in
+   `evaluation` with file/test references. At any point, filtering for
+   `not_started` shows exactly what remains.
 
-3. **Third read (Phase 5a):** Audit pass. Read cover-to-cover with the implemented
-   tests open. For each rule statement, verify there's a corresponding test. Flag
-   any discrepancy. This pass is where most bugs are found.
+3. **Third read (Phase 5a) — Audit.** Scan the JSON mechanically:
+   - Any `rule` entry still `not_started`? Implement it or mark `not_implemented`.
+   - For each `implemented` entry, re-read the sentence and verify the evaluation
+     is accurate. Does the test actually test what the sentence says? This catches
+     subtle misimplementations where the code does something close but not right.
+   - Produce the summary file.
 
 **When in doubt, re-read.** If a test fails unexpectedly or a mechanic feels wrong,
 go back to the PDF rather than guessing. The PDF is the source of truth.

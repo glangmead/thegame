@@ -114,6 +114,10 @@ struct LoDHeroDRMTests {
     )
     var state = game.newState()
     _ = game.reduce(into: &state, action: .drawCard)
+    // Resolve Gate bloody battle tie if needed (card #3 has gate BB)
+    if state.pendingBloodyBattleChoices != nil {
+      _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+    }
     #expect(state.phase == .action)
 
     let allowed = game.allowedActions(state: state)
@@ -137,6 +141,10 @@ struct LoDHeroDRMTests {
     )
     var state = game.newState()
     _ = game.reduce(into: &state, action: .drawCard)
+    // Resolve Gate bloody battle tie if needed (card #3 has gate BB)
+    if state.pendingBloodyBattleChoices != nil {
+      _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+    }
     #expect(state.phase == .action)
 
     let budgetBefore = state.actionBudgetRemaining

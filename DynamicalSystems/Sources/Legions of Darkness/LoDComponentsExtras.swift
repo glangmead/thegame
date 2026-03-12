@@ -105,7 +105,6 @@ extension LoDComponents {
     case army
     case event
     case action
-    case heroic
     case housekeeping
     case paladinReact
   }
