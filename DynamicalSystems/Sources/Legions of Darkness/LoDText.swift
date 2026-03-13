@@ -69,6 +69,7 @@ extension LoD.State: TextTableAble {
     return info.joined(separator: ", ")
   }
 
+  // swiftlint:disable:next function_body_length
   func printTable<Target>(to output: inout Target) where Target: TextOutputStream {
     let header = TextTable<LoD.State> { state in
       [
@@ -109,6 +110,16 @@ extension LoD.State: TextTableAble {
       ]
     }
     if let text = heroes.string(for: heroReports) { Swift.print(text, to: &output) }
+
+    // Card history: discard piles are in play order, current card is active
+    let played = dayDiscardPile + nightDiscardPile
+    if !played.isEmpty || currentCard != nil {
+      var cardLines: [String] = played.map { $0.title }
+      if let current = currentCard {
+        cardLines.append("\(current.title) ← current")
+      }
+      Swift.print("Cards: \(cardLines.joined(separator: " → "))", to: &output)
+    }
 
     let walls = wallSummary
     if !walls.isEmpty { Swift.print("Walls: \(walls)", to: &output) }
