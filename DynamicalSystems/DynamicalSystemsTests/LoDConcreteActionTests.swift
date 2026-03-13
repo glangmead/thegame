@@ -12,6 +12,8 @@ import Testing
 struct LoDConcreteActionTests {
 
   /// Prepare a state in the action phase with a card drawn.
+  /// Card 3 has a gate bloody battle; since both gate armies start tied at 4,
+  /// we must resolve the pending choice before reaching the action phase.
   private func actionPhaseState(windsOfMagicArcane: Int = 4) -> (LoD.State, ComposedGame<LoD.State>) {
     let card3 = LoD.dayCards.first { $0.number == 3 }!
     let game = LoD.composedGame(
@@ -21,6 +23,9 @@ struct LoDConcreteActionTests {
     )
     var state = game.newState()
     _ = game.reduce(into: &state, action: .drawCard)
+    if state.pendingBloodyBattleChoices != nil {
+      _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+    }
     return (state, game)
   }
 

@@ -15,7 +15,7 @@ extension CantStop.State: TextTableAble {
     let row: Int
     let pieces: [Piece]
     var description: String {
-      row <= CantStop.colHeights()[col]! ?
+      row <= CantStop.colHeights[col]! ?
         (
           pieces.isEmpty ? "--" :
             pieces.reduce("", { $0.description + $1.description})

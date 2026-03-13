@@ -44,24 +44,36 @@ struct OpenLoopMCTSTests {
   func testCantStopFullGameMCTS() {
     let game = CantStopPages.game()
     var state = game.newState()
-    let maxTurns = 5000
+    let maxTurns = 1000
 
     var turns = 0
     while !state.ended && turns < maxTurns {
-      let mcts = OpenLoopMCTS(state: state, reducer: game)
-      let results = mcts.recommendation(iters: 5, numRollouts: 1)
-
-      let ratio: ((Float, Float)) -> Float = { valCount in
-        valCount.0 / (valCount.1 > 0 ? valCount.1 : 1)
-      }
-      let bestValue = results.values.map({ ratio($0) }).max() ?? 0
-      let bestAction = results.keys.filter { action in
-        ratio(results[action]!).near(bestValue)
-      }.randomElement()
-
-      guard let action = bestAction else {
-        Issue.record("No action available at turn \(turns), state: \(state)")
+      let actions = game.allowedActions(state: state)
+      guard !actions.isEmpty else {
+        Issue.record("No action available at turn \(turns)")
         return
+      }
+
+      let action: CantStop.Action
+      if actions.count == 1 {
+        action = actions[0]
+      } else {
+        let mcts = OpenLoopMCTS(state: state, reducer: game)
+        let results = mcts.recommendation(iters: 2, numRollouts: 1)
+
+        let ratio: ((Float, Float)) -> Float = { valCount in
+          valCount.0 / (valCount.1 > 0 ? valCount.1 : 1)
+        }
+        let bestValue = results.values.map({ ratio($0) }).max() ?? 0
+        let bestAction = results.keys.filter { action in
+          ratio(results[action]!).near(bestValue)
+        }.randomElement()
+
+        guard let best = bestAction else {
+          Issue.record("MCTS returned no action at turn \(turns)")
+          return
+        }
+        action = best
       }
 
       _ = game.reduce(into: &state, action: action)

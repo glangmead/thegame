@@ -37,15 +37,15 @@ extension CantStop: GameComponents {
   }
 
   // For debugging -- shrink the board
-  //  static func colHeights() -> [Column: Int] {
+  //  static func colHeights -> [Column: Int] {
   //    [.two:   2,  .three: 2, .four: 2, .five:   2, .six:    2, .seven: 2,
   //      .eight: 2, .nine:  2, .ten:  2, .eleven: 2, .twelve: 2,]
   //  }
   //
-  static func colHeights() -> [Column: Int] {
-    [.two: 3, .three: 5, .four: 7, .five: 9, .six: 11, .seven: 13,
-    .eight: 11, .nine: 9, .ten: 7, .eleven: 5, .twelve: 3 ]
-  }
+  static let colHeights: [Column: Int] = [
+    .two: 3, .three: 5, .four: 7, .five: 9, .six: 11, .seven: 13,
+    .eight: 11, .nine: 9, .ten: 7, .eleven: 5, .twelve: 3
+  ]
 
   // I'd like to evolve towards the Ludii paradigms: a board is a complex, and there are
   // enough nicknames and generators to make it easy to describe one.
@@ -71,7 +71,7 @@ extension CantStop: GameComponents {
   }
 
   static func columnTops() -> [Position] {
-    Column.allCases.filter({$0 != Column.none}).map { col in Position(col: col, row: colHeights()[col] ?? 0) }
+    Column.allCases.filter({$0 != Column.none}).map { col in Position(col: col, row: colHeights[col] ?? 0) }
   }
 
   enum Player: Hashable, Equatable, CaseIterable, Cyclic, CustomStringConvertible {

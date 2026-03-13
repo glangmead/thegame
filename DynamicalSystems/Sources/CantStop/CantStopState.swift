@@ -61,8 +61,12 @@ extension CantStop: StatePredicates {
       players = [.player1, .player2]
       for piece in Piece.allCases {
         switch piece {
-        case let .placeholder(_, col):
-          position[piece] = Position(col: col, row: 0)
+        case let .placeholder(piecePlayer, col):
+          if players.contains(piecePlayer) {
+            position[piece] = Position(col: col, row: 0)
+          } else {
+            position[piece] = Position(col: .none, row: 0)
+          }
         default:
           position[piece] = Position(col: .none, row: 0)
         }
@@ -113,16 +117,9 @@ extension CantStop: StatePredicates {
     }
 
     func colIsWon(_ col: Column) -> Bool {
-      return col != Column.none &&
-        piecesAt([Position(col: col, row: colHeights()[col]!)]).anySatisfy({ piece in
-          switch piece {
-          case .placeholder:
-            return true
-          default:
-            return false
-          }
-        }
-        )
+      guard col != .none else { return false }
+      let topPos = Position(col: col, row: colHeights[col]!)
+      return Player.allCases.contains { position[.placeholder($0, col)] == topPos }
     }
 
     func wonCols() -> [Column] {
@@ -130,8 +127,17 @@ extension CantStop: StatePredicates {
     }
 
     func winAchieved() -> Bool {
-      let piecesAtTop = Set(piecesAt(columnTops()))
-      return piecesAtTop.intersection(Piece.placeholders(for: player) + Piece.whitePieces).count >= 3
+      var count = 0
+      for col in Column.allCases where col != .none {
+        let topPos = Position(col: col, row: colHeights[col]!)
+        if position[.placeholder(player, col)] == topPos {
+          count += 1
+        } else if Piece.whitePieces.contains(where: { position[$0] == topPos }) {
+          count += 1
+        }
+        if count >= 3 { return true }
+      }
+      return false
     }
 
     func piecesAt(_ spots: [Position]) -> [Piece] {
@@ -158,7 +164,7 @@ extension CantStop: StatePredicates {
       for col in Column.allCases.filter({$0 != Column.none}) {
         var colTexts = [String]()
         colTexts.append("\(col)")
-        for row in 0..<colHeights()[col]! {
+        for row in 0..<colHeights[col]! {
           let pieces = piecesAt([Position(col: col, row: row)])
           colTexts.append("\(pieces)")
         }
@@ -193,6 +199,12 @@ extension CantStop: StatePredicates {
       }
     }
 
+    mutating func clearPlaceholdersInCol(col: Column) {
+      for otherPlayer in players where otherPlayer != player {
+        position[.placeholder(otherPlayer, col)] = Position(col: .none, row: 0)
+      }
+    }
+
     mutating func clearDice() {
       for die in Die.allCases {
         dice[die] = DSix.none
@@ -201,7 +213,11 @@ extension CantStop: StatePredicates {
 
     mutating func savePlace() {
       for col in Column.allCases {
-        position[Piece.placeholder(player, col)] = Position(col: col, row: farthestAlong(in: col))
+        let newPosition = Position(col: col, row: farthestAlong(in: col))
+        position[Piece.placeholder(player, col)] = newPosition
+        if colIsWon(col) {
+          clearPlaceholdersInCol(col: col)
+        }
       }
       clearWhite()
     }

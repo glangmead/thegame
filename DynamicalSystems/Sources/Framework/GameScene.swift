@@ -201,7 +201,7 @@ class GameScene<
     )
     node.fillColor = colorForOwner(owner)
     node.strokeColor = .black
-    let faceLabel = SKLabelNode(text: "")
+    let faceLabel = SKLabelNode(text: " ")
     faceLabel.name = "dieLabel"
     faceLabel.applySystemFont(
       size: size * 0.45, weight: .bold, color: .white)

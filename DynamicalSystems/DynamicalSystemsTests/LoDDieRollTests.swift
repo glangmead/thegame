@@ -208,6 +208,9 @@ struct LoDDieRollTests {
     var state = game.newState()
     // Advance to action phase
     _ = game.reduce(into: &state, action: .drawCard)
+    if state.pendingBloodyBattleChoices != nil {
+      _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+    }
     // Put goblin at melee range
     state.armyPosition[.east] = 2
 

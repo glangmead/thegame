@@ -82,11 +82,11 @@ struct CantStopGameTests {
     state.rolledThisTurn = true
     // Player 1 has 3 columns topped
     state.position[.placeholder(.player1, .two)] = CantStop.Position(
-      col: .two, row: CantStop.colHeights()[.two]!)
+      col: .two, row: CantStop.colHeights[.two]!)
     state.position[.placeholder(.player1, .three)] = CantStop.Position(
-      col: .three, row: CantStop.colHeights()[.three]!)
+      col: .three, row: CantStop.colHeights[.three]!)
     state.position[.placeholder(.player1, .four)] = CantStop.Position(
-      col: .four, row: CantStop.colHeights()[.four]!)
+      col: .four, row: CantStop.colHeights[.four]!)
 
     let victoryPage = CantStopPages.victoryPage()
     #expect(victoryPage.allowedActions(state: state) == [.claimVictory])
@@ -98,11 +98,11 @@ struct CantStopGameTests {
     state.phase = .rolled
     state.rolledThisTurn = true
     state.position[.placeholder(.player1, .two)] = CantStop.Position(
-      col: .two, row: CantStop.colHeights()[.two]!)
+      col: .two, row: CantStop.colHeights[.two]!)
     state.position[.placeholder(.player1, .three)] = CantStop.Position(
-      col: .three, row: CantStop.colHeights()[.three]!)
+      col: .three, row: CantStop.colHeights[.three]!)
     state.position[.placeholder(.player1, .four)] = CantStop.Position(
-      col: .four, row: CantStop.colHeights()[.four]!)
+      col: .four, row: CantStop.colHeights[.four]!)
 
     let result = CantStopPages.victoryPage().reduce(&state, .claimVictory)
     #expect(result != nil)
@@ -118,9 +118,9 @@ struct CantStopGameTests {
     state.rolledThisTurn = true
     // Only 2 columns topped
     state.position[.placeholder(.player1, .two)] = CantStop.Position(
-      col: .two, row: CantStop.colHeights()[.two]!)
+      col: .two, row: CantStop.colHeights[.two]!)
     state.position[.placeholder(.player1, .three)] = CantStop.Position(
-      col: .three, row: CantStop.colHeights()[.three]!)
+      col: .three, row: CantStop.colHeights[.three]!)
 
     let victoryPage = CantStopPages.victoryPage()
     #expect(victoryPage.allowedActions(state: state).isEmpty)
@@ -185,17 +185,17 @@ struct CantStopGameTests {
     let graph = CantStopGraph.board()
     let heights = [3, 5, 7, 9, 11, 13, 11, 9, 7, 5, 3]
 
-    // Should have sites for all columns plus 3 off-board trays
-    let totalBoardSites = heights.reduce(0, +)
+    // Each column has height+1 sites (extra crown site at top) plus 3 off-board trays
+    let totalBoardSites = heights.map { $0 + 1 }.reduce(0, +)
     #expect(graph.sites.count == totalBoardSites + 3)
 
-    // Column 7 should have 13 sites
+    // Column 7 should have 14 sites (13 track + 1 crown)
     let col7Track = graph.tracks["col7"]!
-    #expect(col7Track.count == 13)
+    #expect(col7Track.count == 14)
 
     // Navigation works
     let bottom = col7Track[0]
-    let top = col7Track[12]
+    let top = col7Track[13]
     #expect(graph.site(bottom).top?.id == top)
     #expect(graph.site(bottom).next?.next?.id == col7Track[2])
   }

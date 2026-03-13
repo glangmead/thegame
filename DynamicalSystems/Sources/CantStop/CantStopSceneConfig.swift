@@ -11,7 +11,7 @@ struct CantStopSceneConfig {
   static func config() -> SceneConfig {
     .container("cantstop", [
       .board(
-        .columnar(heights: [3, 5, 7, 9, 11, 13, 11, 9, 7, 5, 3]),
+        .columnar(heights: [4, 6, 8, 10, 12, 14, 12, 10, 8, 6, 4]),
         style: StyleConfig(stroke: "black", lineWidth: 1)
       ),
       .container("dice", [.die(.labeledSquare)]),

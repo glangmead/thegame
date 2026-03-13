@@ -178,7 +178,7 @@ class OpenLoopMCTS<
       return result
     }
 
-    let maxRolloutDepth = 1000
+    let maxRolloutDepth = 50
 
     for _ in 0..<iters {
       // init the search for each player similarly

@@ -209,4 +209,88 @@ struct CantStopPageTests {
     let bustPage = CantStopPages.bustPage()
     #expect(bustPage.allowedActions(state: state).isEmpty)
   }
+
+  // MARK: - Column Claim: opponent placeholder removal
+
+  /// Helper: create a state where the current player has a white piece at
+  /// the top of the given column (ready to be committed by savePlace).
+  private static func stateWithWhiteAtTop(col: CantStop.Column) -> CantStop.State {
+    var state = CantStop.State()
+    state.player = .player1
+    let topRow = CantStop.colHeights[col]!
+    state.position[.white(.white1)] = CantStop.Position(col: col, row: topRow)
+    return state
+  }
+
+  @Test
+  func testSavePlaceRemovesOpponentFromClaimedColumn() {
+    // Player 2 has progress in column 2
+    var state = Self.stateWithWhiteAtTop(col: .two)
+    state.position[.placeholder(.player2, .two)] = CantStop.Position(col: .two, row: 1)
+
+    state.savePlace()
+
+    // Player 1's placeholder should be at the top (won)
+    let topRow = CantStop.colHeights[.two]!
+    #expect(state.position[.placeholder(.player1, .two)] == CantStop.Position(col: .two, row: topRow))
+    // Player 2's placeholder should be removed from the column
+    #expect(state.position[.placeholder(.player2, .two)] == CantStop.Position(col: .none, row: 0))
+  }
+
+  @Test
+  func testSavePlaceRemovesOpponentFromTwoClaimedColumns() {
+    var state = Self.stateWithWhiteAtTop(col: .two)
+    // Also put a white at the top of column 12
+    let topRow12 = CantStop.colHeights[.twelve]!
+    state.position[.white(.white2)] = CantStop.Position(col: .twelve, row: topRow12)
+
+    // Player 2 has progress in both columns
+    state.position[.placeholder(.player2, .two)] = CantStop.Position(col: .two, row: 1)
+    state.position[.placeholder(.player2, .twelve)] = CantStop.Position(col: .twelve, row: 2)
+
+    state.savePlace()
+
+    let topRow2 = CantStop.colHeights[.two]!
+    #expect(state.position[.placeholder(.player1, .two)] == CantStop.Position(col: .two, row: topRow2))
+    #expect(state.position[.placeholder(.player1, .twelve)] == CantStop.Position(col: .twelve, row: topRow12))
+    // Both opponent placeholders removed
+    #expect(state.position[.placeholder(.player2, .two)] == CantStop.Position(col: .none, row: 0))
+    #expect(state.position[.placeholder(.player2, .twelve)] == CantStop.Position(col: .none, row: 0))
+  }
+
+  @Test
+  func testSavePlaceRemovesOpponentFromThreeClaimedColumns() {
+    var state = Self.stateWithWhiteAtTop(col: .two)
+    let topRow12 = CantStop.colHeights[.twelve]!
+    let topRow7 = CantStop.colHeights[.seven]!
+    state.position[.white(.white2)] = CantStop.Position(col: .twelve, row: topRow12)
+    state.position[.white(.white3)] = CantStop.Position(col: .seven, row: topRow7)
+
+    // Player 2 has progress in all three
+    state.position[.placeholder(.player2, .two)] = CantStop.Position(col: .two, row: 1)
+    state.position[.placeholder(.player2, .twelve)] = CantStop.Position(col: .twelve, row: 1)
+    state.position[.placeholder(.player2, .seven)] = CantStop.Position(col: .seven, row: 5)
+
+    state.savePlace()
+
+    // All three opponent placeholders removed
+    #expect(state.position[.placeholder(.player2, .two)] == CantStop.Position(col: .none, row: 0))
+    #expect(state.position[.placeholder(.player2, .twelve)] == CantStop.Position(col: .none, row: 0))
+    #expect(state.position[.placeholder(.player2, .seven)] == CantStop.Position(col: .none, row: 0))
+  }
+
+  @Test
+  func testSavePlaceDoesNotRemoveOpponentFromUnclaimedColumns() {
+    // Player 1 claims column 2, but player 2 also has progress in column 7
+    var state = Self.stateWithWhiteAtTop(col: .two)
+    state.position[.placeholder(.player2, .two)] = CantStop.Position(col: .two, row: 1)
+    state.position[.placeholder(.player2, .seven)] = CantStop.Position(col: .seven, row: 3)
+
+    state.savePlace()
+
+    // Column 2 opponent placeholder removed
+    #expect(state.position[.placeholder(.player2, .two)] == CantStop.Position(col: .none, row: 0))
+    // Column 7 opponent placeholder untouched
+    #expect(state.position[.placeholder(.player2, .seven)] == CantStop.Position(col: .seven, row: 3))
+  }
 }

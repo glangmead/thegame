@@ -35,6 +35,10 @@ private enum TrivialAction: Hashable, CustomStringConvertible {
 }
 
 private struct TrivialGame: PlayableGame {
+  func isTerminal(state: TrivialState) -> Bool {
+    state.ended
+  }
+  
   func newState() -> TrivialState { TrivialState() }
   func allowedActions(state: TrivialState) -> [TrivialAction] {
     state.ended ? [] : [.step]

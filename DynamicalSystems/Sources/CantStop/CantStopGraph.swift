@@ -25,15 +25,18 @@ struct CantStopGraph {
   static func board(cellSize: CGFloat = 40) -> SiteGraph {
     var graph = SiteGraph()
 
-    // Create column tracks
+    // Create column tracks (height + 1 sites: rows 0..height, where row == height is the crown)
     for (colNum, height) in columnHeights {
       var trackSites: [SiteID] = []
-      for row in 0..<height {
+      for row in 0...height {
         let pos = CGPoint(
           x: CGFloat(colNum) * cellSize,
           y: CGFloat(row) * cellSize
         )
-        let id = graph.addSite(position: pos, tags: ["col\(colNum)", "board"])
+        let tags: Set<String> = row == height
+          ? ["col\(colNum)", "board", "crown"]
+          : ["col\(colNum)", "board"]
+        let id = graph.addSite(position: pos, tags: tags)
         trackSites.append(id)
       }
 
@@ -54,7 +57,7 @@ struct CantStopGraph {
     // Off-board tray sites (above the board)
     let maxY = CGFloat(12) * cellSize  // tallest column height
     _ = graph.addSite(position: CGPoint(x: cellSize * 3, y: maxY + cellSize * 2), tags: [whiteTray])
-    _ = graph.addSite(position: CGPoint(x: cellSize * 6, y: maxY + cellSize * 2), tags: [placeholderTray])
+    _ = graph.addSite(position: CGPoint(x: -9999, y: -9999), tags: [placeholderTray])
     _ = graph.addSite(position: CGPoint(x: cellSize * 9, y: maxY + cellSize * 2), tags: [diceTray])
 
     return graph

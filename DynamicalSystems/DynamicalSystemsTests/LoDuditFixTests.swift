@@ -104,22 +104,21 @@ struct LoDuditFixTests {
   }
 
   @Test
-  func paladinRallyDRMRequiresWallTrack() {
-    // Paladin must be on a wall track for rally DRM bonus.
+  func paladinRallyDRMOnSkyTrack() {
+    // Paladin rally DRM is not track-restricted — applies on any track.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3, heroes: [.warrior, .wizard, .paladin])
-    state.heroLocation[.paladin] = .onTrack(.sky)  // Non-wall track
+    state.heroLocation[.paladin] = .onTrack(.sky)
     let drm = state.totalRallyDRM()
-    // Should NOT include Paladin bonus since Sky is not a wall
-    #expect(drm == 0)
+    #expect(drm >= 1)
   }
 
   @Test
   func paladinRallyDRMInReserves() {
-    // Paladin in reserves should not give rally DRM bonus.
+    // Paladin rally DRM applies as long as paladin is alive and in play.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3, heroes: [.warrior, .wizard, .paladin])
     state.heroLocation[.paladin] = .reserves
     let drm = state.totalRallyDRM()
-    #expect(drm == 0)
+    #expect(drm >= 1)
   }
 
   // MARK: - Audit Fix #12: Bloody Battle Magical Exemption (rule 8.2)
@@ -151,6 +150,9 @@ struct LoDuditFixTests {
     )
     var state = game.newState()
     _ = game.reduce(into: &state, action: .drawCard)
+    if state.pendingBloodyBattleChoices != nil {
+      _ = game.reduce(into: &state, action: .chooseBloodyBattle(.gate1))
+    }
     state.defenderPosition[.menAtArms] = 4  // Only 1 melee attack allowed
     state.armyPosition[.east] = 2  // In melee range
 

@@ -49,7 +49,7 @@ struct LoDGameLoopTests {
     // Acknowledge victory → terminal
     _ = game.reduce(into: &state, action: .claimVictory)
     #expect(state.gameAcknowledged == true)
-    #expect(game.isTerminal(state))
+    #expect(game.isTerminal(state: state))
     #expect(game.allowedActions(state: state).isEmpty)
   }
 
@@ -85,7 +85,7 @@ struct LoDGameLoopTests {
     // Acknowledge defeat → terminal
     _ = game.reduce(into: &state, action: .declareLoss)
     #expect(state.gameAcknowledged == true)
-    #expect(game.isTerminal(state))
+    #expect(game.isTerminal(state: state))
     #expect(game.allowedActions(state: state).isEmpty)
   }
 

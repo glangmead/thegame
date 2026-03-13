@@ -161,7 +161,7 @@ struct LoDRenderingTests {
     state.ended = true
     state.victory = true
     state.gameAcknowledged = true
-    #expect(game.isTerminal(state))
+    #expect(game.isTerminal(state: state))
   }
 
   @Test
@@ -172,7 +172,7 @@ struct LoDRenderingTests {
     state.ended = true
     state.victory = false
     state.gameAcknowledged = true
-    #expect(game.isTerminal(state))
+    #expect(game.isTerminal(state: state))
   }
 
   @Test
@@ -182,7 +182,7 @@ struct LoDRenderingTests {
     var state = game.newState()
     state.ended = true
     state.victory = true
-    #expect(!game.isTerminal(state))
+    #expect(!game.isTerminal(state: state))
   }
 
 }

@@ -74,7 +74,7 @@ extension GameScene {
 
       case .dieShowing(let face, let site):
         if let label = node.childNode(withName: "dieLabel") as? SKLabelNode {
-          label.updateSystemText(face > 0 ? "\(face)" : "")
+          label.updateSystemText(face > 0 ? "\(face)" : " ")
         }
         if let site {
           movePiece(node, id: piece.id, to: site,

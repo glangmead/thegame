@@ -28,6 +28,28 @@ enum CantStopPages {
     )
   }
 
+  /// Quick check: are there any legal progressColumns actions for the current dice?
+  /// Avoids the full movePage dedup — just checks if any column sum is reachable.
+  static func hasAnyLegalMove(state: CantStop.State) -> Bool {
+    guard state.rolledDice().count == 4 else { return false }
+    let dualPairs: [([CantStop.Die], [CantStop.Die])] = [
+      ([.die1, .die2], [.die3, .die4]),
+      ([.die1, .die3], [.die2, .die4]),
+      ([.die1, .die4], [.die2, .die3])
+    ]
+    for (pair1, pair2) in dualPairs {
+      let col1 = twod6_total(pair1.map { state.dice[$0]! })
+      let col2 = twod6_total(pair2.map { state.dice[$0]! })
+      for col in [col1, col2] where col != .none {
+        if !state.colIsWon(col) &&
+          (state.whiteIn(col: col) != nil || state.whiteIn(col: .none) != nil) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+
   static func bustPage() -> RulePage<CantStop.State, CantStop.Action> {
     RulePage(
       name: "Bust",
@@ -36,7 +58,7 @@ enum CantStopPages {
           condition: { state in
             state.phase == .rolled &&
             state.rolledDice().count == 4 &&
-            movePage().allowedActions(state: state).isEmpty
+            !hasAnyLegalMove(state: state)
           },
           actions: { _ in [.bust] }
         )
@@ -58,8 +80,8 @@ enum CantStopPages {
         GameRule(
           condition: { state in
             !state.ended &&
-            state.winAchieved() &&
             state.rolledDice().count < 4 &&
+            state.winAchieved() &&
             movePage().allowedActions(state: state).isEmpty
           },
           actions: { _ in [.claimVictory] }
@@ -82,9 +104,9 @@ enum CantStopPages {
         GameRule(
           condition: { state in
             state.phase == .rolled &&
-            !state.winAchieved() &&
             state.rolledDice().count < 4 &&
             state.rolledThisTurn &&
+            !state.winAchieved() &&
             movePage().allowedActions(state: state).isEmpty
           },
           actions: { _ in [.rollDice, .pass] }
@@ -138,11 +160,17 @@ enum CantStopPages {
                 return []
               }
             }
-            var seen = Set<CantStop.State>()
+            // Dedup by sorted column list — two actions with the same
+            // set of columns always produce identical board states.
+            var seen = Set<[CantStop.Column]>()
             return candidates.filter { action in
-              var testState = state
-              _ = progressColumnsOrFail(state: &testState, action: action)
-              return seen.insert(testState).inserted
+              guard case .progressColumns(let cols) = action else { return false }
+              let key = cols.sorted()
+              if seen.contains(key) {
+                return false
+              }
+              seen.insert(key)
+              return true
             }
           }
         )
@@ -163,7 +191,7 @@ enum CantStopPages {
   static func progressColumnsOrFail(state: inout CantStop.State, action: CantStop.Action) -> Bool {
     guard case .progressColumns(let cols) = action else { return false }
     for col in cols {
-      let newRow = min(CantStop.colHeights()[col]!, state.farthestAlong(in: col) + 1)
+      let newRow = min(CantStop.colHeights[col]!, state.farthestAlong(in: col) + 1)
       if let white = state.whiteIn(col: col) {
         state.position[white]!.row = newRow
       } else if let spareWhite = state.whiteIn(col: .none) {
@@ -189,7 +217,7 @@ enum CantStopPages {
     let player = CantStop.Player.player1
     if state.endedInVictoryFor.contains(player) { return 1.0 }
     if state.endedInDefeatFor.contains(player) { return 0.0 }
-    let heights = CantStop.colHeights()
+    let heights = CantStop.colHeights
     var fractions = [Float]()
     for col in CantStop.Column.allCases where col != .none {
       let row = state.position[CantStop.Piece.placeholder(player, col)]?.row ?? 0
