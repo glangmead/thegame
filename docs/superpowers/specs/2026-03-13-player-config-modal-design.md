@@ -157,7 +157,7 @@ func performAction(_ action: SomeGame.Action) {
 
 The `onChange(of: model.state)` handler in the view body handles refreshing actions and syncing the scene after every state mutation (whether from interactive or AI play).
 
-`refreshActions` becomes mode-aware: return `[]` when the current player is not `.interactive` or the game has ended.
+`refreshActions` becomes mode-aware: return `[]` when the current player is not `.interactive` or the game has ended. Game-specific suppression rules (e.g. Hearts hides actions during trick resolution) must be preserved alongside the generic mode check.
 
 ## Per-Game Integration
 
@@ -177,16 +177,16 @@ Each game has a concrete `Player` type. The `playerModes` dictionary is keyed by
 
 - **Defaults:** Player 1 = Interactive, Player 2 = Fast AI, Players 3–4 = Excluded.
 - **Slots:** Players 1–2 get `[.interactive, .fastAI, .slowAI]`. Players 3–4 get those plus `.excluded`.
-- **State.init** takes a `players: [Player]` parameter (currently hardcoded to `[.player1, .player2]`).
+- **State.init** gains a `players: [Player]` parameter (the current `init()` hardcodes `[.player1, .player2]` inline). Placeholder pieces for excluded players are placed at `Position(col: .none, row: 0)` as before — they exist in state but are hidden, not omitted.
 - **Factory chain:** `CantStopPages.game(players:)` passes the player list into the `ComposedGame`'s `makeInitialState` closure, which calls `State(players: activePlayers)`.
-- **resetGame()** derives active players from `playerModes` (exclude `.excluded`), rebuilds game via `CantStopPages.game(players:)`, calls `model.reset(with:)`, and recreates the `GameScene` (since the piece set changes with player count — placeholder pieces for excluded players don't exist).
+- **resetGame()** derives active players from `playerModes` (exclude `.excluded`), rebuilds game via `CantStopPages.game(players:)`, calls `model.reset(with:)`, and recreates the `GameScene` (since the visual piece set rendered by the adapter should reflect the active player count).
 
 ### Hearts
 
 - **Defaults:** South = Interactive, East/North/West = Fast AI.
 - **Slots:** All four seats get `[.interactive, .fastAI, .slowAI]` (no `.excluded` — Hearts requires 4 players).
 - **HeartsConfig** drops `humanSeat` in favor of `playerModes: [Seat: PlayerMode]`.
-- **confirmPass AI logic** moves from HeartsView into the Hearts rules engine. `HeartsConfig` stores `playerModes`, which is available in `State` and thus in `reduce`. During the passing phase, non-interactive seats auto-select their pass cards (first 3 cards) in the reduce function. During MCTS rollouts, the rollout policy handles all seats uniformly (random selection), so the interactive/AI distinction does not affect rollout behavior — `playerModes` is only consulted at the top-level game loop.
+- **confirmPass AI logic** moves from HeartsView into the Hearts rules engine. `HeartsConfig` stores `playerModes`, which is available in `State` and thus in `reduce`. The `confirmPass` action loses its `aiPasses` associated value — it becomes a plain `.confirmPass` case. The reduce function reads `state.config.playerModes` to determine which seats are non-interactive, and auto-selects their pass cards (first 3 cards) directly. This simplifies the `Hashable`/`Equatable` conformance on `Hearts.Action` that was written specifically around the `aiPasses` payload. During MCTS rollouts, the rollout policy handles all seats uniformly (random selection), so the interactive/AI distinction does not affect rollout behavior — `playerModes` is only consulted at the top-level game loop.
 - **HeartsView.init** no longer takes a `config` parameter. Manages its own `playerModes` state.
 - **DynamicalSystemsApp** changes from `HeartsView(config: ...)` to `HeartsView()`.
 
