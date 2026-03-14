@@ -82,6 +82,7 @@ import Foundation
 /// The manual expresses this function as a table. The T in CRT.
 
 struct BattleCard {
+  typealias Player = BattleCardComponents.Player
   typealias Position = BattleCardComponents.Position
   typealias Piece = BattleCardComponents.Piece
   typealias Phase = BattleCardComponents.Phase

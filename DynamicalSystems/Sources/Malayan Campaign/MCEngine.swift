@@ -8,6 +8,7 @@
 import Foundation
 
 struct MalayanCampaign {
+  typealias Player = MalayanCampaignComponents.Player
   typealias Position = MalayanCampaignComponents.Position
   typealias Piece = MalayanCampaignComponents.Piece
   typealias Phase = MalayanCampaignComponents.Phase

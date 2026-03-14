@@ -12,8 +12,19 @@ struct BCView: View {
   @State private var model: GameModel<BattleCard.State, BattleCard.Action>
   @State private var scene: GameScene<BattleCard.State, BattleCard.Action>
   @State private var cachedActions: [BattleCard.Action] = []
+  @State private var showConfig = false
+  @State private var playerModes: [BattleCard.Player: PlayerMode] = [
+    .solo: .interactive
+  ]
+  @State private var aiTask: Task<Void, Never>?
   private let graph: SiteGraph
   private let pieces: [GamePiece]
+
+  private var slots: [PlayerSlot<BattleCard.Player>] {
+    [PlayerSlot(
+      player: .solo, label: "Solo",
+      allowedModes: [.interactive, .fastAI, .slowAI])]
+  }
 
   init() {
     let graph = BCGraph.board(cellSize: 75)
@@ -71,22 +82,68 @@ struct BCView: View {
     }
     .navigationTitle(model.state.name)
     .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      ToolbarItem(placement: .primaryAction) {
+        Button {
+          showConfig = true
+        } label: {
+          Image(systemName: "gearshape")
+        }
+      }
+    }
+    .sheet(isPresented: $showConfig) {
+      PlayerConfigSheet(
+        slots: slots,
+        modes: $playerModes,
+        onStart: resetGame
+      )
+    }
     .onAppear { refreshActions() }
+    .onChange(of: model.state) {
+      refreshActions()
+      syncScene()
+      aiTask?.cancel()
+      aiTask = scheduleAIMove(
+        model: model,
+        playerModes: playerModes,
+        performAction: performAction
+      )
+    }
+    .onDisappear { aiTask?.cancel() }
   }
 
   private func performAction(_ action: BattleCard.Action) {
     model.perform(action)
-    refreshActions()
+  }
+
+  private func syncScene() {
     let section = BCPieceAdapter.section(from: model.state, graph: graph)
     let highlights = BCPieceAdapter.siteHighlights(from: model.state, graph: graph)
     scene.syncState(pieces: pieces, section: section, siteHighlights: highlights)
   }
 
   private func refreshActions() {
+    let mode = playerModes[
+      model.state.player, default: .interactive]
+    guard mode == .interactive, !model.isTerminal else {
+      cachedActions = []
+      return
+    }
     cachedActions = model.allowedActions
+  }
+
+  private func resetGame() {
+    aiTask?.cancel()
+    let game = BCPages.game()
+    model.reset(with: game)
+    cachedActions = []
+    syncScene()
+    showConfig = false
   }
 }
 
 #Preview("Battle Card") {
-  BCView()
+  NavigationStack {
+    BCView()
+  }
 }

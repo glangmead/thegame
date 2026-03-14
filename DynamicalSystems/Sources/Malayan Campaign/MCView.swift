@@ -12,8 +12,19 @@ struct MCView: View {
   @State private var model: GameModel<MalayanCampaign.State, MalayanCampaign.Action>
   @State private var scene: GameScene<MalayanCampaign.State, MalayanCampaign.Action>
   @State private var cachedActions: [MalayanCampaign.Action] = []
+  @State private var showConfig = false
+  @State private var playerModes: [MalayanCampaign.Player: PlayerMode] = [
+    .solo: .interactive
+  ]
+  @State private var aiTask: Task<Void, Never>?
   private let graph: SiteGraph
   private let pieces: [GamePiece]
+
+  private var slots: [PlayerSlot<MalayanCampaign.Player>] {
+    [PlayerSlot(
+      player: .solo, label: "Solo",
+      allowedModes: [.interactive, .fastAI, .slowAI])]
+  }
 
   init() {
     let graph = MCGraph.board(cellSize: 75)
@@ -68,22 +79,68 @@ struct MCView: View {
     }
     .navigationTitle(model.state.name)
     .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      ToolbarItem(placement: .primaryAction) {
+        Button {
+          showConfig = true
+        } label: {
+          Image(systemName: "gearshape")
+        }
+      }
+    }
+    .sheet(isPresented: $showConfig) {
+      PlayerConfigSheet(
+        slots: slots,
+        modes: $playerModes,
+        onStart: resetGame
+      )
+    }
     .onAppear { refreshActions() }
+    .onChange(of: model.state) {
+      refreshActions()
+      syncScene()
+      aiTask?.cancel()
+      aiTask = scheduleAIMove(
+        model: model,
+        playerModes: playerModes,
+        performAction: performAction
+      )
+    }
+    .onDisappear { aiTask?.cancel() }
   }
 
   private func performAction(_ action: MalayanCampaign.Action) {
     model.perform(action)
-    refreshActions()
+  }
+
+  private func syncScene() {
     let section = MCPieceAdapter.section(from: model.state, graph: graph)
     let highlights = MCPieceAdapter.siteHighlights(from: model.state, graph: graph)
     scene.syncState(pieces: pieces, section: section, siteHighlights: highlights)
   }
 
   private func refreshActions() {
+    let mode = playerModes[
+      model.state.player, default: .interactive]
+    guard mode == .interactive, !model.isTerminal else {
+      cachedActions = []
+      return
+    }
     cachedActions = model.allowedActions
+  }
+
+  private func resetGame() {
+    aiTask?.cancel()
+    let game = MCPages.game()
+    model.reset(with: game)
+    cachedActions = []
+    syncScene()
+    showConfig = false
   }
 }
 
 #Preview("Malayan Campaign") {
-  MCView()
+  NavigationStack {
+    MCView()
+  }
 }
