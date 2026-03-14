@@ -139,6 +139,11 @@ struct BCView: View {
     cachedActions = []
     syncScene()
     showConfig = false
+    aiTask = scheduleAIMove(
+      model: model,
+      playerModes: playerModes,
+      performAction: performAction
+    )
   }
 }
 

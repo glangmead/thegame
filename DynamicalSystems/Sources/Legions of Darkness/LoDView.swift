@@ -276,6 +276,11 @@ struct LoDView: View {
     cachedActions = []
     syncActiveScene()
     showConfig = false
+    aiTask = scheduleAIMove(
+      model: model,
+      playerModes: playerModes,
+      performAction: performAction
+    )
   }
 }
 

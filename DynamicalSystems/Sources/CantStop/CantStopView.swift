@@ -144,6 +144,11 @@ struct CantStopView: View {
     scene = newScene
 
     showConfig = false
+    aiTask = scheduleAIMove(
+      model: model,
+      playerModes: playerModes,
+      performAction: performAction
+    )
   }
 }
 
