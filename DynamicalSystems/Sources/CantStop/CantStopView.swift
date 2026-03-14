@@ -129,20 +129,8 @@ struct CantStopView: View {
     let game = CantStopPages.game(players: activePlayers)
     model.reset(with: game)
     cachedActions = []
-
-    let config = CantStopSceneConfig.config()
-    let newScene = GameScene(
-      model: model,
-      config: config,
-      size: CGSize(width: 350, height: 400),
-      cellSize: 20
-    )
-    newScene.scaleMode = .aspectFit
     pieces = CantStopPieceAdapter.pieces()
-    let section = CantStopPieceAdapter.section(from: model.state, graph: graph)
-    newScene.syncState(pieces: pieces, section: section)
-    scene = newScene
-
+    syncScene()
     showConfig = false
     aiTask = scheduleAIMove(
       model: model,
