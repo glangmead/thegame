@@ -50,7 +50,6 @@ extension GameScene {
     return sitePieces
   }
 
-  // swiftlint:disable:next cyclomatic_complexity
   func syncPieces(
     pieces: [GamePiece],
     section: GameSection,
@@ -76,24 +75,20 @@ extension GameScene {
         node.run(SKAction.fadeIn(withDuration: animDuration))
       }
 
+      let stacking = layout?.stacking ?? .fan
+
       switch value {
       case .at(let site):
         movePiece(node, id: piece.id, to: site,
-                  sitePieces: sitePieces, duration: animDuration, scale: scale)
+                  sitePieces: sitePieces, duration: animDuration, scale: scale, policy: stacking)
+        syncBadge(on: node, id: piece.id, site: site, stacking: stacking, sitePieces: sitePieces)
 
       case .dieShowing(let face, let site):
-        if let sprite = node.childNode(withName: "dieFace") as? SKSpriteNode {
-          let size = sprite.size.width
-          if let tex = dieTexture(face: face, pointSize: size) {
-            sprite.texture = tex
-            sprite.isHidden = false
-          } else {
-            sprite.isHidden = true
-          }
-        }
+        syncDieFace(node: node, face: face)
         if let site {
           movePiece(node, id: piece.id, to: site,
-                    sitePieces: sitePieces, duration: animDuration, scale: scale)
+                    sitePieces: sitePieces, duration: animDuration, scale: scale, policy: stacking)
+          syncBadge(on: node, id: piece.id, site: site, stacking: stacking, sitePieces: sitePieces)
         }
 
       case .cardState(let name, let faceUp, let isRed, let rotation, let site):
@@ -119,12 +114,40 @@ extension GameScene {
     }
   }
 
+  private func syncDieFace(node: SKNode, face: Int) {
+    guard let sprite = node.childNode(withName: "dieFace") as? SKSpriteNode else { return }
+    let size = sprite.size.width
+    if let tex = dieTexture(face: face, pointSize: size) {
+      sprite.texture = tex
+      sprite.isHidden = false
+    } else {
+      sprite.isHidden = true
+    }
+  }
+
+  private func syncBadge(
+    on node: SKNode, id pieceID: Int, site: SiteID,
+    stacking: StackPolicy, sitePieces: [SiteID: [Int]]
+  ) {
+    if stacking == .badge, let group = sitePieces[site], group.count > 1 {
+      let isLast = group.last == pieceID
+      node.alpha = isLast ? 1 : 0
+      if isLast {
+        updateBadge(on: node, count: group.count)
+      }
+    } else {
+      removeBadge(from: node)
+    }
+  }
+
   private func movePiece(
     _ node: SKNode, id pieceID: Int, to site: SiteID,
-    sitePieces: [SiteID: [Int]], duration: TimeInterval, scale: CGFloat = 1
+    sitePieces: [SiteID: [Int]], duration: TimeInterval,
+    scale: CGFloat = 1, policy: StackPolicy = .fan
   ) {
     guard let dest = siteNodes[site] else { return }
-    let offset = stackingOffset(pieceID: pieceID, at: site, sitePieces: sitePieces, scale: scale)
+    let offset = stackingOffset(
+      pieceID: pieceID, at: site, sitePieces: sitePieces, scale: scale, policy: policy)
     let scenePos = CGPoint(
       x: dest.position.x + cellSize / 2 + offset.x,
       y: dest.position.y + cellSize / 2 + offset.y
@@ -143,16 +166,58 @@ extension GameScene {
   }
 
   func stackingOffset(
-    pieceID: Int, at site: SiteID, sitePieces: [SiteID: [Int]], scale: CGFloat = 1
+    pieceID: Int, at site: SiteID,
+    sitePieces: [SiteID: [Int]],
+    scale: CGFloat = 1,
+    policy: StackPolicy = .fan
   ) -> CGPoint {
     guard let group = sitePieces[site], group.count > 1,
        let index = group.firstIndex(of: pieceID) else {
       return .zero
     }
     let count = group.count
-    let spacing = cellSize * 0.7 * scale
-    let totalWidth = spacing * CGFloat(count - 1)
-    let xOffset = CGFloat(index) * spacing - totalWidth / 2
-    return CGPoint(x: xOffset, y: 0)
+    switch policy {
+    case .fan:
+      let spacing = cellSize * 0.7 * scale
+      let totalWidth = spacing * CGFloat(count - 1)
+      let xOffset = CGFloat(index) * spacing - totalWidth / 2
+      return CGPoint(x: xOffset, y: 0)
+    case .vertical:
+      let spacing = cellSize * 0.3 * scale
+      let yOffset = CGFloat(index) * spacing
+      return CGPoint(x: 0, y: yOffset)
+    case .badge:
+      return .zero
+    }
+  }
+
+  private func updateBadge(on node: SKNode, count: Int) {
+    let badgeName = "stackBadge"
+    if let existing = node.childNode(withName: badgeName) as? SKShapeNode {
+      if let label = existing.childNode(withName: "badgeLabel") as? SKLabelNode {
+        label.updateSystemText("\(count)")
+      }
+      return
+    }
+    let radius = cellSize * 0.15
+    let badge = SKShapeNode(circleOfRadius: radius)
+    badge.fillColor = .red
+    badge.strokeColor = .white
+    badge.lineWidth = 1
+    badge.name = badgeName
+    badge.position = CGPoint(x: radius * 2, y: radius * 2)
+    badge.zPosition = 10
+
+    let label = SKLabelNode(text: "\(count)")
+    label.applySystemFont(size: radius * 1.2, weight: .bold, color: .white)
+    label.horizontalAlignmentMode = .center
+    label.verticalAlignmentMode = .center
+    label.name = "badgeLabel"
+    badge.addChild(label)
+    node.addChild(badge)
+  }
+
+  private func removeBadge(from node: SKNode) {
+    node.childNode(withName: "stackBadge")?.removeFromParent()
   }
 }

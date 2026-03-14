@@ -46,6 +46,55 @@ private struct StubGame: PlayableGame {
 // MARK: - RenderingTests
 
 struct RenderingTests {
+  @MainActor
+  private func makeStubScene() -> GameScene<StubState, StubAction> {
+    var graph = SiteGraph()
+    _ = graph.addSite(position: CGPoint(x: 0, y: 0))
+    _ = graph.addSite(position: CGPoint(x: 30, y: 0))
+    _ = graph.addSite(position: CGPoint(x: 60, y: 0))
+    let game = StubGame()
+    let model = GameModel(game: game, graph: graph)
+    return GameScene(
+      model: model,
+      config: .container("test", [
+        .board(.grid(rows: 1, cols: 3), style: nil),
+        .piece(.circle, color: .byPlayer)
+      ]),
+      size: CGSize(width: 200, height: 200),
+      cellSize: 30
+    )
+  }
+
+  @Test @MainActor
+  func testStackingOffsetFanReturnsHorizontalSpread() {
+    let scene = makeStubScene()
+    let sitePieces: [SiteID: [Int]] = [SiteID(0): [1, 2, 3]]
+    // pieceID 1 is at index 0 (leftmost), so x-offset is negative and non-zero.
+    let offset = scene.stackingOffset(
+      pieceID: 1, at: SiteID(0), sitePieces: sitePieces, policy: .fan)
+    #expect(offset.y == 0)
+    #expect(offset.x != 0)
+  }
+
+  @Test @MainActor
+  func testStackingOffsetVerticalReturnsYOffset() {
+    let scene = makeStubScene()
+    let sitePieces: [SiteID: [Int]] = [SiteID(0): [1, 2, 3]]
+    let offset = scene.stackingOffset(
+      pieceID: 2, at: SiteID(0), sitePieces: sitePieces, policy: .vertical)
+    #expect(offset.x == 0)
+    #expect(offset.y != 0)
+  }
+
+  @Test @MainActor
+  func testStackingOffsetBadgeReturnsZero() {
+    let scene = makeStubScene()
+    let sitePieces: [SiteID: [Int]] = [SiteID(0): [1, 2, 3]]
+    let offset = scene.stackingOffset(
+      pieceID: 3, at: SiteID(0), sitePieces: sitePieces, policy: .badge)
+    #expect(offset == .zero)
+  }
+
   @Test @MainActor
   func testTrackBackgroundCreated() {
     // Build a graph with 3 sites in a row, registered as a tagged track.

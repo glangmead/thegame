@@ -59,6 +59,7 @@ class GameScene<
   struct PieceLayout {
     let parent: SKNode
     let scale: CGFloat
+    let stacking: StackPolicy
   }
   var pieceLayouts: [String: PieceLayout] = [:]
 
@@ -108,14 +109,14 @@ class GameScene<
     case .columnar, .grid:
       return parent
 
-    case .piece:
-      pieceLayouts["token"] = PieceLayout(parent: parent, scale: accumulatedScale)
+    case .piece(_, color: _, stacking: let stacking):
+      pieceLayouts["token"] = PieceLayout(parent: parent, scale: accumulatedScale, stacking: stacking)
       return parent
     case .die:
-      pieceLayouts["die"] = PieceLayout(parent: parent, scale: accumulatedScale)
+      pieceLayouts["die"] = PieceLayout(parent: parent, scale: accumulatedScale, stacking: .fan)
       return parent
     case .card:
-      pieceLayouts["card"] = PieceLayout(parent: parent, scale: accumulatedScale)
+      pieceLayouts["card"] = PieceLayout(parent: parent, scale: accumulatedScale, stacking: .fan)
       return parent
 
     // swiftlint:disable:next identifier_name
