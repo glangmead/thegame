@@ -227,7 +227,9 @@ enum CantStopPages {
     return fractions.prefix(3).reduce(0, +) / 3.0
   }
 
-  static func game() -> ComposedGame<CantStop.State> {
+  static func game(
+    players: [CantStop.Player] = [.player1, .player2]
+  ) -> ComposedGame<CantStop.State> {
     oapply(
       pages: [
         rollPage(), movePage()
@@ -238,7 +240,7 @@ enum CantStopPages {
         passPage()
       ],
       initialState: {
-        var state = CantStop.State()
+        var state = CantStop.State(players: players)
         state.history = [.setPhase(.notRolled)]
         return state
       },

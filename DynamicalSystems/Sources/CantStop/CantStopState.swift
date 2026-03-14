@@ -55,10 +55,10 @@ extension CantStop: StatePredicates {
       description
     }
 
-    init() {
+    init(players: [Player] = [.player1, .player2]) {
       assignedDicePair = Column.none
-      player = Player.player1
-      players = [.player1, .player2]
+      player = players[0]
+      self.players = players
       for piece in Piece.allCases {
         switch piece {
         case let .placeholder(piecePlayer, col):

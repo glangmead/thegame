@@ -223,4 +223,31 @@ struct CantStopGameTests {
     let decoded = try JSONDecoder().decode(SceneConfig.self, from: data)
     #expect(decoded == config)
   }
+
+  // MARK: - Parameterized init
+
+  @Test
+  func threePlayerInit() {
+    let state = CantStop.State(
+      players: [.player1, .player2, .player3])
+    #expect(state.players == [.player1, .player2, .player3])
+    #expect(state.player == .player1)
+    let p4placeholder = CantStop.Piece.placeholder(.player4, .seven)
+    #expect(state.position[p4placeholder]?.col == .none)
+    let p3placeholder = CantStop.Piece.placeholder(.player3, .seven)
+    #expect(state.position[p3placeholder]?.col == .seven)
+  }
+
+  @Test
+  func fourPlayerInit() {
+    let state = CantStop.State(
+      players: [.player1, .player2, .player3, .player4])
+    #expect(state.players.count == 4)
+  }
+
+  @Test
+  func defaultInitStillTwoPlayers() {
+    let state = CantStop.State()
+    #expect(state.players == [.player1, .player2])
+  }
 }
