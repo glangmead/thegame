@@ -15,8 +15,9 @@ class GameModel<
   Action: Hashable & Equatable & CustomStringConvertible
 > {
   var state: State
-  let game: any PlayableGame<State, Action>
+  var game: any PlayableGame<State, Action>
   let graph: SiteGraph
+  var logs: [Log] = []
 
   init(game: some PlayableGame<State, Action>, graph: SiteGraph) {
     self.game = game
@@ -28,8 +29,20 @@ class GameModel<
     game.allowedActions(state: state)
   }
 
+  var isTerminal: Bool {
+    game.isTerminal(state: state)
+  }
+
   @discardableResult
   func perform(_ action: Action) -> [Log] {
-    game.reduce(into: &state, action: action)
+    let newLogs = game.reduce(into: &state, action: action)
+    logs.insert(contentsOf: newLogs, at: 0)
+    return newLogs
+  }
+
+  func reset(with game: some PlayableGame<State, Action>) {
+    self.game = game
+    self.state = game.newState()
+    self.logs = []
   }
 }
