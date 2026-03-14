@@ -7,6 +7,12 @@
 
 import Foundation
 
+enum StackPolicy: Codable, Equatable {
+  case fan
+  case vertical
+  case badge
+}
+
 enum SceneConfig: Codable, Equatable {
   // Board geometry
   case columnar(heights: [Int])
@@ -140,10 +146,4 @@ struct StyleConfig: Codable, Equatable {
   var stroke: String?
   var lineWidth: Float?
   var labelFont: String?
-}
-
-enum StackPolicy: Codable, Equatable {
-  case fan
-  case vertical
-  case badge
 }
