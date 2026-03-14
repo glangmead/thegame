@@ -121,7 +121,7 @@ extension SiteAppearance {
     "header": SiteAppearance(
       shape: .label,
       labelStyle: LabelAppearance(size: 0.4, weight: .bold, color: "darkgray")),
-    "invisible": SiteAppearance(shape: .none),
+    "invisible": SiteAppearance(shape: SiteShape.none),
     "crown": SiteAppearance(
       fill: "yellow", lineWidth: 2,
       labelStyle: LabelAppearance(
