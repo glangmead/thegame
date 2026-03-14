@@ -21,6 +21,8 @@ struct HeartsView: View {
     .west: .fastAI
   ]
   @State var aiTask: Task<Void, Never>?
+  @State private var cameraScale: CGFloat = 1.0
+  @State private var cameraPosition: CGPoint = .zero
   @Environment(\.horizontalSizeClass) private var sizeClass
   private let graph: SiteGraph
   private let pieces: [GamePiece]
@@ -79,6 +81,29 @@ struct HeartsView: View {
         : AnyLayout(VStackLayout(spacing: 0))
       layout {
         SpriteView(scene: scene)
+          .gesture(MagnifyGesture()
+            .onChanged { value in
+              let newScale = cameraScale / value.magnification
+              scene.setZoom(scale: newScale)
+            }
+            .onEnded { value in
+              cameraScale /= value.magnification
+            }
+          )
+          .gesture(DragGesture()
+            .onChanged { value in
+              let currentScale = scene.cameraNode?.xScale ?? 1
+              scene.setCameraPosition(CGPoint(
+                x: cameraPosition.x - value.translation.width * currentScale,
+                y: cameraPosition.y + value.translation.height * currentScale))
+            }
+            .onEnded { value in
+              let currentScale = scene.cameraNode?.xScale ?? 1
+              cameraPosition = CGPoint(
+                x: cameraPosition.x - value.translation.width * currentScale,
+                y: cameraPosition.y + value.translation.height * currentScale)
+            }
+          )
           .frame(
             width: isLandscape
               ? geo.size.height : geo.size.width,

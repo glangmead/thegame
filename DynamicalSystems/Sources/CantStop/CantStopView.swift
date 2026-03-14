@@ -20,6 +20,8 @@ struct CantStopView: View {
     .player4: .excluded
   ]
   @State private var aiTask: Task<Void, Never>?
+  @State private var cameraScale: CGFloat = 1.0
+  @State private var cameraPosition: CGPoint = .zero
   private let graph: SiteGraph
   @State private var pieces: [GamePiece]
 
@@ -63,6 +65,29 @@ struct CantStopView: View {
   var body: some View {
     VStack(spacing: 0) {
       SpriteView(scene: scene)
+        .gesture(MagnifyGesture()
+          .onChanged { value in
+            let newScale = cameraScale / value.magnification
+            scene.setZoom(scale: newScale)
+          }
+          .onEnded { value in
+            cameraScale /= value.magnification
+          }
+        )
+        .gesture(DragGesture()
+          .onChanged { value in
+            let currentScale = scene.cameraNode?.xScale ?? 1
+            scene.setCameraPosition(CGPoint(
+              x: cameraPosition.x - value.translation.width * currentScale,
+              y: cameraPosition.y + value.translation.height * currentScale))
+          }
+          .onEnded { value in
+            let currentScale = scene.cameraNode?.xScale ?? 1
+            cameraPosition = CGPoint(
+              x: cameraPosition.x - value.translation.width * currentScale,
+              y: cameraPosition.y + value.translation.height * currentScale)
+          }
+        )
         .frame(maxWidth: .infinity)
         .aspectRatio(350.0 / 400.0, contentMode: .fit)
       List {

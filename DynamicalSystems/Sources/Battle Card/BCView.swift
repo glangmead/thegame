@@ -17,6 +17,8 @@ struct BCView: View {
     .solo: .interactive
   ]
   @State private var aiTask: Task<Void, Never>?
+  @State private var cameraScale: CGFloat = 1.0
+  @State private var cameraPosition: CGPoint = .zero
   private let graph: SiteGraph
   private let pieces: [GamePiece]
 
@@ -53,6 +55,29 @@ struct BCView: View {
   var body: some View {
     VStack(spacing: 0) {
       SpriteView(scene: scene)
+        .gesture(MagnifyGesture()
+          .onChanged { value in
+            let newScale = cameraScale / value.magnification
+            scene.setZoom(scale: newScale)
+          }
+          .onEnded { value in
+            cameraScale /= value.magnification
+          }
+        )
+        .gesture(DragGesture()
+          .onChanged { value in
+            let currentScale = scene.cameraNode?.xScale ?? 1
+            scene.setCameraPosition(CGPoint(
+              x: cameraPosition.x - value.translation.width * currentScale,
+              y: cameraPosition.y + value.translation.height * currentScale))
+          }
+          .onEnded { value in
+            let currentScale = scene.cameraNode?.xScale ?? 1
+            cameraPosition = CGPoint(
+              x: cameraPosition.x - value.translation.width * currentScale,
+              y: cameraPosition.y + value.translation.height * currentScale)
+          }
+        )
         .frame(maxWidth: .infinity)
         .aspectRatio(260.0 / 380.0, contentMode: .fit)
       HStack {

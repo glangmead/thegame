@@ -8,6 +8,7 @@
 import SpriteKit
 import SwiftUI
 
+// swiftlint:disable type_body_length
 struct LoDView: View {
   @State private var model: GameModel<LoD.State, LoD.Action>
   @State private var scene: GameScene<LoD.State, LoD.Action>
@@ -17,6 +18,8 @@ struct LoDView: View {
     .solo: .interactive
   ]
   @State private var aiTask: Task<Void, Never>?
+  @State private var cameraScale: CGFloat = 1.0
+  @State private var cameraPosition: CGPoint = .zero
   @State private var selectedTab: PanelTab = .actions
   @State private var boardMode: BoardMode = .abstract
   @State private var vassalScene: LoDVassalScene?
@@ -113,16 +116,63 @@ struct LoDView: View {
     .onDisappear { aiTask?.cancel() }
   }
 
+  // swiftlint:disable:next function_body_length
   private func boardView(squareSize: CGFloat) -> some View {
     Group {
       switch boardMode {
       case .abstract:
         SpriteView(scene: scene)
+          .gesture(MagnifyGesture()
+            .onChanged { value in
+              let newScale = cameraScale / value.magnification
+              scene.setZoom(scale: newScale)
+            }
+            .onEnded { value in
+              cameraScale /= value.magnification
+            }
+          )
+          .gesture(DragGesture()
+            .onChanged { value in
+              let currentScale = scene.cameraNode?.xScale ?? 1
+              scene.setCameraPosition(CGPoint(
+                x: cameraPosition.x - value.translation.width * currentScale,
+                y: cameraPosition.y + value.translation.height * currentScale))
+            }
+            .onEnded { value in
+              let currentScale = scene.cameraNode?.xScale ?? 1
+              cameraPosition = CGPoint(
+                x: cameraPosition.x - value.translation.width * currentScale,
+                y: cameraPosition.y + value.translation.height * currentScale)
+            }
+          )
       case .vassal:
         if let vScene = vassalScene {
           SpriteView(scene: vScene)
         } else {
           SpriteView(scene: scene)
+            .gesture(MagnifyGesture()
+              .onChanged { value in
+                let newScale = cameraScale / value.magnification
+                scene.setZoom(scale: newScale)
+              }
+              .onEnded { value in
+                cameraScale /= value.magnification
+              }
+            )
+            .gesture(DragGesture()
+              .onChanged { value in
+                let currentScale = scene.cameraNode?.xScale ?? 1
+                scene.setCameraPosition(CGPoint(
+                  x: cameraPosition.x - value.translation.width * currentScale,
+                  y: cameraPosition.y + value.translation.height * currentScale))
+              }
+              .onEnded { value in
+                let currentScale = scene.cameraNode?.xScale ?? 1
+                cameraPosition = CGPoint(
+                  x: cameraPosition.x - value.translation.width * currentScale,
+                  y: cameraPosition.y + value.translation.height * currentScale)
+              }
+            )
         }
       }
     }
@@ -283,6 +333,7 @@ struct LoDView: View {
     )
   }
 }
+// swiftlint:enable type_body_length
 
 #Preview("Legions of Darkness") {
   NavigationStack {
