@@ -25,8 +25,6 @@ extension MalayanCampaign: StatePredicates {
     // swiftlint:disable:next nesting
     typealias PiecePosition = MalayanCampaignComponents.PiecePosition
 
-    var name: String { "Battle Card: Malayan Campaign" }
-
     var history = [MalayanCampaign.Action]()
     var player: Player = .solo
     var players: [Player] = [.solo]

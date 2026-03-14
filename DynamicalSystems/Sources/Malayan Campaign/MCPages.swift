@@ -9,6 +9,7 @@ import Foundation
 
 // swiftlint:disable:next type_body_length
 enum MCPages {
+  static let gameName = "Battle Card: Malayan Campaign"
   static func setupPage() -> RulePage<MalayanCampaign.State, MalayanCampaign.Action> {
     RulePage(
       name: "Setup",
@@ -361,6 +362,7 @@ enum MCPages {
 
   static func game() -> ComposedGame<MalayanCampaign.State> {
     oapply(
+      gameName: gameName,
       pages: [
         setupPage(),
         alliedWithdrawalPage().asRulePage(),

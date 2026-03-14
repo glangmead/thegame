@@ -36,7 +36,7 @@ struct CantStopGraph {
         let tags: Set<String> = row == height
           ? ["col\(colNum)", "board", "crown"]
           : ["col\(colNum)", "board"]
-        let id = graph.addSite(position: pos, tags: tags)
+        let id = graph.addSite(position: pos, tags: tags, label: row == height ? "\(colNum)" : nil)
         trackSites.append(id)
       }
 
@@ -58,7 +58,7 @@ struct CantStopGraph {
     let maxY = CGFloat(12) * cellSize  // tallest column height
     _ = graph.addSite(position: CGPoint(x: cellSize * 3, y: maxY + cellSize * 2), tags: [whiteTray])
     _ = graph.addSite(position: CGPoint(x: -9999, y: -9999), tags: [placeholderTray])
-    _ = graph.addSite(position: CGPoint(x: cellSize * 9, y: maxY + cellSize * 2), tags: [diceTray])
+    _ = graph.addSite(position: CGPoint(x: cellSize * 11, y: maxY + cellSize * 2), tags: [diceTray, "invisible"])
 
     return graph
   }

@@ -10,6 +10,7 @@ import Foundation
 typealias LoD = LoDComponents
 
 struct LoDComponents: GameComponents {
+  static let gameName = "Legions of Darkness"
 
   enum Player: Equatable, Hashable {
     case solo

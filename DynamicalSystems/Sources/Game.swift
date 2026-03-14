@@ -50,7 +50,6 @@ protocol StatePredicates {
 }
 
 protocol GameState: GameComponents, Equatable {
-  var name: String { get }
   var player: Player { get set }
   var players: [Player] { get set }
   var ended: Bool { get set }
@@ -60,6 +59,7 @@ protocol GameState: GameComponents, Equatable {
 }
 
 protocol PlayableGame<State, Action> {
+  var gameName: String { get }
   associatedtype State
   associatedtype Action
   func newState() -> State

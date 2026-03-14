@@ -19,7 +19,6 @@ extension Hearts {
     // swiftlint:enable nesting
 
     // GameState
-    var name = "Hearts"
     var player: Seat
     var players: [Seat] = Seat.allCases
     var ended = false

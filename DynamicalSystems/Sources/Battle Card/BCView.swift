@@ -80,7 +80,7 @@ struct BCView: View {
         }
       }
     }
-    .navigationTitle(model.state.name)
+    .navigationTitle(model.gameName)
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
       ToolbarItem(placement: .primaryAction) {

@@ -27,9 +27,6 @@ extension CantStop: StatePredicates {
     // swiftlint:disable:next nesting
     typealias PiecePosition = CantStop.PiecePosition
 
-    var name: String {
-      "F My Luck"
-    }
     // TODO: force-query w/ extension Dictionary {
     //   subscript(force key: Key) -> Value {}
     // } like in https://stackoverflow.com/questions/59793783/

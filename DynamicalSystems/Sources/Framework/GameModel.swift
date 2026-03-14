@@ -25,6 +25,8 @@ class GameModel<
     self.state = game.newState()
   }
 
+  var gameName: String { game.gameName }
+
   var allowedActions: [Action] {
     game.allowedActions(state: state)
   }

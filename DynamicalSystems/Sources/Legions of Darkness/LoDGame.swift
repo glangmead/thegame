@@ -32,6 +32,7 @@ extension LoD {
     shuffledNightCards: [Card]? = nil
   ) -> ComposedGame<State> {
     oapply(
+      gameName: gameName,
       pages: [cardPage, armyPage, eventPage,
               chainLightningPage, fortunePage, deathAndDespairPage,
               combatPage, buildPage, magicPage, questPage,

@@ -13,19 +13,19 @@ struct DynamicalSystemsApp: App {
     WindowGroup {
       NavigationStack {
         List {
-          NavigationLink("Can't Stop") {
+          NavigationLink(CantStopPages.gameName) {
             CantStopView()
           }
-          NavigationLink("Battle Card: Market Garden") {
+          NavigationLink(BCPages.gameName) {
             BCView()
           }
-          NavigationLink("Battle Card: Malayan Campaign") {
+          NavigationLink(MCPages.gameName) {
             MCView()
           }
-          NavigationLink("Hearts") {
+          NavigationLink(Hearts.gameName) {
             HeartsView()
           }
-          NavigationLink("Legions of Darkness") {
+          NavigationLink(LoD.gameName) {
             LoDView()
           }
         }

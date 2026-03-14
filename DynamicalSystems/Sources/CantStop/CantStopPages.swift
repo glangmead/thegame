@@ -8,6 +8,7 @@
 import Foundation
 
 enum CantStopPages {
+  static let gameName = "Must Bust"
   static func rollPage() -> RulePage<CantStop.State, CantStop.Action> {
     RulePage(
       name: "Roll",
@@ -231,6 +232,7 @@ enum CantStopPages {
     players: [CantStop.Player] = [.player1, .player2]
   ) -> ComposedGame<CantStop.State> {
     oapply(
+      gameName: gameName,
       pages: [
         rollPage(), movePage()
       ],

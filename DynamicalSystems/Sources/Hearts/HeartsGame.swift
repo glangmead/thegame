@@ -24,6 +24,7 @@ extension Hearts {
     shuffledDeck: [Card]? = nil
   ) -> ComposedGame<State> {
     oapply(
+      gameName: gameName,
       pages: [passingPage, singlePlayPage, trickPage, handPage],
       priorities: [gameEndPage],
       initialState: {

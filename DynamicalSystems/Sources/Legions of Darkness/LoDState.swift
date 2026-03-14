@@ -30,7 +30,6 @@ extension LoD {
 
     // MARK: - GameState conformance
 
-    var name: String { "Legions of Darkness" }
     var player: Player = .solo
     var players: [Player] = [.solo]
     var endedInVictoryFor: [Player] = []

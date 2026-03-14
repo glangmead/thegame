@@ -14,6 +14,7 @@ import Foundation
 /// Priority pages (e.g., victory/defeat) are checked first and override
 /// normal pages when they fire.
 struct ComposedGame<State: HistoryTracking>: PlayableGame where State.Action: Hashable {
+  let gameName: String
   let pages: [RulePage<State, State.Action>]
   let priorities: [RulePage<State, State.Action>]
   let makeInitialState: () -> State
@@ -96,6 +97,7 @@ struct ComposedGame<State: HistoryTracking>: PlayableGame where State.Action: Ha
 /// - **History**: managed by the framework, available to all ForEach pages
 /// - **Priorities**: victory/defeat checked before phase-specific rules
 func oapply<State: HistoryTracking>(
+  gameName: String,
   pages: [RulePage<State, State.Action>],
   priorities: [RulePage<State, State.Action>] = [],
   initialState: @escaping () -> State,
@@ -106,6 +108,7 @@ func oapply<State: HistoryTracking>(
   rolloutPolicy: (([State.Action]) -> State.Action)? = nil
 ) -> ComposedGame<State> where State.Action: Hashable {
   ComposedGame(
+    gameName: gameName,
     pages: pages,
     priorities: priorities,
     makeInitialState: initialState,

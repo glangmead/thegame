@@ -56,10 +56,11 @@ struct SiteGraph: Codable, Equatable {
   mutating func addSite(
     id: SiteID? = nil,
     position: CGPoint,
-    tags: Set<String> = []
+    tags: Set<String> = [],
+    label: String? = nil
   ) -> SiteID {
     let siteID = id ?? SiteID(nextID)
-    sites[siteID] = Site(id: siteID, position: position, tags: tags)
+    sites[siteID] = Site(id: siteID, position: position, tags: tags, label: label)
     nextID = max(nextID, siteID.raw + 1)
     return siteID
   }

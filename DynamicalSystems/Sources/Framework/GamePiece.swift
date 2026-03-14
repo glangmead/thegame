@@ -20,6 +20,14 @@ struct GamePiece: Hashable, Codable, Equatable, Identifiable {
     case token
     case die(sides: Int)
     case card
+
+    var layoutKey: String {
+      switch self {
+      case .token: "token"
+      case .die: "die"
+      case .card: "card"
+      }
+    }
   }
 }
 

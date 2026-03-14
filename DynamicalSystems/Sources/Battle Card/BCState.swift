@@ -25,9 +25,7 @@ extension BattleCard: StatePredicates {
     // swiftlint:disable:next nesting
     typealias Weather       = BattleCardComponents.Weather
 
-    var name: String {
-      "Battle Card: Market Garden"
-    }
+
 
     var history = [BattleCard.Action]()
     var player: Player = .solo

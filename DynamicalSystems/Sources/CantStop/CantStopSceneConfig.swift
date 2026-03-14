@@ -14,8 +14,8 @@ struct CantStopSceneConfig {
         .columnar(heights: [4, 6, 8, 10, 12, 14, 12, 10, 8, 6, 4]),
         style: StyleConfig(stroke: "black", lineWidth: 1)
       ),
-      .container("dice", [.die(.labeledSquare)]),
-      .piece(.circle, color: .byPlayer)
+      .piece(.circle, color: .byPlayer),
+      .scaled(.container("dice", [.die(.labeledSquare)]), factor: 2)
     ])
   }
 }

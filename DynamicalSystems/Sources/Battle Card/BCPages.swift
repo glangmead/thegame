@@ -8,6 +8,7 @@
 import Foundation
 
 enum BCPages {
+  static let gameName = "Battle Card: Market Garden"
   static func setupPage() -> RulePage<BattleCard.State, BattleCard.Action> {
     RulePage(
       name: "Setup",
@@ -238,6 +239,7 @@ enum BCPages {
 
   static func game() -> ComposedGame<BattleCard.State> {
     oapply(
+      gameName: gameName,
       pages: [
         setupPage(),
         airdropPage().asRulePage(),

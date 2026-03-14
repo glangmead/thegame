@@ -10,6 +10,7 @@ import Foundation
 typealias Hearts = HeartsComponents
 
 struct HeartsComponents: GameComponents {
+  static let gameName = "Hearts"
   typealias Piece = Card
   typealias PiecePosition = CardPosition
   typealias Player = Seat

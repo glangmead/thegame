@@ -71,7 +71,7 @@ struct CantStopView: View {
         }
       }
     }
-    .navigationTitle("\(model.state.name): \(model.state.player)")
+    .navigationTitle("\(model.gameName): \(model.state.player)")
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
       ToolbarItem(placement: .primaryAction) {
@@ -140,7 +140,7 @@ struct CantStopView: View {
   }
 }
 
-#Preview("F My Luck") {
+#Preview(CantStopPages.gameName) {
   NavigationStack {
     CantStopView()
   }
