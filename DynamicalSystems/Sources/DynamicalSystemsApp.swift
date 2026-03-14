@@ -23,7 +23,7 @@ struct DynamicalSystemsApp: App {
             MCView()
           }
           NavigationLink("Hearts") {
-            HeartsView(config: Hearts.HeartsConfig(humanSeat: .south))
+            HeartsView()
           }
           NavigationLink("Legions of Darkness") {
             LoDView()

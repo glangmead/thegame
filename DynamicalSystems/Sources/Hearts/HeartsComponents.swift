@@ -141,9 +141,17 @@ struct HeartsComponents: GameComponents {
   // MARK: - Config
 
   struct HeartsConfig: Equatable, Sendable {
-    var humanSeat: Seat?
+    var playerModes: [Seat: PlayerMode] = [
+      .north: .fastAI,
+      .east: .fastAI,
+      .south: .interactive,
+      .west: .fastAI
+    ]
     var scoreLimit: Int = 100
-    var aiDelaySeconds: Double = 0.75
+
+    var humanSeat: Seat? {
+      playerModes.first(where: { $0.value == .interactive })?.key
+    }
   }
 
   // MARK: - Constants

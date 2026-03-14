@@ -13,6 +13,13 @@ struct HeartsView: View {
   @State private var scene: GameScene<Hearts.State, Hearts.Action>
   @State private var cachedActions: [Hearts.Action] = []
   @State private var selectedTab: PanelTab = .actions
+  @State private var showConfig = false
+  @State var playerModes: [Hearts.Seat: PlayerMode] = [
+    .north: .fastAI,
+    .east: .fastAI,
+    .south: .interactive,
+    .west: .fastAI
+  ]
   @State var aiTask: Task<Void, Never>?
   @Environment(\.horizontalSizeClass) private var sizeClass
   private let graph: SiteGraph
@@ -23,7 +30,21 @@ struct HeartsView: View {
     case log = "Log"
   }
 
-  init(config: Hearts.HeartsConfig = Hearts.HeartsConfig()) {
+  private var slots: [PlayerSlot<Hearts.Seat>] {
+    let modes: [PlayerMode] = [.interactive, .fastAI, .slowAI]
+    return Hearts.Seat.allCases.map {
+      PlayerSlot(
+        player: $0, label: $0.description,
+        allowedModes: modes)
+    }
+  }
+
+  init() {
+    let defaultModes: [Hearts.Seat: PlayerMode] = [
+      .north: .fastAI, .east: .fastAI,
+      .south: .interactive, .west: .fastAI
+    ]
+    let config = Hearts.HeartsConfig(playerModes: defaultModes)
     let graph = HeartsGraph.board(cellSize: 30)
     let game = Hearts.composedGame(config: config)
     let model = GameModel(game: game, graph: graph)
@@ -35,7 +56,8 @@ struct HeartsView: View {
       cellSize: 30
     )
     scene.scaleMode = .aspectFit
-    scene.backgroundColor = SKColor(red: 0.0, green: 0.4, blue: 0.0, alpha: 1.0)
+    scene.backgroundColor = SKColor(
+      red: 0.0, green: 0.4, blue: 0.0, alpha: 1.0)
     let pieces = HeartsPieceAdapter.pieces()
 
     self._model = State(initialValue: model)
@@ -43,8 +65,10 @@ struct HeartsView: View {
     self.graph = graph
     self.pieces = pieces
 
-    let section = HeartsPieceAdapter.section(from: model.state, graph: graph)
-    scene.syncState(pieces: pieces, section: section, siteHighlights: [:])
+    let section = HeartsPieceAdapter.section(
+      from: model.state, graph: graph)
+    scene.syncState(
+      pieces: pieces, section: section, siteHighlights: [:])
   }
 
   var body: some View {
@@ -56,15 +80,43 @@ struct HeartsView: View {
       layout {
         SpriteView(scene: scene)
           .frame(
-            width: isLandscape ? geo.size.height : geo.size.width,
-            height: isLandscape ? geo.size.height : geo.size.width
+            width: isLandscape
+              ? geo.size.height : geo.size.width,
+            height: isLandscape
+              ? geo.size.height : geo.size.width
           )
         actionPanel
       }
     }
     .navigationTitle("Hearts")
     .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      ToolbarItem(placement: .primaryAction) {
+        Button {
+          showConfig = true
+        } label: {
+          Image(systemName: "gearshape")
+        }
+      }
+    }
+    .sheet(isPresented: $showConfig) {
+      PlayerConfigSheet(
+        slots: slots,
+        modes: $playerModes,
+        onStart: resetGame
+      )
+    }
     .onAppear { refreshActions() }
+    .onChange(of: model.state) {
+      refreshActions()
+      syncScene()
+      aiTask?.cancel()
+      aiTask = scheduleAIMove(
+        model: model,
+        playerModes: playerModes,
+        performAction: performAction
+      )
+    }
     .onDisappear { aiTask?.cancel() }
   }
 
@@ -111,7 +163,9 @@ struct HeartsView: View {
   private var logList: some View {
     List {
       Section("Log") {
-        ForEach(Array(model.logs.enumerated()), id: \.offset) { _, log in
+        ForEach(
+          Array(model.logs.enumerated()), id: \.offset
+        ) { _, log in
           Text(log.msg)
             .font(.caption)
         }
@@ -121,7 +175,9 @@ struct HeartsView: View {
 
   private var actionList: some View {
     List {
-      MCTSActionSection(model: model, actions: cachedActions) { action in
+      MCTSActionSection(
+        model: model, actions: cachedActions
+      ) { action in
         performAction(action)
       }
     }
@@ -129,11 +185,17 @@ struct HeartsView: View {
 
   private var statusBar: some View {
     HStack {
-      Label("Hand \(model.state.handNumber + 1)", systemImage: "suit.heart")
+      Label(
+        "Hand \(model.state.handNumber + 1)",
+        systemImage: "suit.heart")
       Spacer()
-      Label("Trick \(model.state.turnNumber)", systemImage: "number")
+      Label(
+        "Trick \(model.state.turnNumber)",
+        systemImage: "number")
       Spacer()
-      Label(model.state.passDirection.description, systemImage: "arrow.left.arrow.right")
+      Label(
+        model.state.passDirection.description,
+        systemImage: "arrow.left.arrow.right")
       Spacer()
       if model.state.heartsBroken {
         Label("Broken", systemImage: "heart.fill")
@@ -148,40 +210,44 @@ struct HeartsView: View {
   // MARK: - Logic
 
   func performAction(_ action: Hearts.Action) {
-    // Intercept confirmPass: populate AI pass selections
-    let resolved: Hearts.Action
-    if case .confirmPass = action {
-      var aiPasses: [Hearts.Seat: [Hearts.Card]] = [:]
-      for seat in Hearts.Seat.allCases where seat != model.state.config.humanSeat {
-        aiPasses[seat] = Array(model.state.hands[seat]?.prefix(3) ?? [])
-      }
-      resolved = .confirmPass(aiPasses: aiPasses)
-    } else {
-      resolved = action
-    }
-
-    model.perform(resolved)
-    refreshActions()
-    syncScene()
-    scheduleAIIfNeeded()
+    model.perform(action)
   }
 
   private func syncScene() {
-    let section = HeartsPieceAdapter.section(from: model.state, graph: graph)
-    scene.syncState(pieces: pieces, section: section, siteHighlights: [:])
+    let section = HeartsPieceAdapter.section(
+      from: model.state, graph: graph)
+    scene.syncState(
+      pieces: pieces, section: section, siteHighlights: [:])
   }
 
   private func refreshActions() {
-    let isAIPlayTurn = model.state.phase == .playing
-      && model.state.player != model.state.config.humanSeat
-    let isTrickResolution = model.state.phase == .trickResolution
-    cachedActions = (isAIPlayTurn || isTrickResolution) ? [] : model.allowedActions
+    let mode = playerModes[
+      model.state.player, default: .interactive]
+    let isTrickResolution =
+      model.state.phase == .trickResolution
+    guard mode == .interactive,
+          !isTrickResolution,
+          !model.isTerminal else {
+      cachedActions = []
+      return
+    }
+    cachedActions = model.allowedActions
   }
 
+  private func resetGame() {
+    aiTask?.cancel()
+    let config = Hearts.HeartsConfig(
+      playerModes: playerModes)
+    let game = Hearts.composedGame(config: config)
+    model.reset(with: game)
+    cachedActions = []
+    syncScene()
+    showConfig = false
+  }
 }
 
 #Preview("Hearts") {
   NavigationStack {
-    HeartsView(config: Hearts.HeartsConfig(humanSeat: .south))
+    HeartsView()
   }
 }

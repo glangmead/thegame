@@ -77,7 +77,10 @@ struct GamerTool: ParsableCommand {
       case .hearts:
         var gameRunner = GameRunner(
           reducer: Hearts.composedGame(
-            config: Hearts.HeartsConfig(humanSeat: nil)),
+            config: Hearts.HeartsConfig(playerModes: [
+              .north: .fastAI, .east: .fastAI,
+              .south: .fastAI, .west: .fastAI
+            ])),
           numTrials: numTrials,
           numMCTSIters: numMCTSIters,
           numRollouts: numRollouts,

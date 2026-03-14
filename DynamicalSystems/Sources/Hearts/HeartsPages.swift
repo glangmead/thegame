@@ -36,7 +36,7 @@ extension Hearts {
             state.phase == .passing
               && state.passingState?.selected.count == 3
           },
-          actions: { _ in [.confirmPass(aiPasses: [:])] }
+          actions: { _ in [.confirmPass] }
         )
       ],
       reduce: { state, action in
@@ -46,10 +46,10 @@ extension Hearts {
           state.passingState?.selected.append(card)
           return ([Log(msg: "Selected \(card) to pass")], [])
 
-        case .confirmPass(let aiPasses):
+        case .confirmPass:
           guard let passing = state.passingState else { return nil }
           let humanCards = passing.selected
-          state.executePasses(humanCards: humanCards, aiPasses: aiPasses)
+          state.executePasses(humanCards: humanCards)
           return ([Log(msg: "Cards passed \(passing.direction)")], [])
 
         default:

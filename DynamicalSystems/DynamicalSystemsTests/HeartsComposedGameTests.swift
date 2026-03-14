@@ -16,8 +16,12 @@ struct HeartsComposedGameTests {
     scoreLimit: Int = 100,
     shuffledDeck: [Hearts.Card]? = nil
   ) -> ComposedGame<Hearts.State> {
+    let allAI: [Hearts.Seat: PlayerMode] = [
+      .north: .fastAI, .east: .fastAI,
+      .south: .fastAI, .west: .fastAI
+    ]
     let config = Hearts.HeartsConfig(
-      humanSeat: nil, scoreLimit: scoreLimit)
+      playerModes: allAI, scoreLimit: scoreLimit)
     return Hearts.composedGame(
       config: config, shuffledDeck: shuffledDeck)
   }
@@ -62,15 +66,9 @@ struct HeartsComposedGameTests {
     // Should now offer confirmPass
     let actions = game.allowedActions(state: state)
     #expect(actions.count == 1)
-    #expect(actions.first == .confirmPass(aiPasses: [:]))
+    #expect(actions.first == .confirmPass)
 
-    // Build AI passes for the other 3 seats
-    var aiPasses: [Hearts.Seat: [Hearts.Card]] = [:]
-    for seat in Hearts.Seat.allCases where seat != state.player {
-      aiPasses[seat] = Array(state.hands[seat]!.prefix(3))
-    }
-
-    _ = game.reduce(into: &state, action: .confirmPass(aiPasses: aiPasses))
+    _ = game.reduce(into: &state, action: .confirmPass)
     #expect(state.phase == .playing)
     #expect(state.passingState == nil)
   }
@@ -153,11 +151,7 @@ struct HeartsComposedGameTests {
     _ = game.reduce(into: &state, action: .selectPassCard(hand[1]))
     _ = game.reduce(into: &state, action: .selectPassCard(hand[2]))
 
-    var aiPasses: [Hearts.Seat: [Hearts.Card]] = [:]
-    for seat in Hearts.Seat.allCases where seat != currentPlayer {
-      aiPasses[seat] = Array(state.hands[seat]!.prefix(3))
-    }
-    _ = game.reduce(into: &state, action: .confirmPass(aiPasses: aiPasses))
+    _ = game.reduce(into: &state, action: .confirmPass)
     #expect(state.phase == .playing)
 
     // Play 13 tricks via allowedActions, resolving each trick explicitly
@@ -232,7 +226,12 @@ struct HeartsComposedGameTests {
 
   @Test
   func allAI_fullGame_completesWithoutCrash() {
-    let config = Hearts.HeartsConfig(humanSeat: nil, scoreLimit: 50)
+    let allAI: [Hearts.Seat: PlayerMode] = [
+      .north: .fastAI, .east: .fastAI,
+      .south: .fastAI, .west: .fastAI
+    ]
+    let config = Hearts.HeartsConfig(
+      playerModes: allAI, scoreLimit: 50)
     let game = Hearts.composedGame(config: config)
     var state = game.newState()
 
@@ -246,14 +245,9 @@ struct HeartsComposedGameTests {
       // For actions needing random data, provide it
       let resolvedAction: Hearts.Action
       switch action {
-      case .confirmPass:
-        var aiPasses: [Hearts.Seat: [Hearts.Card]] = [:]
-        for seat in Hearts.Seat.allCases {
-          aiPasses[seat] = Array(state.hands[seat]?.prefix(3) ?? [])
-        }
-        resolvedAction = .confirmPass(aiPasses: aiPasses)
       case .startNewHand:
-        resolvedAction = .startNewHand(shuffledDeck: Hearts.fullDeck.shuffled())
+        resolvedAction = .startNewHand(
+          shuffledDeck: Hearts.fullDeck.shuffled())
       default:
         resolvedAction = action
       }
@@ -271,7 +265,12 @@ struct HeartsComposedGameTests {
 
   @Test
   func mctsFromPassingPhase_doesNotCrash() {
-    let config = Hearts.HeartsConfig(humanSeat: .south, scoreLimit: 100)
+    let modes: [Hearts.Seat: PlayerMode] = [
+      .north: .fastAI, .east: .fastAI,
+      .south: .interactive, .west: .fastAI
+    ]
+    let config = Hearts.HeartsConfig(
+      playerModes: modes, scoreLimit: 100)
     let game = Hearts.composedGame(
       config: config, shuffledDeck: Hearts.fullDeck)
     var state = game.newState()
@@ -298,20 +297,21 @@ struct HeartsComposedGameTests {
 
   @Test
   func mctsProducesLegalActions() {
-    let config = Hearts.HeartsConfig(humanSeat: nil, scoreLimit: 100)
+    let allAI: [Hearts.Seat: PlayerMode] = [
+      .north: .fastAI, .east: .fastAI,
+      .south: .fastAI, .west: .fastAI
+    ]
+    let config = Hearts.HeartsConfig(
+      playerModes: allAI, scoreLimit: 100)
     let game = Hearts.composedGame(
       config: config, shuffledDeck: Hearts.fullDeck)
     var state = game.newState()
 
     // Skip to playing
-    var aiPasses: [Hearts.Seat: [Hearts.Card]] = [:]
-    for seat in Hearts.Seat.allCases {
-      aiPasses[seat] = Array(state.hands[seat]!.prefix(3))
-    }
     _ = game.reduce(into: &state, action: .selectPassCard(state.hands[state.player]![0]))
     _ = game.reduce(into: &state, action: .selectPassCard(state.hands[state.player]![1]))
     _ = game.reduce(into: &state, action: .selectPassCard(state.hands[state.player]![2]))
-    _ = game.reduce(into: &state, action: .confirmPass(aiPasses: aiPasses))
+    _ = game.reduce(into: &state, action: .confirmPass)
 
     let search = OpenLoopMCTS(state: state, reducer: game)
     let results = search.recommendation(iters: 50)

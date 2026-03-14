@@ -2,21 +2,20 @@
 //  HeartsAction.swift
 //  DynamicalSystems
 //
-//  Hearts — Action enum. All random values (AI passes, deck shuffle) are
-//  packed into the action for deterministic replay.
+//  Hearts — Action enum. Random values (deck shuffle) are packed into
+//  the action for deterministic replay.
 //
 
 import Foundation
 
 extension Hearts {
-  // Note: Action cannot auto-derive Hashable because confirmPass and
-  // startNewHand contain Dictionary/Array payloads used only for
-  // deterministic replay. Manual conformance treats those cases as
-  // identity-equal (there's only ever one in the action list at a time).
+  // Note: Action cannot auto-derive Hashable because startNewHand
+  // contains an Array payload used only for deterministic replay.
+  // Manual conformance treats that case as identity-equal.
   enum Action: CustomStringConvertible {
     // Passing phase
     case selectPassCard(Card)
-    case confirmPass(aiPasses: [Seat: [Card]])
+    case confirmPass
 
     // Playing phase
     case playCard(Card)

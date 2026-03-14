@@ -20,8 +20,15 @@ struct HeartsStateTests {
     scoreLimit: Int = 100,
     humanSeat: Hearts.Seat? = .south
   ) -> Hearts.State {
+    var modes: [Hearts.Seat: PlayerMode] = [
+      .north: .fastAI, .east: .fastAI,
+      .south: .fastAI, .west: .fastAI
+    ]
+    if let seat = humanSeat {
+      modes[seat] = .interactive
+    }
     let config = Hearts.HeartsConfig(
-      humanSeat: humanSeat, scoreLimit: scoreLimit)
+      playerModes: modes, scoreLimit: scoreLimit)
     return Hearts.State.newGame(config: config, shuffledDeck: testDeck)
   }
 
@@ -74,7 +81,7 @@ struct HeartsStateTests {
 
     let northBefore = state.hands[.north]!
 
-    state.executePasses(humanCards: humanCards, aiPasses: aiPasses)
+    state.executePasses(humanCards: humanCards)
 
     // North passes left to East: East should have North's passed cards
     let northPassed = Array(northBefore.prefix(3))
@@ -101,7 +108,7 @@ struct HeartsStateTests {
 
     let eastPassed = Array(state.hands[.east]!.prefix(3))
 
-    state.executePasses(humanCards: humanCards, aiPasses: aiPasses)
+    state.executePasses(humanCards: humanCards)
 
     // East passes right (offset 3 → north): North gets East's cards
     for card in eastPassed {
@@ -120,7 +127,7 @@ struct HeartsStateTests {
       aiPasses[seat] = Array(state.hands[seat]!.prefix(3))
     }
     let humanCards = Array(state.hands[.south]!.prefix(3))
-    state.executePasses(humanCards: humanCards, aiPasses: aiPasses)
+    state.executePasses(humanCards: humanCards)
 
     state.player = state.holderOfTwoOfClubs
     state.turnNumber = 1

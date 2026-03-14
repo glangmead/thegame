@@ -212,17 +212,14 @@ extension Hearts.State {
 // MARK: - Passing
 
 extension Hearts.State {
-  mutating func executePasses(
-    humanCards: [Hearts.Card],
-    aiPasses: [Hearts.Seat: [Hearts.Card]]
-  ) {
+  mutating func executePasses(humanCards: [Hearts.Card]) {
     let direction = passingState?.direction ?? passDirection
 
-    var allPasses: [Hearts.Seat: [Hearts.Card]] = aiPasses
+    var allPasses: [Hearts.Seat: [Hearts.Card]] = [:]
     if let humanSeat = config.humanSeat {
       allPasses[humanSeat] = humanCards
     }
-    // Auto-fill any seat still missing (e.g. during MCTS simulation)
+    // Auto-fill all non-interactive seats
     for seat in Hearts.Seat.allCases where allPasses[seat] == nil {
       allPasses[seat] = Array(hands[seat]?.prefix(3) ?? [])
     }
