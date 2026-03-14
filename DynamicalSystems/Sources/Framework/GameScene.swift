@@ -63,6 +63,10 @@ class GameScene<
   }
   var pieceLayouts: [String: PieceLayout] = [:]
 
+  var cameraNode: SKCameraNode?
+  private var minScale: CGFloat = 0.3
+  private var maxScale: CGFloat = 3.0
+
   init(
     model: GameModel<State, Action>,
     config: SceneConfig,
@@ -77,6 +81,7 @@ class GameScene<
     super.init(size: size)
     self.backgroundColor = .white
     buildScene(from: config, parent: self, accumulatedScale: 1)
+    setupCamera()
   }
 
   required init?(coder aDecoder: NSCoder) { nil }
@@ -401,5 +406,47 @@ class GameScene<
     let sitePieces = buildSitePieceMap(pieces: pieces, section: section)
     syncPieces(pieces: pieces, section: section, sitePieces: sitePieces)
     hideMissingPieces(pieces: pieces, section: section)
+  }
+
+  // MARK: - Camera
+
+  func boardBounds() -> CGRect {
+    guard !siteNodes.isEmpty else { return .zero }
+    var rect = CGRect.null
+    for (_, node) in siteNodes {
+      let frame = CGRect(
+        origin: node.position,
+        size: CGSize(width: cellSize, height: cellSize))
+      rect = rect.union(frame)
+    }
+    return rect
+  }
+
+  func setupCamera() {
+    let cam = SKCameraNode()
+    addChild(cam)
+    camera = cam
+    cameraNode = cam
+    zoomToFit()
+  }
+
+  func zoomToFit() {
+    guard let cam = cameraNode else { return }
+    let bounds = boardBounds()
+    guard !bounds.isNull, bounds.width > 0, bounds.height > 0 else { return }
+    let scaleX = size.width / bounds.width
+    let scaleY = size.height / bounds.height
+    let fitScale = min(scaleX, scaleY) * 0.9
+    cam.setScale(1 / fitScale)
+    cam.position = CGPoint(x: bounds.midX, y: bounds.midY)
+  }
+
+  func setZoom(scale: CGFloat) {
+    guard let cam = cameraNode else { return }
+    cam.setScale(max(minScale, min(maxScale, scale)))
+  }
+
+  func setCameraPosition(_ position: CGPoint) {
+    cameraNode?.position = position
   }
 }

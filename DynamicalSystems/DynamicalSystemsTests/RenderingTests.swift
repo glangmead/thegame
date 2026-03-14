@@ -136,4 +136,20 @@ struct RenderingTests {
     #expect(shape?.fillColor != .clear)
     #expect(shape?.zPosition == -1)
   }
+
+  @Test @MainActor
+  func testBoardBoundsCoversAllSites() {
+    let scene = makeStubScene()
+    let bounds = scene.boardBounds()
+    #expect(!bounds.isNull)
+    #expect(bounds.width > 0)
+    #expect(bounds.height > 0)
+  }
+
+  @Test @MainActor
+  func testSetupCameraSetsCameraNode() {
+    let scene = makeStubScene()
+    #expect(scene.cameraNode != nil)
+    #expect(scene.camera != nil)
+  }
 }
