@@ -12,7 +12,6 @@ struct MCView: View {
   @State private var model: GameModel<MalayanCampaign.State, MalayanCampaign.Action>
   @State private var scene: GameScene<MalayanCampaign.State, MalayanCampaign.Action>
   @State private var cachedActions: [MalayanCampaign.Action] = []
-  @State private var logs: [Log] = []
   private let graph: SiteGraph
   private let pieces: [GamePiece]
 
@@ -54,9 +53,9 @@ struct MCView: View {
       .padding(.horizontal)
       .padding(.vertical, 6)
       List {
-        if !logs.isEmpty {
+        if !model.logs.isEmpty {
           Section("Log") {
-            ForEach(logs, id: \.msg) { log in
+            ForEach(model.logs, id: \.msg) { log in
               Text(log.msg)
                 .font(.caption)
             }
@@ -73,8 +72,7 @@ struct MCView: View {
   }
 
   private func performAction(_ action: MalayanCampaign.Action) {
-    let newLogs = model.perform(action)
-    logs = newLogs
+    model.perform(action)
     refreshActions()
     let section = MCPieceAdapter.section(from: model.state, graph: graph)
     let highlights = MCPieceAdapter.siteHighlights(from: model.state, graph: graph)

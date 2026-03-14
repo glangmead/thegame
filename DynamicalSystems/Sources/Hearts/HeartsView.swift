@@ -12,7 +12,6 @@ struct HeartsView: View {
   @State var model: GameModel<Hearts.State, Hearts.Action>
   @State private var scene: GameScene<Hearts.State, Hearts.Action>
   @State private var cachedActions: [Hearts.Action] = []
-  @State private var logs: [Log] = []
   @State private var selectedTab: PanelTab = .actions
   @State var aiTask: Task<Void, Never>?
   @Environment(\.horizontalSizeClass) private var sizeClass
@@ -112,7 +111,7 @@ struct HeartsView: View {
   private var logList: some View {
     List {
       Section("Log") {
-        ForEach(Array(logs.enumerated()), id: \.offset) { _, log in
+        ForEach(Array(model.logs.enumerated()), id: \.offset) { _, log in
           Text(log.msg)
             .font(.caption)
         }
@@ -161,8 +160,7 @@ struct HeartsView: View {
       resolved = action
     }
 
-    let newLogs = model.perform(resolved)
-    logs.insert(contentsOf: newLogs, at: 0)
+    model.perform(resolved)
     refreshActions()
     syncScene()
     scheduleAIIfNeeded()

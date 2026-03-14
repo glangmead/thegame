@@ -12,7 +12,6 @@ struct LoDView: View {
   @State private var model: GameModel<LoD.State, LoD.Action>
   @State private var scene: GameScene<LoD.State, LoD.Action>
   @State private var cachedActions: [LoD.Action] = []
-  @State private var logs: [Log] = []
   @State private var selectedTab: PanelTab = .actions
   @State private var boardMode: BoardMode = .abstract
   @State private var vassalScene: LoDVassalScene?
@@ -138,7 +137,7 @@ struct LoDView: View {
   private var logList: some View {
     List {
       Section("Log") {
-        ForEach(Array(logs.enumerated()), id: \.offset) { _, log in
+        ForEach(Array(model.logs.enumerated()), id: \.offset) { _, log in
           Text(log.msg)
             .font(.caption)
         }
@@ -180,8 +179,7 @@ struct LoDView: View {
   // MARK: - Logic
 
   private func performAction(_ action: LoD.Action) {
-    let newLogs = model.perform(action)
-    logs.insert(contentsOf: newLogs, at: 0)
+    model.perform(action)
     refreshActions()
     syncActiveScene()
   }

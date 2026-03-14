@@ -12,7 +12,6 @@ struct BCView: View {
   @State private var model: GameModel<BattleCard.State, BattleCard.Action>
   @State private var scene: GameScene<BattleCard.State, BattleCard.Action>
   @State private var cachedActions: [BattleCard.Action] = []
-  @State private var logs: [Log] = []
   private let graph: SiteGraph
   private let pieces: [GamePiece]
 
@@ -57,9 +56,9 @@ struct BCView: View {
       .padding(.horizontal)
       .padding(.vertical, 6)
       List {
-        if !logs.isEmpty {
+        if !model.logs.isEmpty {
           Section("Log") {
-            ForEach(logs, id: \.msg) { log in
+            ForEach(model.logs, id: \.msg) { log in
               Text(log.msg)
                 .font(.caption)
             }
@@ -76,8 +75,7 @@ struct BCView: View {
   }
 
   private func performAction(_ action: BattleCard.Action) {
-    let newLogs = model.perform(action)
-    logs = newLogs
+    model.perform(action)
     refreshActions()
     let section = BCPieceAdapter.section(from: model.state, graph: graph)
     let highlights = BCPieceAdapter.siteHighlights(from: model.state, graph: graph)
