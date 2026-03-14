@@ -12,6 +12,11 @@ struct LoDView: View {
   @State private var model: GameModel<LoD.State, LoD.Action>
   @State private var scene: GameScene<LoD.State, LoD.Action>
   @State private var cachedActions: [LoD.Action] = []
+  @State private var showConfig = false
+  @State private var playerModes: [LoD.Player: PlayerMode] = [
+    .solo: .interactive
+  ]
+  @State private var aiTask: Task<Void, Never>?
   @State private var selectedTab: PanelTab = .actions
   @State private var boardMode: BoardMode = .abstract
   @State private var vassalScene: LoDVassalScene?
@@ -29,6 +34,12 @@ struct LoDView: View {
   private enum BoardMode {
     case abstract
     case vassal
+  }
+
+  private var slots: [PlayerSlot<LoD.Player>] {
+    [PlayerSlot(
+      player: .solo, label: "Solo",
+      allowedModes: [.interactive, .fastAI, .slowAI])]
   }
 
   init() {
@@ -68,12 +79,38 @@ struct LoDView: View {
     }
     .navigationTitle("Legions of Darkness")
     .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      ToolbarItem(placement: .primaryAction) {
+        Button {
+          showConfig = true
+        } label: {
+          Image(systemName: "gearshape")
+        }
+      }
+    }
+    .sheet(isPresented: $showConfig) {
+      PlayerConfigSheet(
+        slots: slots,
+        modes: $playerModes,
+        onStart: resetGame
+      )
+    }
     .onAppear {
       refreshActions()
       let available = LoDVassalAssetLoader.isAvailable
-      print("Vassal available: \(available), folder: \(String(describing: LoDVassalAssetLoader.moduleFolder))")
       vassalAvailable = available
     }
+    .onChange(of: model.state) {
+      refreshActions()
+      syncActiveScene()
+      aiTask?.cancel()
+      aiTask = scheduleAIMove(
+        model: model,
+        playerModes: playerModes,
+        performAction: performAction
+      )
+    }
+    .onDisappear { aiTask?.cancel() }
   }
 
   private func boardView(squareSize: CGFloat) -> some View {
@@ -180,8 +217,6 @@ struct LoDView: View {
 
   private func performAction(_ action: LoD.Action) {
     model.perform(action)
-    refreshActions()
-    syncActiveScene()
   }
 
   private func syncActiveScene() {
@@ -225,7 +260,22 @@ struct LoDView: View {
   }
 
   private func refreshActions() {
+    let mode = playerModes[
+      model.state.player, default: .interactive]
+    guard mode == .interactive, !model.isTerminal else {
+      cachedActions = []
+      return
+    }
     cachedActions = model.allowedActions
+  }
+
+  private func resetGame() {
+    aiTask?.cancel()
+    let game = LoD.composedGame(windsOfMagicArcane: 3)
+    model.reset(with: game)
+    cachedActions = []
+    syncActiveScene()
+    showConfig = false
   }
 }
 
