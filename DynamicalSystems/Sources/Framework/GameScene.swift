@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 //
 //  GameScene.swift
 //  DynamicalSystems
@@ -100,6 +101,7 @@ class GameScene<
       let boardNode = SKNode()
       boardNode.name = "board"
       parent.addChild(boardNode)
+      buildTrackBackgrounds(parent: boardNode)
       buildBoardSites(style: style, parent: boardNode)
       return boardNode
 
@@ -229,6 +231,49 @@ class GameScene<
           node.addChild(labelNode)
         }
       }
+    }
+  }
+
+  private func buildTrackBackgrounds(parent: SKNode) {
+    for (trackName, tags) in model.graph.trackTags {
+      guard let siteIDs = model.graph.tracks[trackName],
+            !siteIDs.isEmpty else { continue }
+
+      let resolved = SiteAppearance.resolve(tags: tags, from: appearances)
+      let padding = resolved.padding ?? 4
+
+      // Compute bounding rect from member sites' positions.
+      var rect = CGRect.null
+      for siteID in siteIDs {
+        guard let site = model.graph.sites[siteID] else { continue }
+        let frame = CGRect(
+          origin: site.position,
+          size: CGSize(width: cellSize, height: cellSize))
+        rect = rect.union(frame)
+      }
+      guard !rect.isNull else { continue }
+
+      let inflated = rect.insetBy(dx: -padding, dy: -padding)
+      let cornerRadius = resolved.cornerRadius ?? 0
+
+      let bgNode = SKShapeNode(rect: inflated, cornerRadius: cornerRadius)
+      bgNode.fillColor = colorFromString(resolved.fill) ?? .clear
+      bgNode.strokeColor = colorFromString(resolved.stroke) ?? .clear
+      bgNode.lineWidth = resolved.lineWidth ?? 0
+      bgNode.zPosition = -1
+      bgNode.name = "trackBg_\(trackName)"
+
+      if let shadow = resolved.shadow {
+        let shadowNode = SKShapeNode(rect: inflated, cornerRadius: cornerRadius)
+        shadowNode.fillColor = colorFromString(shadow.color) ?? .black
+        shadowNode.strokeColor = .clear
+        shadowNode.alpha = 0.3
+        shadowNode.position = CGPoint(x: shadow.offset, y: -shadow.offset)
+        shadowNode.zPosition = -2
+        parent.addChild(shadowNode)
+      }
+
+      parent.addChild(bgNode)
     }
   }
 
