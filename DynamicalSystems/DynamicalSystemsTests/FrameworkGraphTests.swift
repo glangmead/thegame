@@ -220,6 +220,27 @@ struct SiteGraphTests {
   }
 
   @Test
+  func testAddTrackWithTags() {
+    var graph = SiteGraph()
+    let s0 = graph.addSite(position: CGPoint(x: 0, y: 0))
+    let s1 = graph.addSite(position: CGPoint(x: 1, y: 0))
+    graph.addTrack("east", sites: [s0, s1], tags: ["trackBg", "dropShadow"])
+
+    #expect(graph.tracks["east"]?.count == 2)
+    #expect(graph.trackTags["east"] == ["trackBg", "dropShadow"])
+  }
+
+  @Test
+  func testAddTrackWithoutTags() {
+    var graph = SiteGraph()
+    let s0 = graph.addSite(position: CGPoint(x: 0, y: 0))
+    graph.addTrack("time", sites: [s0])
+
+    #expect(graph.tracks["time"]?.count == 1)
+    #expect(graph.trackTags["time"] == nil)
+  }
+
+  @Test
   func testSceneConfigCodable() throws {
     let config: SceneConfig = .container("cantstop", [
       .board(.columnar(heights: [3, 5, 7]), style: StyleConfig(stroke: "black")),

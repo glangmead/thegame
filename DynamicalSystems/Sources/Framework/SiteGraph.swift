@@ -50,6 +50,7 @@ struct Site: Codable, Equatable {
 struct SiteGraph: Codable, Equatable {
   var sites: [SiteID: Site] = [:]
   var tracks: [String: [SiteID]] = [:]
+  var trackTags: [String: Set<String>] = [:]
   private var nextID: Int = 0
 
   @discardableResult
@@ -69,6 +70,11 @@ struct SiteGraph: Codable, Equatable {
   mutating func connect(_ from: SiteID, to: SiteID, direction: Direction) {
     sites[from]?.adjacency[direction] = to
     sites[to]?.adjacency[direction.opposite] = from
+  }
+
+  mutating func addTrack(_ name: String, sites trackSites: [SiteID], tags: Set<String> = []) {
+    tracks[name] = trackSites
+    if !tags.isEmpty { trackTags[name] = tags }
   }
 }
 
