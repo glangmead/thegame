@@ -18,6 +18,56 @@ where Game.State: GameState & CustomStringConvertible,
   return search.recommendation(iters: iters)
 }
 
+/// Schedule an AI move if the current player's mode requires it.
+/// Returns the spawned Task, or nil if the current player is interactive.
+@MainActor
+func scheduleAIMove<
+  S: GameState & CustomStringConvertible,
+  A: Hashable & Equatable & CustomStringConvertible
+>(
+  model: GameModel<S, A>,
+  playerModes: [S.Player: PlayerMode],
+  performAction: @escaping (A) -> Void
+) -> Task<Void, Never>? {
+  guard !model.isTerminal else { return nil }
+  let mode = playerModes[model.state.player, default: .interactive]
+  guard let iters = mode.mctsIterations else { return nil }
+  let actions = model.allowedActions
+  guard !actions.isEmpty else { return nil }
+
+  let minimumDelay: Double = 0.5
+
+  return Task { @MainActor in
+    let start = ContinuousClock.now
+    let bestAction: A
+
+    if actions.count == 1 {
+      bestAction = actions[0]
+    } else {
+      nonisolated(unsafe) let state = model.state
+      nonisolated(unsafe) let game = model.game
+      let results = await Task.detached {
+        mctsRecommendation(state: state, game: game, iters: iters)
+      }.value
+      if Task.isCancelled { return }
+      let ratio: ((Float, Float)) -> Float = { $0.0 / max($0.1, 1) }
+      bestAction = results.max(by: { ratio($0.value) < ratio($1.value) })?.key
+        ?? actions.randomElement()!
+    }
+
+    let elapsed = ContinuousClock.now - start
+    let elapsedSeconds = Double(elapsed.components.seconds)
+      + Double(elapsed.components.attoseconds) / 1e18
+    let remaining = minimumDelay - elapsedSeconds
+    if remaining > 0 {
+      try? await Task.sleep(for: .seconds(remaining))
+    }
+    guard !Task.isCancelled else { return }
+
+    performAction(bestAction)
+  }
+}
+
 struct MCTSActionSection<
   State: GameState & CustomStringConvertible,
   Action: Hashable & Equatable & CustomStringConvertible
