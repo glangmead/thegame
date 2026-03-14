@@ -28,6 +28,20 @@ extension SKLabelNode {
   }
 }
 
+extension FontWeight {
+  var uiWeight: UIFont.Weight {
+    switch self {
+    case .regular: .regular
+    case .bold: .bold
+    case .semibold: .semibold
+    case .light: .light
+    case .medium: .medium
+    case .heavy: .heavy
+    }
+  }
+}
+
+// swiftlint:disable:next type_body_length
 class GameScene<
   State: GameState & CustomStringConvertible,
   Action: Hashable & Equatable & CustomStringConvertible
@@ -35,6 +49,7 @@ class GameScene<
   let model: GameModel<State, Action>
   let config: SceneConfig
   let cellSize: CGFloat
+  let appearances: [String: SiteAppearance]
 
   var siteNodes: [SiteID: SKNode] = [:]
   var pieceNodes: [Int: SKNode] = [:]  // keyed by GamePiece.id
@@ -50,11 +65,13 @@ class GameScene<
     model: GameModel<State, Action>,
     config: SceneConfig,
     size: CGSize,
-    cellSize: CGFloat = 30
+    cellSize: CGFloat = 30,
+    appearances: [String: SiteAppearance] = SiteAppearance.defaultAppearances
   ) {
     self.model = model
     self.config = config
     self.cellSize = cellSize
+    self.appearances = appearances
     super.init(size: size)
     self.backgroundColor = .white
     buildScene(from: config, parent: self, accumulatedScale: 1)
@@ -118,72 +135,99 @@ class GameScene<
     }
   }
 
-  /// Creates SKNodes for each site in the graph.
+  // swiftlint:disable:next function_body_length
   private func buildBoardSites(style: StyleConfig?, parent: SKNode) {
-    let strokeColor = colorFromString(style?.stroke) ?? .black
-    let fillColor = colorFromString(style?.fill) ?? .clear
-    let lineWidth = CGFloat(style?.lineWidth ?? 1)
-    let fontSize = cellSize * 0.35
+    let defaultStroke = colorFromString(style?.stroke) ?? .black
+    let defaultFill = colorFromString(style?.fill) ?? .clear
+    let defaultLineWidth = CGFloat(style?.lineWidth ?? 1)
 
     for siteID in model.graph.sites.keys.sorted(by: { $0.raw < $1.raw }) {
       guard let site = model.graph.sites[siteID] else { continue }
 
-      if site.tags.contains("header") {
-        let labelNode = SKLabelNode(text: site.label ?? "")
-        labelNode.applySystemFont(
-          size: cellSize * 0.4, weight: .bold, color: .darkGray)
-        labelNode.horizontalAlignmentMode = .left
-        labelNode.verticalAlignmentMode = .center
-        labelNode.position = CGPoint(
-          x: site.position.x,
-          y: site.position.y + cellSize / 2
-        )
-        labelNode.name = "header_\(siteID.raw)"
-        parent.addChild(labelNode)
-        siteNodes[siteID] = labelNode
-        continue
-      }
+      let resolved = SiteAppearance.resolve(tags: site.tags, from: appearances)
+      let shape = resolved.shape ?? .rect
 
-      if site.tags.contains("invisible") {
-        let node = SKNode()  // empty container, no visual
+      switch shape {
+      case .none:
+        let node = SKNode()
         node.position = site.position
         node.name = siteID.description
         parent.addChild(node)
         siteNodes[siteID] = node
-        continue
-      }
 
-      let node = SKShapeNode(rect: CGRect(
-        x: 0, y: 0,
-        width: cellSize, height: cellSize
-      ))
-      node.strokeColor = strokeColor
-      node.fillColor = fillColor
-      node.lineWidth = lineWidth
-      if site.tags.contains("crown") {
-        node.fillColor = .yellow
-        node.lineWidth = 2
-        baseFillColors[siteID] = .yellow
-      }
-      node.position = site.position
-      node.name = siteID.description
-      parent.addChild(node)
-      siteNodes[siteID] = node
-
-      if let label = site.label {
-        let isCrown = site.tags.contains("crown")
-        let labelNode = SKLabelNode(text: label)
+      case .label:
+        let labelStyle = resolved.labelStyle
+        let labelNode = SKLabelNode(text: site.label ?? "")
         labelNode.applySystemFont(
-          size: isCrown ? cellSize * 0.5 : fontSize,
-          weight: isCrown ? .bold : .regular,
-          color: isCrown ? .black : .darkGray)
-        labelNode.horizontalAlignmentMode = .center
-        labelNode.verticalAlignmentMode = isCrown ? .center : .top
-        labelNode.position = isCrown
-          ? CGPoint(x: cellSize / 2, y: cellSize / 2)
-          : CGPoint(x: cellSize / 2, y: cellSize - 2)
-        labelNode.name = "siteLabel_\(siteID.raw)"
-        node.addChild(labelNode)
+          size: cellSize * (labelStyle?.size ?? 0.4),
+          weight: labelStyle?.weight?.uiWeight ?? .bold,
+          color: colorFromString(labelStyle?.color) ?? .darkGray)
+        labelNode.horizontalAlignmentMode = .left
+        labelNode.verticalAlignmentMode = .center
+        labelNode.position = CGPoint(
+          x: site.position.x,
+          y: site.position.y + cellSize / 2)
+        labelNode.name = "header_\(siteID.raw)"
+        parent.addChild(labelNode)
+        siteNodes[siteID] = labelNode
+
+      case .rect:
+        let fill = colorFromString(resolved.fill) ?? defaultFill
+        let stroke = colorFromString(resolved.stroke) ?? defaultStroke
+        let lineWidth = resolved.lineWidth ?? defaultLineWidth
+        let cornerRadius = resolved.cornerRadius ?? 0
+
+        let node: SKShapeNode
+        if cornerRadius > 0 {
+          node = SKShapeNode(
+            rect: CGRect(x: 0, y: 0, width: cellSize, height: cellSize),
+            cornerRadius: cornerRadius)
+        } else {
+          node = SKShapeNode(
+            rect: CGRect(x: 0, y: 0, width: cellSize, height: cellSize))
+        }
+        node.strokeColor = stroke
+        node.fillColor = fill
+        node.lineWidth = lineWidth
+        node.position = site.position
+        node.name = siteID.description
+        parent.addChild(node)
+        siteNodes[siteID] = node
+
+        if fill != defaultFill {
+          baseFillColors[siteID] = fill
+        }
+
+        // Shadow
+        if let shadow = resolved.shadow {
+          let shadowNode = SKShapeNode(
+            rect: CGRect(x: 0, y: 0, width: cellSize, height: cellSize),
+            cornerRadius: cornerRadius)
+          shadowNode.fillColor = colorFromString(shadow.color) ?? .black
+          shadowNode.strokeColor = .clear
+          shadowNode.alpha = 0.3
+          shadowNode.position = CGPoint(x: shadow.offset, y: -shadow.offset)
+          shadowNode.zPosition = -1
+          node.addChild(shadowNode)
+        }
+
+        // Site label
+        if let label = site.label {
+          let labelStyle = resolved.labelStyle
+          let fontSize = cellSize * (labelStyle?.size ?? 0.35)
+          let weight = labelStyle?.weight?.uiWeight ?? .regular
+          let color = colorFromString(labelStyle?.color) ?? .darkGray
+          let alignment = labelStyle?.alignment ?? .top
+          let labelNode = SKLabelNode(text: label)
+          labelNode.applySystemFont(size: fontSize, weight: weight, color: color)
+          labelNode.horizontalAlignmentMode = .center
+          labelNode.verticalAlignmentMode = alignment == .center ? .center : .top
+          labelNode.position = alignment == .center
+            ? CGPoint(x: cellSize / 2, y: cellSize / 2)
+            : CGPoint(x: cellSize / 2, y: cellSize - 2)
+          labelNode.name = "siteLabel_\(siteID.raw)"
+          node.addChild(labelNode)
+        }
       }
     }
   }
@@ -278,10 +322,25 @@ class GameScene<
     case "yellow": return .yellow
     case "gray", "grey": return .gray
     case "lightgray", "lightgrey": return .lightGray
+    case "darkgray", "darkgrey": return .darkGray
+    case "steelblue":
+      return SKColor(red: 0.27, green: 0.51, blue: 0.71, alpha: 1.0)
+    case "burlywood":
+      return SKColor(red: 0.87, green: 0.72, blue: 0.53, alpha: 1.0)
+    case "saddlebrown":
+      return SKColor(red: 0.55, green: 0.27, blue: 0.07, alpha: 1.0)
     case "orange": return .orange
     case "purple": return .purple
     case "clear": return .clear
-    default: return nil
+    default:
+      if name.hasPrefix("#"), name.count == 7,
+         let hex = UInt32(name.dropFirst(), radix: 16) {
+        let red = CGFloat((hex >> 16) & 0xFF) / 255
+        let green = CGFloat((hex >> 8) & 0xFF) / 255
+        let blue = CGFloat(hex & 0xFF) / 255
+        return SKColor(red: red, green: green, blue: blue, alpha: 1.0)
+      }
+      return nil
     }
   }
 
