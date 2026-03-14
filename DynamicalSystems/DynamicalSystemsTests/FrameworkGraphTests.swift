@@ -245,7 +245,7 @@ struct SiteGraphTests {
     let config: SceneConfig = .container("cantstop", [
       .board(.columnar(heights: [3, 5, 7]), style: StyleConfig(stroke: "black")),
       .container("dice", [.die(.labeledSquare)]),
-      .piece(.circle, color: .byPlayer)
+      .piece(.circle, color: .byPlayer, stacking: .fan)
     ])
 
     let data = try JSONEncoder().encode(config)

@@ -13,7 +13,7 @@ enum SceneConfig: Codable, Equatable {
   case grid(rows: Int, cols: Int)
 
   // Component visuals
-  case piece(PieceShape, color: ColorRule)
+  case piece(PieceShape, color: ColorRule, stacking: StackPolicy = .fan)
   case die(DieShape)
   case card(CardShape)
 
@@ -140,4 +140,10 @@ struct StyleConfig: Codable, Equatable {
   var stroke: String?
   var lineWidth: Float?
   var labelFont: String?
+}
+
+enum StackPolicy: Codable, Equatable {
+  case fan
+  case vertical
+  case badge
 }
