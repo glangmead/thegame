@@ -93,6 +93,42 @@ struct SiteAppearance: Codable, Equatable {
   var shadow: ShadowAppearance?
 }
 
+extension SiteAppearance {
+  static func resolve(
+    tags: Set<String>,
+    from appearances: [String: SiteAppearance]
+  ) -> SiteAppearance {
+    var resolved = SiteAppearance()
+    for tag in tags.sorted() {
+      guard let appearance = appearances[tag] else { continue }
+      if let value = appearance.fill { resolved.fill = value }
+      if let value = appearance.stroke { resolved.stroke = value }
+      if let value = appearance.lineWidth { resolved.lineWidth = value }
+      if let value = appearance.cornerRadius { resolved.cornerRadius = value }
+      if let value = appearance.padding { resolved.padding = value }
+      if let value = appearance.shape { resolved.shape = value }
+      if let value = appearance.labelStyle {
+        resolved.labelStyle = resolved.labelStyle?.merging(with: value) ?? value
+      }
+      if let value = appearance.shadow {
+        resolved.shadow = resolved.shadow?.merging(with: value) ?? value
+      }
+    }
+    return resolved
+  }
+
+  static let defaultAppearances: [String: SiteAppearance] = [
+    "header": SiteAppearance(
+      shape: .label,
+      labelStyle: LabelAppearance(size: 0.4, weight: .bold, color: "darkgray")),
+    "invisible": SiteAppearance(shape: .none),
+    "crown": SiteAppearance(
+      fill: "yellow", lineWidth: 2,
+      labelStyle: LabelAppearance(
+        size: 0.5, weight: .bold, color: "black", alignment: .center))
+  ]
+}
+
 enum ColorRule: Codable, Equatable {
   case byPlayer
   case fixed(String)

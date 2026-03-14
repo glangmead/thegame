@@ -250,3 +250,77 @@ struct SiteGraphTests {
     #expect(model.allowedActions.isEmpty)
   }
 }
+
+// MARK: - SiteAppearance Tests
+
+struct SiteAppearanceTests {
+  @Test
+  func testEmptyTagsReturnsEmptyAppearance() {
+    let appearances: [String: SiteAppearance] = [
+      "crown": SiteAppearance(fill: "yellow")
+    ]
+    let resolved = SiteAppearance.resolve(tags: [], from: appearances)
+    #expect(resolved.fill == nil)
+    #expect(resolved.shape == nil)
+  }
+
+  @Test
+  func testSingleTagResolution() {
+    let appearances: [String: SiteAppearance] = [
+      "crown": SiteAppearance(fill: "yellow", lineWidth: 2)
+    ]
+    let resolved = SiteAppearance.resolve(tags: ["crown"], from: appearances)
+    #expect(resolved.fill == "yellow")
+    #expect(resolved.lineWidth == 2)
+    #expect(resolved.stroke == nil)
+  }
+
+  @Test
+  func testUnknownTagIgnored() {
+    let appearances: [String: SiteAppearance] = [
+      "crown": SiteAppearance(fill: "yellow")
+    ]
+    let resolved = SiteAppearance.resolve(tags: ["unknown"], from: appearances)
+    #expect(resolved.fill == nil)
+  }
+
+  @Test
+  func testMultipleTagsCompose() {
+    let appearances: [String: SiteAppearance] = [
+      "base": SiteAppearance(fill: "gray", stroke: "black"),
+      "highlight": SiteAppearance(fill: "yellow")
+    ]
+    // "base" < "highlight" alphabetically, so highlight's fill wins
+    let resolved = SiteAppearance.resolve(tags: ["base", "highlight"], from: appearances)
+    #expect(resolved.fill == "yellow")
+    #expect(resolved.stroke == "black")
+  }
+
+  @Test
+  func testLabelStyleMergesFieldByField() {
+    let appearances: [String: SiteAppearance] = [
+      "a": SiteAppearance(labelStyle: LabelAppearance(size: 0.4, weight: .bold)),
+      "b": SiteAppearance(labelStyle: LabelAppearance(color: "red"))
+    ]
+    let resolved = SiteAppearance.resolve(tags: ["a", "b"], from: appearances)
+    #expect(resolved.labelStyle?.size == 0.4)
+    #expect(resolved.labelStyle?.weight == .bold)
+    #expect(resolved.labelStyle?.color == "red")
+  }
+
+  @Test
+  func testDefaultAppearancesReplicateExistingBehavior() {
+    let defaults = SiteAppearance.defaultAppearances
+    let header = SiteAppearance.resolve(tags: ["header"], from: defaults)
+    #expect(header.shape == .label)
+    #expect(header.labelStyle?.weight == .bold)
+
+    let invisible = SiteAppearance.resolve(tags: ["invisible"], from: defaults)
+    #expect(invisible.shape == .none)
+
+    let crown = SiteAppearance.resolve(tags: ["crown"], from: defaults)
+    #expect(crown.fill == "yellow")
+    #expect(crown.lineWidth == 2)
+    #expect(crown.labelStyle?.alignment == .center)
+  }
+}

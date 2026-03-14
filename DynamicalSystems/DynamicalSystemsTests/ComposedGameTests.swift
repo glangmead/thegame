@@ -75,6 +75,7 @@ struct ComposedGameTests {
 
   private static func makeToyGame() -> ComposedGame<TestState> {
     oapply(
+      gameName: "ToyGame",
       pages: [makeCollectPage(), makeScorePage(), makeEndPage()],
       initialState: {
         var state = TestState()
@@ -195,6 +196,7 @@ struct ComposedGameTests {
     )
 
     let game = oapply(
+      gameName: "ToyGamePriority",
       pages: [Self.makeCollectPage()],
       priorities: [priorityPage],
       initialState: {
@@ -210,10 +212,10 @@ struct ComposedGameTests {
     )
 
     var state = game.newState()
-    _ = game.reduce(into: &state, action: .collect("A"))
-    _ = game.reduce(into: &state, action: .collect("B"))
+    _ = game.reduce(into: &state, action: TestAction.collect("A"))
+    _ = game.reduce(into: &state, action: TestAction.collect("B"))
 
     let actions = game.allowedActions(state: state)
-    #expect(actions == [.endGame])
+    #expect(actions == [TestAction.endGame])
   }
 }
