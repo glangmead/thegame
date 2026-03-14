@@ -42,6 +42,57 @@ enum CardShape: Codable, Equatable {
   case rectangle
 }
 
+enum SiteShape: Codable, Equatable {
+  case rect
+  case label
+  case none
+}
+
+enum FontWeight: String, Codable, Equatable {
+  case regular, bold, semibold, light, medium, heavy
+}
+
+enum LabelAlignment: String, Codable, Equatable {
+  case center, top, left, right
+}
+
+struct LabelAppearance: Codable, Equatable {
+  var size: CGFloat?
+  var weight: FontWeight?
+  var color: String?
+  var alignment: LabelAlignment?
+
+  func merging(with other: LabelAppearance) -> LabelAppearance {
+    LabelAppearance(
+      size: other.size ?? size,
+      weight: other.weight ?? weight,
+      color: other.color ?? color,
+      alignment: other.alignment ?? alignment
+    )
+  }
+}
+
+struct ShadowAppearance: Codable, Equatable {
+  var offset: CGFloat
+  var blur: CGFloat
+  var color: String
+
+  func merging(with other: ShadowAppearance) -> ShadowAppearance {
+    other
+  }
+}
+
+struct SiteAppearance: Codable, Equatable {
+  var fill: String?
+  var stroke: String?
+  var lineWidth: CGFloat?
+  var cornerRadius: CGFloat?
+  var padding: CGFloat?
+  var shape: SiteShape?
+  var labelStyle: LabelAppearance?
+  var shadow: ShadowAppearance?
+}
+
 enum ColorRule: Codable, Equatable {
   case byPlayer
   case fixed(String)
