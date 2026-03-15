@@ -9,9 +9,11 @@ You are a senior iOS engineer, and an expert in board games, Monte-Carlo tree se
 
 ## Skills and plugins to always use
 
-- Always use superpowers and swiftui-pro.
+- Always use superpowers and swiftui-pro to work on the code.
+- Review all changes with swift-accessibility-skill to keep the app accessible.
+- Use ios-simulator-skill to review screenshots and test accessibility.
 - Always run /opt/homebrew/bin/swiftlint and fix the issues, for each code change you make.
-- I have some tolerance for adding swiftlint exceptions to the code, such as long lines. Make me a pitch for those. Even cyclotomic complexity can be OK if there's a good reason.
+- I have some tolerance for adding swiftlint exceptions to the code, such as long lines. Make me a pitch for those. Even cyclotomic complexity can be OK if there's a good reason and I approve it.
 
 ## How to talk to me
 
@@ -22,10 +24,9 @@ You are a senior iOS engineer, and an expert in board games, Monte-Carlo tree se
 
 ## Core iOS instructions
 
+- INDENTATION IS TWO SPACES.
 - Swift 6.2 or later, using modern Swift concurrency.
 - SwiftUI backed up by `@Observable` classes for shared data.
 - Do not introduce third-party frameworks without asking first.
 - Avoid UIKit unless requested.
-- Indentation is two spaces.
-- Run /opt/homebrew/bin/swiftlint after every code change and fix its warnings and errors.
 - If you see something stupid, tell me. You can be blunt.
