@@ -11,9 +11,9 @@ import Foundation
 struct HeartsPieceAdapter {
   private static let seatRotation: [Hearts.Seat: CGFloat] = [
     .north: .pi,
-    .east: -.pi / 2,
+    .east: .pi / 2,
     .south: 0,
-    .west: .pi / 2
+    .west: -.pi / 2
   ]
   // Piece IDs: 0-51 for the 52 cards (sorted by fullDeck order)
   private static let cardIDs: [Hearts.Card: Int] = {
