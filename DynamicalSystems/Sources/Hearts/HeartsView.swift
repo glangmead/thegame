@@ -8,6 +8,7 @@
 import SpriteKit
 import SwiftUI
 
+// swiftlint:disable:next type_body_length
 struct HeartsView: View {
   @State var model: GameModel<Hearts.State, Hearts.Action>
   @State private var scene: GameScene<Hearts.State, Hearts.Action>
@@ -29,6 +30,7 @@ struct HeartsView: View {
 
   private enum PanelTab: String, CaseIterable {
     case actions = "Actions"
+    case board = "Board"
     case log = "Log"
   }
 
@@ -124,6 +126,7 @@ struct HeartsView: View {
         } label: {
           Image(systemName: "gearshape")
         }
+        .accessibilityLabel("Settings") // [VERIFY]
       }
     }
     .sheet(isPresented: $showConfig) {
@@ -164,6 +167,8 @@ struct HeartsView: View {
     HStack(spacing: 0) {
       actionList
       Divider()
+      boardSummary
+      Divider()
       logList
     }
   }
@@ -181,6 +186,7 @@ struct HeartsView: View {
 
       TabView(selection: $selectedTab) {
         actionList.tag(PanelTab.actions)
+        boardSummary.tag(PanelTab.board)
         logList.tag(PanelTab.log)
       }
       .tabViewStyle(.page(indexDisplayMode: .never))
@@ -207,6 +213,15 @@ struct HeartsView: View {
       ) { action in
         performAction(action)
       }
+    }
+  }
+
+  private var boardSummary: some View {
+    List {
+      BoardSummarySections(
+        graph: graph,
+        pieces: pieces,
+        section: HeartsPieceAdapter.section(from: model.state, graph: graph))
     }
   }
 

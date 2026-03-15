@@ -96,6 +96,10 @@ struct CantStopView: View {
         MCTSActionSection(model: model, actions: cachedActions) { action in
           performAction(action)
         }
+        BoardSummarySections(
+          graph: graph,
+          pieces: pieces,
+          section: CantStopPieceAdapter.section(from: model.state, graph: graph))
       }
     }
     .navigationTitle("\(model.gameName): \(model.state.player)")
@@ -107,6 +111,7 @@ struct CantStopView: View {
         } label: {
           Image(systemName: "gearshape")
         }
+        .accessibilityLabel("Settings") // [VERIFY]
       }
     }
     .sheet(isPresented: $showConfig) {

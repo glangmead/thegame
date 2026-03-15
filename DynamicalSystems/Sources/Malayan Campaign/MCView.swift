@@ -91,6 +91,13 @@ struct MCView: View {
       .padding(.horizontal)
       .padding(.vertical, 6)
       List {
+        MCTSActionSection(model: model, actions: cachedActions) { action in
+          performAction(action)
+        }
+        BoardSummarySections(
+          graph: graph,
+          pieces: pieces,
+          section: MCPieceAdapter.section(from: model.state, graph: graph))
         if !model.logs.isEmpty {
           Section("Log") {
             ForEach(model.logs, id: \.msg) { log in
@@ -98,9 +105,6 @@ struct MCView: View {
                 .font(.caption)
             }
           }
-        }
-        MCTSActionSection(model: model, actions: cachedActions) { action in
-          performAction(action)
         }
       }
     }
@@ -113,6 +117,7 @@ struct MCView: View {
         } label: {
           Image(systemName: "gearshape")
         }
+        .accessibilityLabel("Settings") // [VERIFY]
       }
     }
     .sheet(isPresented: $showConfig) {

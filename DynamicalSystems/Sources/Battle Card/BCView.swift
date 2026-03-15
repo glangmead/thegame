@@ -94,6 +94,13 @@ struct BCView: View {
       .padding(.horizontal)
       .padding(.vertical, 6)
       List {
+        MCTSActionSection(model: model, actions: cachedActions) { action in
+          performAction(action)
+        }
+        BoardSummarySections(
+          graph: graph,
+          pieces: pieces,
+          section: BCPieceAdapter.section(from: model.state, graph: graph))
         if !model.logs.isEmpty {
           Section("Log") {
             ForEach(model.logs, id: \.msg) { log in
@@ -101,9 +108,6 @@ struct BCView: View {
                 .font(.caption)
             }
           }
-        }
-        MCTSActionSection(model: model, actions: cachedActions) { action in
-          performAction(action)
         }
       }
     }
@@ -116,6 +120,7 @@ struct BCView: View {
         } label: {
           Image(systemName: "gearshape")
         }
+        .accessibilityLabel("Settings") // [VERIFY]
       }
     }
     .sheet(isPresented: $showConfig) {

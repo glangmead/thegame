@@ -161,6 +161,8 @@ struct MCTSActionSection<
           Text(String(format: "%.1f%% (%d)", pct, Int(visitCount)))
             .foregroundStyle(.secondary)
             .font(.caption)
+            .accessibilityLabel(
+              "Win probability \(Int(pct)) percent, \(Int(visitCount)) simulations")
         }
       }
     }
@@ -218,6 +220,8 @@ struct MCTSActionSection<
       if !Task.isCancelled {
         mctsStats = results
         mctsRunning = false
+        AccessibilityNotification.Announcement("Analysis complete")
+          .post()
       }
     }
   }

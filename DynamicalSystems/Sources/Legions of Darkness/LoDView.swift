@@ -31,6 +31,7 @@ struct LoDView: View {
 
   private enum PanelTab: String, CaseIterable {
     case actions = "Actions"
+    case board = "Board"
     case log = "Log"
   }
 
@@ -91,6 +92,7 @@ struct LoDView: View {
         } label: {
           Image(systemName: "gearshape")
         }
+        .accessibilityLabel("Settings") // [VERIFY]
       }
     }
     .sheet(isPresented: $showConfig) {
@@ -198,6 +200,8 @@ struct LoDView: View {
     HStack(spacing: 0) {
       actionList
       Divider()
+      boardSummary
+      Divider()
       logList
     }
   }
@@ -215,6 +219,7 @@ struct LoDView: View {
 
       TabView(selection: $selectedTab) {
         actionList.tag(PanelTab.actions)
+        boardSummary.tag(PanelTab.board)
         logList.tag(PanelTab.log)
       }
       .tabViewStyle(.page(indexDisplayMode: .never))
@@ -236,9 +241,20 @@ struct LoDView: View {
 
   private var actionList: some View {
     List {
-      MCTSActionSection(model: model, actions: cachedActions, grouping: { $0.actionGroup }) { action in
-        performAction(action)
-      }
+      MCTSActionSection(
+        model: model, actions: cachedActions,
+        grouping: { $0.actionGroup },
+        onAction: { performAction($0) }
+      )
+    }
+  }
+
+  private var boardSummary: some View {
+    List {
+      BoardSummarySections(
+        graph: graph,
+        pieces: pieces,
+        section: LoDPieceAdapter.section(from: model.state, graph: graph))
     }
   }
 
