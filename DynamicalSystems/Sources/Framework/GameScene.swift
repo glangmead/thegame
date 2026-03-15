@@ -414,8 +414,9 @@ class GameScene<
     guard !siteNodes.isEmpty else { return .zero }
     var rect = CGRect.null
     for (_, node) in siteNodes {
+      let scenePos = node.parent?.convert(node.position, to: self) ?? node.position
       let frame = CGRect(
-        origin: node.position,
+        origin: scenePos,
         size: CGSize(width: cellSize, height: cellSize))
       rect = rect.union(frame)
     }

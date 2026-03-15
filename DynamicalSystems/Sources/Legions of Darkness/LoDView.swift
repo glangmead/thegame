@@ -122,7 +122,7 @@ struct LoDView: View {
       switch boardMode {
       case .abstract:
         SpriteView(scene: scene)
-          .gesture(MagnifyGesture()
+          .simultaneousGesture(MagnifyGesture()
             .onChanged { value in
               let newScale = cameraScale / value.magnification
               scene.setZoom(scale: newScale)
@@ -131,7 +131,7 @@ struct LoDView: View {
               cameraScale /= value.magnification
             }
           )
-          .gesture(DragGesture()
+          .simultaneousGesture(DragGesture()
             .onChanged { value in
               let currentScale = scene.cameraNode?.xScale ?? 1
               scene.setCameraPosition(CGPoint(
@@ -150,7 +150,7 @@ struct LoDView: View {
           SpriteView(scene: vScene)
         } else {
           SpriteView(scene: scene)
-            .gesture(MagnifyGesture()
+            .simultaneousGesture(MagnifyGesture()
               .onChanged { value in
                 let newScale = cameraScale / value.magnification
                 scene.setZoom(scale: newScale)
@@ -159,7 +159,7 @@ struct LoDView: View {
                 cameraScale /= value.magnification
               }
             )
-            .gesture(DragGesture()
+            .simultaneousGesture(DragGesture()
               .onChanged { value in
                 let currentScale = scene.cameraNode?.xScale ?? 1
                 scene.setCameraPosition(CGPoint(

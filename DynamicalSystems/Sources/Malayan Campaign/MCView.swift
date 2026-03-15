@@ -55,7 +55,7 @@ struct MCView: View {
   var body: some View {
     VStack(spacing: 0) {
       SpriteView(scene: scene)
-        .gesture(MagnifyGesture()
+        .simultaneousGesture(MagnifyGesture()
           .onChanged { value in
             let newScale = cameraScale / value.magnification
             scene.setZoom(scale: newScale)
@@ -64,7 +64,7 @@ struct MCView: View {
             cameraScale /= value.magnification
           }
         )
-        .gesture(DragGesture()
+        .simultaneousGesture(DragGesture()
           .onChanged { value in
             let currentScale = scene.cameraNode?.xScale ?? 1
             scene.setCameraPosition(CGPoint(
