@@ -57,7 +57,7 @@ struct CantStopGraph {
     // Off-board tray sites (above the board)
     let maxY = CGFloat(12) * cellSize  // tallest column height
     _ = graph.addSite(position: CGPoint(x: cellSize * 3, y: maxY + cellSize * 2), tags: [whiteTray])
-    _ = graph.addSite(position: CGPoint(x: -9999, y: -9999), tags: [placeholderTray])
+    _ = graph.addSite(position: CGPoint(x: -9999, y: -9999), tags: [placeholderTray, "invisible"])
     _ = graph.addSite(position: CGPoint(x: cellSize * 11, y: maxY + cellSize * 2), tags: [diceTray, "invisible"])
 
     return graph

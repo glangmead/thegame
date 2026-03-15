@@ -413,7 +413,12 @@ class GameScene<
   func boardBounds() -> CGRect {
     guard !siteNodes.isEmpty else { return .zero }
     var rect = CGRect.null
-    for (_, node) in siteNodes {
+    for (siteID, node) in siteNodes {
+      // Skip invisible sites (shape == .none)
+      if let site = model.graph.sites[siteID] {
+        let resolved = SiteAppearance.resolve(tags: site.tags, from: appearances)
+        if resolved.shape == SiteShape.none { continue }
+      }
       let scenePos = node.parent?.convert(node.position, to: self) ?? node.position
       let frame = CGRect(
         origin: scenePos,

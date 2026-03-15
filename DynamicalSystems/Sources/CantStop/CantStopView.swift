@@ -57,6 +57,8 @@ struct CantStopView: View {
     self._scene = State(initialValue: scene)
     self.graph = graph
     self._pieces = State(initialValue: pieces)
+    self._cameraScale = State(initialValue: scene.cameraNode?.xScale ?? 1)
+    self._cameraPosition = State(initialValue: scene.cameraNode?.position ?? .zero)
 
     let section = CantStopPieceAdapter.section(from: model.state, graph: graph)
     scene.syncState(pieces: pieces, section: section)

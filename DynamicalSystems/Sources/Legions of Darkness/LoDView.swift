@@ -63,6 +63,8 @@ struct LoDView: View {
     self._scene = State(initialValue: scene)
     self.graph = graph
     self.pieces = pieces
+    self._cameraScale = State(initialValue: scene.cameraNode?.xScale ?? 1)
+    self._cameraPosition = State(initialValue: scene.cameraNode?.position ?? .zero)
 
     let section = LoDPieceAdapter.section(from: model.state, graph: graph)
     let highlights = LoDPieceAdapter.siteHighlights(from: model.state, graph: graph)
