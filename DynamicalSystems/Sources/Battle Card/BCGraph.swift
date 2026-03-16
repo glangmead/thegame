@@ -89,7 +89,8 @@ struct BCPieceAdapter {
       } else {
         owner = PlayerID(1)  // germans
       }
-      return GamePiece(id: piece.rawValue, kind: .die(sides: 6), owner: owner, label: piece.shortName)
+      let kind: GamePiece.PieceKind = piece == .thirtycorps ? .token : .die(sides: 6)
+      return GamePiece(id: piece.rawValue, kind: kind, owner: owner, label: piece.shortName)
     }
   }
 
@@ -122,7 +123,11 @@ struct BCPieceAdapter {
           let trackIndex = cityIndex - 1
           siteID = graph.tracks["german"]?[safe: trackIndex]
         }
-        section[piece] = .dieShowing(face: face, at: siteID)
+        if bcPiece == .thirtycorps {
+          if let siteID { section[piece] = .at(siteID) }
+        } else {
+          section[piece] = .dieShowing(face: face, at: siteID)
+        }
       }
     }
 
