@@ -79,15 +79,10 @@ internally. If an auto-rule's effect involves a die roll (e.g., the acid free
 melee attack), the die value must already be present in the triggering action
 or in state.
 
-For the acid auto-rule specifically: the `advanceArmies` action retains its
-`acidAttackDieRolls: [ArmySlot: Int]` parameter. The auto-rule reads the die
-value from `state.history.last` rather than rolling. This preserves the
-existing determinism invariant.
-
-More generally: auto-rules are pure functions of state. They read state
-(including history), mutate state, and return logs. They never call
-`Int.random` or equivalent. Any randomness they need is pre-generated and
-embedded in the action that triggers them.
+Auto-rules are pure functions of state. They read state (including history),
+mutate state, and return logs. They never call `Int.random` or equivalent.
+None of the concrete auto-rules identified for LoD involve die rolls, so this
+constraint is straightforward to satisfy.
 
 ## Framework Changes
 
@@ -271,29 +266,14 @@ immediately.
 
 Auto-rules fire in list order. The canonical ordering for LoD:
 
-1. Acid free melee attack
-2. Bloody battle marker placement
-3. Bloody battle gate tie
-4. Quest penalty
+1. Bloody battle marker placement
+2. Bloody battle gate tie
+3. Quest penalty
 
-This ordering matters: acid (#1) could theoretically kill a defender, which
-does not affect bloody battle placement (#2/#3) since bloody battle is about
-army positions, not defenders. Rules #2 and #3 are mutually exclusive.
+Rules #1 and #2 are mutually exclusive (either there's a gate tie or there
+isn't).
 
-### 1. Acid free melee attack
-
-```
-when: last action was advanceArmies,
-      some army is at space 1 on a track with acid upgrade,
-      acid not used this turn
-apply: read die value from advanceArmies action's acidAttackDieRolls,
-       resolve free melee attack on that slot, set acidUsedThisTurn
-```
-
-Extracted from armyPage reducer (LoDGamePages.swift, lines 102-112).
-Determinism preserved: die value comes from the action parameter.
-
-### 2. Bloody battle marker placement
+### 1. Bloody battle marker placement
 
 ```
 when: last action was advanceArmies,
@@ -305,7 +285,7 @@ apply: set bloodyBattleArmy to closest army on the track
 
 Extracted from armyPage reducer (LoDGamePages.swift, lines 116-137).
 
-### 3. Bloody battle gate tie
+### 2. Bloody battle gate tie
 
 ```
 when: last action was advanceArmies,
@@ -315,7 +295,7 @@ apply: set pendingBloodyBattleChoices,
        set phase to .army (override phaseForAction's transition)
 ```
 
-Mutually exclusive with #2. Sets up a player choice — the existing
+Mutually exclusive with #1. Sets up a player choice — the existing
 `GameRule` in armyPage already offers `.chooseBloodyBattle` when
 `pendingBloodyBattleChoices` is set.
 
@@ -330,7 +310,7 @@ automatic phase transition), and the armyPage reducer handles the transition
 to `.event` explicitly. This avoids the override pattern. The implementation
 plan should decide which approach is cleaner.
 
-### 4. Quest penalty
+### 3. Quest penalty
 
 ```
 when: last action was performHousekeeping,
@@ -340,6 +320,23 @@ apply: apply quest penalty (lose defenders/morale)
 ```
 
 Extracted from `performHousekeeping()` in LoDStateComposed.swift.
+
+## Acid Free Melee Attack — Choice Rule, Not AutoRule
+
+The acid upgrade (rule 6.3) says "make a free melee attack" — this is a
+player action, not an automatic consequence. It is extracted from the
+armyPage reducer but becomes a `GameRule` rather than an `AutoRule`:
+
+```
+condition: phase is action,
+           some army is at space 1 on a track with acid upgrade,
+           acid not used this turn
+actions:   offer .acidMeleeAttack(slot, dieRoll:) for the eligible slot
+```
+
+The `advanceArmies` action drops its `acidAttackDieRolls` parameter entirely.
+The acid attack becomes a normal action with its die value in the action
+enum, handled by the combat page or a dedicated rule.
 
 ## What Stays Unchanged
 
