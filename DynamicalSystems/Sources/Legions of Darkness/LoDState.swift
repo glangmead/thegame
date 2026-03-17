@@ -117,6 +117,9 @@ extension LoD {
     /// Whether the acid upgrade's free attack has been used this turn.
     var acidUsedThisTurn: Bool = false
 
+    /// Army slots eligible for acid free melee attack this turn (arrived at space 1).
+    var acidEligibleSlots: Set<ArmySlot> = []
+
     /// Whether the Last Ditch Efforts quest penalty has been applied this turn.
     /// Guards against double-firing when auto-rules scan at multiple stack frames.
     var questPenaltyAppliedThisTurn: Bool = false

@@ -98,6 +98,7 @@ extension LoD {
 
     // -- Player turn (ungrouped) --
     case rogueMove(HeroLocation)           // free move, no action cost (rule 10.4)
+    case acidMeleeAttack(ArmySlot)         // free acid attack, no action cost (rule 6.3)
     case endPlayerTurn
 
     // -- Bloody battle placement choice (Gate tie) --
@@ -130,6 +131,7 @@ extension LoD {
       case .resolveEvent: return "Resolve Event"
       case .chooseBloodyBattle(let slot): return "Place Bloody Battle on \(slot)"
       case .rogueMove(let loc): return "Rogue Move → \(loc)"
+      case .acidMeleeAttack(let slot): return "Acid Attack on \(slot)"
       case .endPlayerTurn: return "End Turn"
       case .paladinReroll: return "Paladin Re-roll"
       case .declineReroll: return "Decline Re-roll"

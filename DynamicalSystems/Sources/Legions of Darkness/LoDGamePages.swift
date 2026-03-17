@@ -100,6 +100,11 @@ extension LoD {
             let results = state.advanceArmyOnTrack(track)
             for result in results {
               logs.append(Log(msg: "Army advance on \(track): \(result)"))
+              if case .advanced(let slot, _, let destination) = result,
+                destination == 1,
+                state.upgrades[slot.track] == .acid {
+                state.acidEligibleSlots.insert(slot)
+              }
             }
           }
         }

@@ -182,6 +182,7 @@ extension LoD.State {
   mutating func resetTurnTracking() {
     bloodyBattlePaidThisTurn = false
     acidUsedThisTurn = false
+    acidEligibleSlots = []
     paladinRerollUsed = false
     pendingDieRollAction = nil
     phaseBeforePaladinReact = nil
