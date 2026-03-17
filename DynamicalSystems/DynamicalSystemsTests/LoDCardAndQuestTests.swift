@@ -80,7 +80,9 @@ struct LoDCardAndQuestTests {
     state.armyPosition[.east] = 1
     state.barricades.insert(.east) // Goblin strength 2
 
-    _ = state.advanceArmy(.east, dieRoll: 2) // 2 ≤ 2 → barricade breaks
+    LoD.$rollDie.withValue({ 2 }) {
+      _ = state.advanceArmy(.east) // 2 ≤ 2 → barricade breaks
+    }
     #expect(state.ended)
     #expect(!state.victory)
     #expect(state.outcome == .defeatBreached)

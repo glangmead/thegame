@@ -68,7 +68,9 @@ struct LoDComposedGameSpellTests {
 
     let timeBefore = state.timePosition
     // Roll 6 + action DRM 1 = 7 > 6 = success
-    _ = game.reduce(into: &state, action: .quest(.quest(isHeroic: false, dieRoll: 6, reward: LoD.QuestRewardParams())))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .quest(.quest(isHeroic: false, reward: LoD.QuestRewardParams())))
+    }
     #expect(state.timePosition == timeBefore + 1) // Forlorn Hope advances time
   }
 
@@ -90,11 +92,15 @@ struct LoDComposedGameSpellTests {
     // Roll 6 + action DRM 1 = 7. Need > 7, so this fails.
     var reward = LoD.QuestRewardParams()
     reward.chosenSpell = .fireball
-    _ = game.reduce(into: &state, action: .quest(.quest(isHeroic: false, dieRoll: 6, reward: reward)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .quest(.quest(isHeroic: false, reward: reward)))
+    }
     #expect(state.spellStatus[.fireball] == .faceDown) // still face-down (failed)
 
     // Try heroic: roll 6 + heroic DRM 2 = 8 > 7 = success
-    _ = game.reduce(into: &state, action: .quest(.quest(isHeroic: true, dieRoll: 6, reward: reward)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .quest(.quest(isHeroic: true, reward: reward)))
+    }
     #expect(state.spellStatus[.fireball] == .known) // now known!
   }
 
@@ -112,7 +118,9 @@ struct LoDComposedGameSpellTests {
 
     let timeBefore = state.timePosition
     // Roll 2 + action DRM 1 = 3. Need > 6 = failure.
-    _ = game.reduce(into: &state, action: .quest(.quest(isHeroic: false, dieRoll: 2, reward: LoD.QuestRewardParams())))
+    LoD.$rollDie.withValue({ 2 }) {
+      _ = game.reduce(into: &state, action: .quest(.quest(isHeroic: false, reward: LoD.QuestRewardParams())))
+    }
     #expect(state.timePosition == timeBefore) // no time advance
   }
 
@@ -145,8 +153,9 @@ struct LoDComposedGameSpellTests {
     // Cast fireball on east army, roll 5
     var params = LoD.SpellCastParams()
     params.targetSlot = .east
-    params.dieRolls = [5]
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.fireball, heroic: false, params)))
+    LoD.$rollDie.withValue({ 5 }) {
+      _ = game.reduce(into: &state, action: .magic(.castSpell(.fireball, heroic: false, params)))
+    }
 
     // Fireball costs 1 arcane energy
     #expect(state.arcaneEnergy == arcaneBefore - 1)

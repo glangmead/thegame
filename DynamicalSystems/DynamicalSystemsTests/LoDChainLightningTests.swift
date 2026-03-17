@@ -53,16 +53,22 @@ struct LoDChainLightningTests {
     _ = game.reduce(into: &state, action: .magic(.castSpell(.chainLightning, heroic: false, .init())))
 
     // Bolt 1
-    _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east, dieRoll: 6)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east)))
+    }
     #expect(state.chainLightningState?.boltIndex == 1)
     #expect(state.chainLightningState?.results.count == 1)
 
     // Bolt 2
-    _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.west, dieRoll: 6)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.west)))
+    }
     #expect(state.chainLightningState?.boltIndex == 2)
 
     // Bolt 3
-    _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east, dieRoll: 6)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east)))
+    }
     #expect(state.chainLightningState == nil, "Sub-resolution should be cleared after 3 bolts")
     #expect(!state.isInSubResolution)
   }
@@ -79,13 +85,19 @@ struct LoDChainLightningTests {
     // Heroic DRMs are +3, +2, +1
     #expect(state.chainLightningState?.drmsForCurrentBolt == 3)
 
-    _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east, dieRoll: 6)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east)))
+    }
     #expect(state.chainLightningState?.drmsForCurrentBolt == 2)
 
-    _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east, dieRoll: 6)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east)))
+    }
     #expect(state.chainLightningState?.drmsForCurrentBolt == 1)
 
-    _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east, dieRoll: 6)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east)))
+    }
     #expect(state.chainLightningState == nil)
   }
 

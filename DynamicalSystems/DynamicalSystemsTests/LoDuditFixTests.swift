@@ -73,8 +73,8 @@ struct LoDuditFixTests {
     _ = game.reduce(into: &state, action: .drawCard)
     state.armyPosition[.east] = 1
     let actions = game.allowedActions(state: state)
-    let buildActions = actions.filter {
-      if case .build(.buildUpgrade(_, .east, _)) = $0 { return true }
+    let buildActions = actions.filter { (action: LoD.Action) -> Bool in
+      if case .build(.buildUpgrade(_, .east)) = action { return true }
       return false
     }
     #expect(buildActions.isEmpty)
@@ -165,11 +165,13 @@ struct LoDuditFixTests {
     #expect(!meleeActions.isEmpty)
 
     // After 1 melee attack, no more melee should be offered
-    _ = game.reduce(
-      into: &state,
-      action: .combat(.meleeAttack(
-        .east, dieRoll: 6,
-        bloodyBattleDefender: nil, useMagicSword: nil)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(
+        into: &state,
+        action: .combat(.meleeAttack(
+          .east,
+          bloodyBattleDefender: nil, useMagicSword: nil)))
+    }
     actions = game.allowedActions(state: state)
     let meleeActionsAfter = actions.filter {
       if case .combat(.meleeAttack) = $0 { return true }
@@ -192,7 +194,9 @@ struct LoDuditFixTests {
     state.defenderPosition[.archers] = 2  // Only 1 ranged attack allowed
 
     // After 1 ranged attack, no more ranged should be offered
-    _ = game.reduce(into: &state, action: .combat(.rangedAttack(.east, dieRoll: 6, bloodyBattleDefender: nil, useMagicBow: nil)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .combat(.rangedAttack(.east, bloodyBattleDefender: nil, useMagicBow: nil)))
+    }
     let actions = game.allowedActions(state: state)
     let rangedActionsAfter = actions.filter {
       if case .combat(.rangedAttack) = $0 { return true }

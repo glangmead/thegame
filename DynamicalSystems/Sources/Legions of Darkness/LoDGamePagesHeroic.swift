@@ -37,12 +37,12 @@ extension LoD {
               guard case .onTrack(let heroTrack) = state.heroLocation[hero] else { continue }
               for slot in ArmySlot.allCases where slot.track == heroTrack {
                 guard state.armyPosition[slot] != nil else { continue }
-                actions.append(.heroic(.heroicAttack(hero, slot, dieRoll: 0)))
+                actions.append(.heroic(.heroicAttack(hero, slot)))
               }
             }
 
             // Rally
-            actions.append(.heroic(.rally(dieRoll: 0)))
+            actions.append(.heroic(.rally))
 
             return actions
           }

@@ -112,7 +112,8 @@ extension LoD.State {
 
     switch spell {
     case .fireball:
-      if let slot = params.targetSlot, let dieRoll = params.dieRolls.first {
+      if let slot = params.targetSlot {
+        let dieRoll = LoD.rollDie()
         let result = applyFireball(on: slot, dieRoll: dieRoll)
         logs.append(Log(msg: "Fireball on \(slot): \(result)"))
       }
@@ -141,7 +142,7 @@ extension LoD.State {
       logs.append(Log(msg: "Mass Heal: +1 \(params.defenders)"))
 
     case .divineWrath:
-      let targets = zip(params.targetSlots, params.dieRolls).map { (slot: $0.0, dieRoll: $0.1) }
+      let targets = params.targetSlots.map { (slot: $0, dieRoll: LoD.rollDie()) }
       let results = applyDivineWrath(targets: targets)
       for (index, result) in results.enumerated() {
         logs.append(Log(msg: "Divine Wrath attack \(index+1): \(result)"))
@@ -187,6 +188,7 @@ extension LoD.State {
     paladinRerollUsed = false
     pendingDieRollAction = nil
     phaseBeforePaladinReact = nil
+    firstDieRoll = nil
     inspireDRMActive = false
     eventAttackDRMBonus = 0
     noMeleeThisTurn = false

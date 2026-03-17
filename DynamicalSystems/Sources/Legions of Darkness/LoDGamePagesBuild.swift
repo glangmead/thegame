@@ -23,14 +23,14 @@ extension LoD {
               if !state.breaches.contains(track) && state.upgrades[track] == nil
                 && !state.armyAtSpace1(on: track) {
                 for upgrade in UpgradeType.allCases {
-                  actions.append(.build(.buildUpgrade(upgrade, track, dieRoll: 0)))
+                  actions.append(.build(.buildUpgrade(upgrade, track)))
                 }
               }
             }
 
             // Build barricade (on breached walls, rule 6.3)
             for track in Track.walls where state.breaches.contains(track) {
-              actions.append(.build(.buildBarricade(track, dieRoll: 0)))
+              actions.append(.build(.buildBarricade(track)))
             }
 
             return actions

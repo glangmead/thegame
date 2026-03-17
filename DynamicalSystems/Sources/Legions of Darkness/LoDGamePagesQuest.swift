@@ -24,13 +24,13 @@ extension LoD {
             let maxAction = state.actionBudgetRemaining
             for pts in 1...max(1, maxAction) {
               actions.append(.quest(.quest(
-                isHeroic: false, dieRoll: 0, reward: QuestRewardParams(), pointsSpent: pts)))
+                isHeroic: false, reward: QuestRewardParams(), pointsSpent: pts)))
             }
             // Heroic-point spending: +2 DRM per point (rule 7.0)
             let maxHeroic = state.heroicBudgetRemaining
             for pts in 1...max(1, maxHeroic) {
               actions.append(.quest(.quest(
-                isHeroic: true, dieRoll: 0, reward: QuestRewardParams(), pointsSpent: pts)))
+                isHeroic: true, reward: QuestRewardParams(), pointsSpent: pts)))
             }
             return actions
           }

@@ -31,11 +31,13 @@ struct LoDSpecialRulesItemsTests {
     // Roll 1 normally always fails. With +2 DRM from sword and card DRM:
     // Card 3 has attack DRM -1. So: roll 3 + (-1) + 2 = 4. Goblin str 2. 4 > 2 = hit.
     let eastPosBefore = state.armyPosition[.east]!
-    _ = game.reduce(
-      into: &state,
-      action: .combat(.meleeAttack(
-        .east, dieRoll: 3,
-        bloodyBattleDefender: nil, useMagicSword: .before)))
+    LoD.$rollDie.withValue({ 3 }) {
+      _ = game.reduce(
+        into: &state,
+        action: .combat(.meleeAttack(
+          .east,
+          bloodyBattleDefender: nil, useMagicSword: .before)))
+    }
     // Should have hit — army retreated
     #expect(state.armyPosition[.east]! > eastPosBefore)
     // Sword consumed
@@ -59,11 +61,13 @@ struct LoDSpecialRulesItemsTests {
 
     // Roll 3 + card DRM (-1) + sword after (+1) = 3. Goblin str 2. 3 > 2 = hit.
     let eastPosBefore = state.armyPosition[.east]!
-    _ = game.reduce(
-      into: &state,
-      action: .combat(.meleeAttack(
-        .east, dieRoll: 3,
-        bloodyBattleDefender: nil, useMagicSword: .after)))
+    LoD.$rollDie.withValue({ 3 }) {
+      _ = game.reduce(
+        into: &state,
+        action: .combat(.meleeAttack(
+          .east,
+          bloodyBattleDefender: nil, useMagicSword: .after)))
+    }
     #expect(state.armyPosition[.east]! > eastPosBefore)
     #expect(state.magicSwordState == nil)
   }
@@ -84,11 +88,13 @@ struct LoDSpecialRulesItemsTests {
     let eastPosBefore = state.armyPosition[.east]!
     // Roll 1 always fails regardless of DRM (natural 1 rule)
     // Use roll 2 instead: roll 2 + bow before (+2) = 4. Goblin str 2. 4 > 2 = hit.
-    _ = game.reduce(
-      into: &state,
-      action: .combat(.rangedAttack(
-        .east, dieRoll: 2,
-        bloodyBattleDefender: nil, useMagicBow: .before)))
+    LoD.$rollDie.withValue({ 2 }) {
+      _ = game.reduce(
+        into: &state,
+        action: .combat(.rangedAttack(
+          .east,
+          bloodyBattleDefender: nil, useMagicBow: .before)))
+    }
     #expect(state.armyPosition[.east]! > eastPosBefore)
     #expect(state.magicBowState == nil)
   }
@@ -109,11 +115,13 @@ struct LoDSpecialRulesItemsTests {
 
     // Roll 2 + card DRM (-1) + no sword = 1. 1 is natural fail anyway, but the point
     // is it shouldn't crash.
-    _ = game.reduce(
-      into: &state,
-      action: .combat(.meleeAttack(
-        .east, dieRoll: 2,
-        bloodyBattleDefender: nil, useMagicSword: .before)))
+    LoD.$rollDie.withValue({ 2 }) {
+      _ = game.reduce(
+        into: &state,
+        action: .combat(.meleeAttack(
+          .east,
+          bloodyBattleDefender: nil, useMagicSword: .before)))
+    }
     #expect(state.magicSwordState == nil)
   }
 
@@ -136,7 +144,9 @@ struct LoDSpecialRulesItemsTests {
     state.currentCard = card1
 
     // Manually invoke advanceArmies with acid die roll = 6 (goblin str 2, 6 > 2 = hit)
-    _ = game.reduce(into: &state, action: .advanceArmies(acidAttackDieRolls: [.east: 6]))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .advanceArmies)
+    }
 
     // After acid attack hit, army should be pushed back from 1 to 2
     #expect(state.armyPosition[.east]! == 2)
@@ -158,7 +168,7 @@ struct LoDSpecialRulesItemsTests {
     state.currentCard = card1
 
     // advanceArmies with no acid die rolls
-    _ = game.reduce(into: &state, action: .advanceArmies(acidAttackDieRolls: [:]))
+    _ = game.reduce(into: &state, action: .advanceArmies)
 
     // Without die roll, army just stays at space 1 (no free attack)
     #expect(state.armyPosition[.east]! == 1)
@@ -179,7 +189,9 @@ struct LoDSpecialRulesItemsTests {
     state.phase = .army
     state.currentCard = card1
 
-    _ = game.reduce(into: &state, action: .advanceArmies(acidAttackDieRolls: [.east: 6]))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .advanceArmies)
+    }
 
     // Should just advance normally to space 3 — acid only triggers at space 1
     #expect(state.armyPosition[.east]! == 3)

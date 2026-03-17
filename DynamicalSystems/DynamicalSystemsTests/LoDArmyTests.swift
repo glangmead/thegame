@@ -88,7 +88,9 @@ struct LoDArmyTests {
     state.armyPosition[.east] = 1
     state.barricades.insert(.east) // East has Goblin (strength 2)
 
-    let result = state.advanceArmy(.east, dieRoll: 5) // 5 > 2
+    let result = LoD.$rollDie.withValue({ 5 }) {
+      state.advanceArmy(.east) // 5 > 2
+    }
     #expect(result == .barricadeHeld(.east))
     #expect(state.armyPosition[.east] == 1) // army stays
     #expect(!state.barricades.contains(.east)) // barricade gone
@@ -103,7 +105,9 @@ struct LoDArmyTests {
     state.armyPosition[.east] = 1
     state.barricades.insert(.east) // Goblin strength 2
 
-    let result = state.advanceArmy(.east, dieRoll: 2) // 2 ≤ 2
+    let result = LoD.$rollDie.withValue({ 2 }) {
+      state.advanceArmy(.east) // 2 ≤ 2
+    }
     #expect(result == .armyBrokeBarricade(.east))
     #expect(state.armyPosition[.east] == 0)
     #expect(state.ended)

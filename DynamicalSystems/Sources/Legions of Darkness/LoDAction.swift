@@ -11,9 +11,8 @@ extension LoD {
 
   /// All parameters needed to resolve an event, packed into one struct
   /// so that a single `.resolveEvent(EventResolution)` action captures
-  /// every die roll and player choice deterministically.
+  /// every player choice.
   struct EventResolution: Hashable {
-    var dieRoll: Int = 0
     var chosenHero: HeroType?
     var woundHeroes: Bool = false
     var deserterDefenders: (DefenderType, DefenderType)?
@@ -22,13 +21,10 @@ extension LoD {
     var chosenSlot: ArmySlot?
     var advanceSky: Bool = false
     var otherAdvances: [ArmySlot] = []
-    var randomSpell: SpellType?
-    var barricadeDieRoll: Int?
 
     // Hashable conformance for the tuple
     static func == (lhs: EventResolution, rhs: EventResolution) -> Bool {
-      lhs.dieRoll == rhs.dieRoll
-        && lhs.chosenHero == rhs.chosenHero
+      lhs.chosenHero == rhs.chosenHero
         && lhs.woundHeroes == rhs.woundHeroes
         && lhs.deserterDefenders?.0 == rhs.deserterDefenders?.0
         && lhs.deserterDefenders?.1 == rhs.deserterDefenders?.1
@@ -37,12 +33,9 @@ extension LoD {
         && lhs.chosenSlot == rhs.chosenSlot
         && lhs.advanceSky == rhs.advanceSky
         && lhs.otherAdvances == rhs.otherAdvances
-        && lhs.randomSpell == rhs.randomSpell
-        && lhs.barricadeDieRoll == rhs.barricadeDieRoll
     }
 
     func hash(into hasher: inout Hasher) {
-      hasher.combine(dieRoll)
       hasher.combine(chosenHero)
       hasher.combine(woundHeroes)
       hasher.combine(deserterDefenders?.0)
@@ -52,8 +45,6 @@ extension LoD {
       hasher.combine(chosenSlot)
       hasher.combine(advanceSky)
       hasher.combine(otherAdvances)
-      hasher.combine(randomSpell)
-      hasher.combine(barricadeDieRoll)
     }
   }
 
@@ -71,7 +62,6 @@ extension LoD {
     // Targeting (Fireball, Slow, Chain Lightning, Divine Wrath)
     var targetSlot: ArmySlot?
     var targetSlots: [ArmySlot] = []
-    var dieRolls: [Int] = []
     // Cure Wounds
     var heroes: [HeroType] = []
     // Mass Heal / Raise Dead
@@ -83,8 +73,7 @@ extension LoD {
   }
 
   /// All possible actions in the composed game.
-  /// Die rolls and random selections are included as parameters so that
-  /// the history log is fully deterministic and replayable.
+  /// Actions represent pure player intent — die rolls happen during resolution.
   indirect enum Action: Hashable, CustomStringConvertible, GroupedAction {
 
     // -- Grouped actions --
@@ -101,7 +90,7 @@ extension LoD {
     case drawCard
 
     // -- Army phase (automatic, driven by card advance icons) --
-    case advanceArmies(acidAttackDieRolls: [ArmySlot: Int])
+    case advanceArmies
 
     // -- Event phase --
     case skipEvent                          // card has no event
@@ -115,7 +104,7 @@ extension LoD {
     case chooseBloodyBattle(ArmySlot)
 
     // -- Paladin re-roll (rule 10.2) --
-    case paladinReroll(newDieRoll: Int)
+    case paladinReroll
     case declineReroll
 
     // -- Housekeeping --
@@ -138,12 +127,11 @@ extension LoD {
       case .drawCard: return "Draw Card"
       case .advanceArmies: return "Advance Armies"
       case .skipEvent: return "Skip Event"
-      case .resolveEvent(let event):
-        return event.dieRoll > 0 ? "Resolve Event (roll \(event.dieRoll))" : "Resolve Event"
+      case .resolveEvent: return "Resolve Event"
       case .chooseBloodyBattle(let slot): return "Place Bloody Battle on \(slot)"
       case .rogueMove(let loc): return "Rogue Move → \(loc)"
       case .endPlayerTurn: return "End Turn"
-      case .paladinReroll(let roll): return "Paladin Re-roll (\(roll))"
+      case .paladinReroll: return "Paladin Re-roll"
       case .declineReroll: return "Decline Re-roll"
       case .performHousekeeping: return "End Turn"
       case .claimVictory: return "Victory!"

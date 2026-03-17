@@ -14,19 +14,15 @@ extension LoD {
   enum CombatAction: ActionGroup, CustomStringConvertible {
     static let groupName = "Combat"
 
-    case meleeAttack(ArmySlot, dieRoll: Int, bloodyBattleDefender: DefenderType?, useMagicSword: ItemTiming?)
-    case rangedAttack(ArmySlot, dieRoll: Int, bloodyBattleDefender: DefenderType?, useMagicBow: ItemTiming?)
+    case meleeAttack(ArmySlot, bloodyBattleDefender: DefenderType?, useMagicSword: ItemTiming?)
+    case rangedAttack(ArmySlot, bloodyBattleDefender: DefenderType?, useMagicBow: ItemTiming?)
 
     var description: String {
       switch self {
-      case .meleeAttack(let slot, let roll, _, _):
-        return roll > 0
-          ? "Melee: \(slot.rawValue.capitalized) (roll \(roll))"
-          : "Melee: \(slot.rawValue.capitalized)"
-      case .rangedAttack(let slot, let roll, _, _):
-        return roll > 0
-          ? "Ranged: \(slot.rawValue.capitalized) (roll \(roll))"
-          : "Ranged: \(slot.rawValue.capitalized)"
+      case .meleeAttack(let slot, _, _):
+        return "Melee: \(slot.rawValue.capitalized)"
+      case .rangedAttack(let slot, _, _):
+        return "Ranged: \(slot.rawValue.capitalized)"
       }
     }
   }
@@ -36,19 +32,15 @@ extension LoD {
   enum BuildAction: ActionGroup, CustomStringConvertible {
     static let groupName = "Fortification"
 
-    case buildUpgrade(UpgradeType, Track, dieRoll: Int)
-    case buildBarricade(Track, dieRoll: Int)
+    case buildUpgrade(UpgradeType, Track)
+    case buildBarricade(Track)
 
     var description: String {
       switch self {
-      case .buildUpgrade(let upgrade, let track, let roll):
-        return roll > 0
-          ? "Build \(upgrade) on \(track.rawValue.capitalized) (roll \(roll))"
-          : "Build \(upgrade) on \(track.rawValue.capitalized)"
-      case .buildBarricade(let track, let roll):
-        return roll > 0
-          ? "Barricade \(track.rawValue.capitalized) (roll \(roll))"
-          : "Barricade \(track.rawValue.capitalized)"
+      case .buildUpgrade(let upgrade, let track):
+        return "Build \(upgrade) on \(track.rawValue.capitalized)"
+      case .buildBarricade(let track):
+        return "Barricade \(track.rawValue.capitalized)"
       }
     }
   }
@@ -58,20 +50,18 @@ extension LoD {
   enum MagicAction: ActionGroup, CustomStringConvertible {
     static let groupName = "Magic"
 
-    case chant(dieRoll: Int)
-    case memorize(randomSpell: SpellType?)
-    case pray(randomSpell: SpellType?)
+    case chant
+    case memorize
+    case pray
     case castSpell(SpellType, heroic: Bool, SpellCastParams)
 
     var description: String {
       switch self {
-      case .chant(let roll):
-        return roll > 0 ? "Chant (roll \(roll))" : "Chant"
-      case .memorize(let spell):
-        if let spell { return "Memorize \(spell)" }
+      case .chant:
+        return "Chant"
+      case .memorize:
         return "Memorize"
-      case .pray(let spell):
-        if let spell { return "Pray \(spell)" }
+      case .pray:
         return "Pray"
       case .castSpell(let spell, let heroic, _):
         return heroic ? "Heroic Cast \(spell)" : "Cast \(spell)"
@@ -85,19 +75,17 @@ extension LoD {
     static let groupName = "Heroic"
 
     case moveHero(HeroType, HeroLocation)
-    case heroicAttack(HeroType, ArmySlot, dieRoll: Int)
-    case rally(dieRoll: Int)
+    case heroicAttack(HeroType, ArmySlot)
+    case rally
 
     var description: String {
       switch self {
       case .moveHero(let hero, let loc):
         return "Move \(hero.rawValue.capitalized) → \(loc)"
-      case .heroicAttack(let hero, let slot, let roll):
-        return roll > 0
-          ? "\(hero.rawValue.capitalized) Attack \(slot.rawValue.capitalized) (roll \(roll))"
-          : "\(hero.rawValue.capitalized) Attack \(slot.rawValue.capitalized)"
-      case .rally(let roll):
-        return roll > 0 ? "Rally (roll \(roll))" : "Rally"
+      case .heroicAttack(let hero, let slot):
+        return "\(hero.rawValue.capitalized) Attack \(slot.rawValue.capitalized)"
+      case .rally:
+        return "Rally"
       }
     }
   }
@@ -107,14 +95,14 @@ extension LoD {
   enum QuestAction: ActionGroup, CustomStringConvertible {
     static let groupName = "Quest"
 
-    case quest(isHeroic: Bool, dieRoll: Int, reward: QuestRewardParams, pointsSpent: Int = 1)
+    case quest(isHeroic: Bool, reward: QuestRewardParams, pointsSpent: Int = 1)
 
     var description: String {
       switch self {
-      case .quest(let isHeroic, let roll, _, let pts):
+      case .quest(let isHeroic, _, let pts):
         let label = isHeroic ? "Heroic Quest" : "Quest"
         let spendLabel = pts > 1 ? " (spend \(pts))" : ""
-        return roll > 0 ? "\(label)\(spendLabel) (roll \(roll))" : "\(label)\(spendLabel)"
+        return "\(label)\(spendLabel)"
       }
     }
   }

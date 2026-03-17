@@ -31,14 +31,12 @@ extension LoD {
   enum ChainLightningAction: ActionGroup, Hashable, CustomStringConvertible {
     static let groupName = "Chain Lightning"
 
-    case targetBolt(ArmySlot, dieRoll: Int)
+    case targetBolt(ArmySlot)
 
     var description: String {
       switch self {
-      case .targetBolt(let slot, let roll):
-        return roll > 0
-          ? "Lightning bolt \u{2192} \(slot.rawValue.capitalized) (roll \(roll))"
-          : "Lightning bolt \u{2192} \(slot.rawValue.capitalized)"
+      case .targetBolt(let slot):
+        return "Lightning bolt \u{2192} \(slot.rawValue.capitalized)"
       }
     }
   }
@@ -54,16 +52,16 @@ extension LoD {
           actions: { state in
             ArmySlot.allCases.compactMap { slot in
               guard state.armyPosition[slot] != nil else { return nil }
-              return Action.chainLightning(.targetBolt(slot, dieRoll: 0))
+              return Action.chainLightning(.targetBolt(slot))
             }
           }
         )
       ],
       reduce: { state, action in
-        guard case .chainLightning(.targetBolt(let slot, let dieRoll)) = action else { return nil }
+        guard case .chainLightning(.targetBolt(let slot)) = action else { return nil }
         guard var clState = state.chainLightningState else { return nil }
 
-        let effectiveRoll = State.effectiveDie(dieRoll)
+        let effectiveRoll = LoD.rollDie()
         let additionalDRM = state.inspireDRMActive ? 1 : 0
         let result = state.resolveAttack(
           on: slot,

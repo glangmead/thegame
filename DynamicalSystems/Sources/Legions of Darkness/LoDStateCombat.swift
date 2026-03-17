@@ -48,8 +48,7 @@ extension LoD.State {
   }
 
   /// Advance a single army slot one space toward the castle (space number decreases).
-  /// For barricade tests, provide `dieRoll`.
-  mutating func advanceArmy(_ slot: LoD.ArmySlot, dieRoll: Int? = nil) -> AdvanceResult {
+  mutating func advanceArmy(_ slot: LoD.ArmySlot) -> AdvanceResult {
     guard let currentSpace = armyPosition[slot] else {
       return .notOnBoard
     }
@@ -72,7 +71,7 @@ extension LoD.State {
     if track.isWall && newSpace == 0 {
       if barricades.contains(track) {
         // Barricade test (4.1.3)
-        let roll = Self.effectiveDie(dieRoll ?? 0)
+        let roll = LoD.rollDie()
         let strength = armyType[slot]!.strength
         if roll <= strength {
           barricades.remove(track)
@@ -88,7 +87,7 @@ extension LoD.State {
         // Grease check (rule 6.3): army rolls die, if > 2 stays on space 1
         if upgrades[track] == .grease {
           upgrades.removeValue(forKey: track)  // Grease is consumed
-          let roll = Self.effectiveDie(dieRoll ?? 0)
+          let roll = LoD.rollDie()
           if roll > 2 {
             // Grease held — army stays on space 1
             return .greaseHeld(track)
@@ -114,18 +113,18 @@ extension LoD.State {
 
   /// Process one advance icon for a given track.
   /// For the Gate track, applies rule 4.1.1 (farthest advances first; tied = both).
-  mutating func advanceArmyOnTrack(_ track: LoD.Track, dieRoll: Int? = nil) -> [AdvanceResult] {
+  mutating func advanceArmyOnTrack(_ track: LoD.Track) -> [AdvanceResult] {
     if track == .gate {
-      return advanceGateArmies(dieRoll: dieRoll)
+      return advanceGateArmies()
     }
     guard let slot = LoD.ArmySlot.allCases.first(where: { $0.track == track }) else {
       return []
     }
-    return [advanceArmy(slot, dieRoll: dieRoll)]
+    return [advanceArmy(slot)]
   }
 
   /// Gate track advancement per rule 4.1.1.
-  private mutating func advanceGateArmies(dieRoll: Int? = nil) -> [AdvanceResult] {
+  private mutating func advanceGateArmies() -> [AdvanceResult] {
     let pos1 = armyPosition[.gate1]
     let pos2 = armyPosition[.gate2]
 
@@ -133,17 +132,17 @@ extension LoD.State {
     case (nil, nil):
       return [.notOnBoard]
     case (_?, nil):
-      return [advanceArmy(.gate1, dieRoll: dieRoll)]
+      return [advanceArmy(.gate1)]
     case (nil, _?):
-      return [advanceArmy(.gate2, dieRoll: dieRoll)]
+      return [advanceArmy(.gate2)]
     case (let pos1?, let pos2?):
       if pos1 > pos2 {
-        return [advanceArmy(.gate1, dieRoll: dieRoll)]
+        return [advanceArmy(.gate1)]
       } else if pos2 > pos1 {
-        return [advanceArmy(.gate2, dieRoll: dieRoll)]
+        return [advanceArmy(.gate2)]
       } else {
-        let result1 = advanceArmy(.gate1, dieRoll: dieRoll)
-        let result2 = advanceArmy(.gate2, dieRoll: dieRoll)
+        let result1 = advanceArmy(.gate1)
+        let result2 = advanceArmy(.gate2)
         return [result1, result2]
       }
     }

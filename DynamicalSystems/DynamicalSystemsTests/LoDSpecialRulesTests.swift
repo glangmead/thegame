@@ -95,11 +95,13 @@ struct LoDSpecialRulesTests {
     let archersPosBefore = state.defenderPosition[.archers]!
 
     // Melee attack on east, choosing to lose an archer for bloody battle
-    _ = game.reduce(
-      into: &state,
-      action: .combat(.meleeAttack(
-        .east, dieRoll: 6,
-        bloodyBattleDefender: .archers, useMagicSword: nil)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(
+        into: &state,
+        action: .combat(.meleeAttack(
+          .east,
+          bloodyBattleDefender: .archers, useMagicSword: nil)))
+    }
     #expect(state.defenderPosition[.archers] == archersPosBefore + 1)
   }
 
@@ -123,19 +125,23 @@ struct LoDSpecialRulesTests {
     let archersPosBefore = state.defenderPosition[.archers]!
 
     // First attack — costs a defender
-    _ = game.reduce(
-      into: &state,
-      action: .combat(.meleeAttack(
-        .east, dieRoll: 6,
-        bloodyBattleDefender: .archers, useMagicSword: nil)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(
+        into: &state,
+        action: .combat(.meleeAttack(
+          .east,
+          bloodyBattleDefender: .archers, useMagicSword: nil)))
+    }
     #expect(state.defenderPosition[.archers] == archersPosBefore + 1)
 
     // Second attack — no additional cost (nil defender)
-    _ = game.reduce(
-      into: &state,
-      action: .combat(.meleeAttack(
-        .east, dieRoll: 6,
-        bloodyBattleDefender: nil, useMagicSword: nil)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(
+        into: &state,
+        action: .combat(.meleeAttack(
+          .east,
+          bloodyBattleDefender: nil, useMagicSword: nil)))
+    }
     #expect(state.defenderPosition[.archers] == archersPosBefore + 1) // unchanged
   }
 
@@ -159,11 +165,13 @@ struct LoDSpecialRulesTests {
     let maaValueBefore = state.defenderValue(for: .menAtArms)
 
     // Attack west (not marked) — no bloody battle cost
-    _ = game.reduce(
-      into: &state,
-      action: .combat(.meleeAttack(
-        .west, dieRoll: 6,
-        bloodyBattleDefender: nil, useMagicSword: nil)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(
+        into: &state,
+        action: .combat(.meleeAttack(
+          .west,
+          bloodyBattleDefender: nil, useMagicSword: nil)))
+    }
     #expect(state.defenderValue(for: .menAtArms) == maaValueBefore)
   }
 

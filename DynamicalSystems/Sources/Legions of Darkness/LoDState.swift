@@ -141,6 +141,9 @@ extension LoD {
     /// Phase to return to after Paladin re-roll decision.
     var phaseBeforePaladinReact: LoD.Phase?
 
+    /// Die value from the first roll, stashed for paladin decline path.
+    var firstDieRoll: Int?
+
     /// Whether Inspire's +1 DRM to all rolls is active this turn.
     var inspireDRMActive: Bool = false
 
@@ -283,7 +286,7 @@ extension LoD {
           return count
         case .combat, .build, .magic:
           count += 1
-        case .quest(.quest(isHeroic: false, _, _, let pointsSpent)):
+        case .quest(.quest(isHeroic: false, _, let pointsSpent)):
           count += pointsSpent
         default:
           break
@@ -301,7 +304,7 @@ extension LoD {
           return count
         case .heroic:
           count += 1
-        case .quest(.quest(isHeroic: true, _, _, let pointsSpent)):
+        case .quest(.quest(isHeroic: true, _, let pointsSpent)):
           count += pointsSpent
         default:
           break

@@ -30,7 +30,9 @@ struct LoDComposedGameActionTests {
     #expect(state.actionBudgetRemaining == 4)
 
     // Do a chant (priests > 0, costs 1 action point)
-    _ = game.reduce(into: &state, action: .magic(.chant(dieRoll: 6)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .magic(.chant))
+    }
     #expect(state.actionBudgetRemaining == 3)
 
     // End turn with budget remaining
@@ -60,7 +62,9 @@ struct LoDComposedGameActionTests {
     #expect(state.actionBudgetRemaining == 1)
 
     // Do one chant — exhausts action budget
-    _ = game.reduce(into: &state, action: .magic(.chant(dieRoll: 6)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .magic(.chant))
+    }
     #expect(state.actionBudgetRemaining == 0)
     #expect(state.heroicBudgetRemaining == 3)
 
@@ -97,11 +101,13 @@ struct LoDComposedGameActionTests {
 
     // Melee attack on east with a strong roll
     // Card #3 has attack DRM -1, so roll 6 + (-1) = 5. Goblin str 2. 5 > 2 = hit.
-    _ = game.reduce(
-      into: &state,
-      action: .combat(.meleeAttack(
-        .east, dieRoll: 6,
-        bloodyBattleDefender: nil, useMagicSword: nil)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(
+        into: &state,
+        action: .combat(.meleeAttack(
+          .east,
+          bloodyBattleDefender: nil, useMagicSword: nil)))
+    }
 
     // Army pushed back from space 2 to space 3
     #expect(state.armyPosition[.east]! == 3)
@@ -122,11 +128,13 @@ struct LoDComposedGameActionTests {
 
     // Ranged attack on east army (at space 5 after advance)
     let eastPos = state.armyPosition[.east]!
-    _ = game.reduce(
-      into: &state,
-      action: .combat(.rangedAttack(
-        .east, dieRoll: 6,
-        bloodyBattleDefender: nil, useMagicBow: nil)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(
+        into: &state,
+        action: .combat(.rangedAttack(
+          .east,
+          bloodyBattleDefender: nil, useMagicBow: nil)))
+    }
 
     // Roll 6 + card2 gate DRM (doesn't apply to east) vs goblin str 2 → hit
     #expect(state.armyPosition[.east]! > eastPos)
@@ -178,7 +186,9 @@ struct LoDComposedGameActionTests {
     #expect(state.heroicBudgetRemaining == 1)
 
     // Heroic attack with warrior on east army
-    _ = game.reduce(into: &state, action: .heroic(.heroicAttack(.warrior, .east, dieRoll: 5)))
+    LoD.$rollDie.withValue({ 5 }) {
+      _ = game.reduce(into: &state, action: .heroic(.heroicAttack(.warrior, .east)))
+    }
     #expect(state.heroicBudgetRemaining == 0)
   }
 
@@ -196,7 +206,9 @@ struct LoDComposedGameActionTests {
     _ = game.reduce(into: &state, action: .drawCard)
 
     // Rally with high roll → morale should raise
-    _ = game.reduce(into: &state, action: .heroic(.rally(dieRoll: 6)))
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .heroic(.rally))
+    }
     #expect(state.morale == .normal)
   }
 

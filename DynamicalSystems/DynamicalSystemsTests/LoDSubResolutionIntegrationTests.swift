@@ -24,9 +24,15 @@ struct LoDSubResolutionIntegrationTests {
     #expect(midActions.allSatisfy { if case .chainLightning = $0 { return true }; return false })
 
     // Resolve 3 bolts
-    _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east, dieRoll: 5)))
-    _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.west, dieRoll: 4)))
-    _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east, dieRoll: 3)))
+    LoD.$rollDie.withValue({ 5 }) {
+      _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east)))
+    }
+    LoD.$rollDie.withValue({ 4 }) {
+      _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.west)))
+    }
+    LoD.$rollDie.withValue({ 3 }) {
+      _ = game.reduce(into: &state, action: .chainLightning(.targetBolt(.east)))
+    }
 
     // Sub-resolution cleared, back to action phase
     #expect(!state.isInSubResolution)
@@ -112,7 +118,9 @@ struct LoDSubResolutionIntegrationTests {
     state.currentCard = LoD.nightCards.first { $0.number == 29 }
 
     // Trigger event
-    _ = game.reduce(into: &state, action: .resolveEvent(.init(dieRoll: 4)))
+    LoD.$rollDie.withValue({ 4 }) {
+      _ = game.reduce(into: &state, action: .resolveEvent(.init()))
+    }
     #expect(state.isInSubResolution)
     #expect(state.deathAndDespairState != nil)
     #expect(state.deathAndDespairState?.dieRoll == 4)

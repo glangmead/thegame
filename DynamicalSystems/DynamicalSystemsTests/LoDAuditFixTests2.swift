@@ -95,7 +95,9 @@ struct LoDAuditFixTests2 {
     state.upgrades[.east] = .grease
     state.armyPosition[.east] = 1
     // Army tries to advance past space 1, but grease check: roll 5 > 2, stays on 1
-    let result = state.advanceArmy(.east, dieRoll: 5)
+    let result = LoD.$rollDie.withValue({ 5 }) {
+      state.advanceArmy(.east)
+    }
     #expect(result == .greaseHeld(.east))
     #expect(state.armyPosition[.east] == 1)  // Army stays on space 1
     #expect(!state.breaches.contains(.east))  // No breach
@@ -107,7 +109,9 @@ struct LoDAuditFixTests2 {
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.upgrades[.east] = .grease
     state.armyPosition[.east] = 1
-    let result = state.advanceArmy(.east, dieRoll: 2)
+    let result = LoD.$rollDie.withValue({ 2 }) {
+      state.advanceArmy(.east)
+    }
     // Grease fails, breach is created
     #expect(result == .breachCreated(.east))
     #expect(state.breaches.contains(.east))
@@ -119,7 +123,9 @@ struct LoDAuditFixTests2 {
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.upgrades[.east] = .grease
     state.armyPosition[.east] = 1
-    _ = state.advanceArmy(.east, dieRoll: 5)  // Grease holds
+    LoD.$rollDie.withValue({ 5 }) {
+      _ = state.advanceArmy(.east)  // Grease holds
+    }
     // Grease should be consumed/removed after successful use
     #expect(state.upgrades[.east] == nil)
   }
@@ -211,7 +217,9 @@ struct LoDAuditFixTests2 {
     state.barricades.insert(.east)
     state.armyPosition[.east] = 1
     // Goblin strength = 2, roll 2 (equal) => breaks through
-    let result = state.advanceArmy(.east, dieRoll: 2)
+    let result = LoD.$rollDie.withValue({ 2 }) {
+      state.advanceArmy(.east)
+    }
     #expect(result == .armyBrokeBarricade(.east))
     #expect(state.ended)
   }
@@ -224,7 +232,9 @@ struct LoDAuditFixTests2 {
     state.barricades.insert(.east)
     state.armyPosition[.east] = 1
     // Goblin strength = 2, roll 3 => blocked
-    let result = state.advanceArmy(.east, dieRoll: 3)
+    let result = LoD.$rollDie.withValue({ 3 }) {
+      state.advanceArmy(.east)
+    }
     #expect(result == .barricadeHeld(.east))
     #expect(state.armyPosition[.east] == 1, "Army stays at space 1")
     #expect(!state.barricades.contains(.east), "Barricade consumed")
@@ -240,7 +250,9 @@ struct LoDAuditFixTests2 {
     state.barricades.insert(.east)
     state.armyPosition[.east] = 1
     // Goblin strength = 2, roll 1 => breaks through
-    let result = state.advanceArmy(.east, dieRoll: 1)
+    let result = LoD.$rollDie.withValue({ 1 }) {
+      state.advanceArmy(.east)
+    }
     #expect(result == .armyBrokeBarricade(.east))
     #expect(state.ended)
   }
@@ -362,7 +374,7 @@ struct LoDAuditFixTests2 {
     state.history.append(.skipEvent)
     // Spend 2 action points on quest
     state.history.append(.quest(.quest(
-      isHeroic: false, dieRoll: 4, reward: LoD.QuestRewardParams(), pointsSpent: 2)))
+      isHeroic: false, reward: LoD.QuestRewardParams(), pointsSpent: 2)))
     #expect(state.actionPointsSpent == 2)
   }
 

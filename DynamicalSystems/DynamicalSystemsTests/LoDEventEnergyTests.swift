@@ -63,7 +63,9 @@ struct LoDEventEnergyTests {
     state.spellStatus[.slow] = .cast
     state.spellStatus[.cureWounds] = .cast // divine, also returns
 
-    state.eventMysticForcesReborn(dieRoll: 5, randomSpell: .chainLightning)
+    LoD.$drawRandomSpell.withValue({ _ in .chainLightning }) {
+      state.eventMysticForcesReborn(dieRoll: 5)
+    }
     // Cast spells returned to face-down
     #expect(state.spellStatus[.fireball] == .faceDown)
     #expect(state.spellStatus[.slow] == .faceDown)

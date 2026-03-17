@@ -24,7 +24,7 @@ extension LoD {
         guard case .drawCard = action else { return nil }
         state.drawCard()
         let logs = cardLogs(for: state.currentCard)
-        return (logs, [.advanceArmies(acidAttackDieRolls: [:])])
+        return (logs, [.advanceArmies])
       }
     )
   }
@@ -92,7 +92,7 @@ extension LoD {
           }
         }
 
-        guard case .advanceArmies(let acidAttackDieRolls) = action else { return nil }
+        guard case .advanceArmies = action else { return nil }
         var logs: [Log] = []
         if let card = state.currentCard {
           for track in card.advances {
@@ -103,8 +103,8 @@ extension LoD {
               if case .advanced(let slot, _, let destination) = result,
                 destination == 1,
                 state.upgrades[slot.track] == .acid,
-                !state.acidUsedThisTurn,
-                let dieRoll = acidAttackDieRolls[slot] {
+                !state.acidUsedThisTurn {
+                let dieRoll = LoD.rollDie()
                 let attackResult = state.resolveAttack(
                   on: slot, attackType: .melee, dieRoll: dieRoll, drm: 0)
                 state.acidUsedThisTurn = true
@@ -173,24 +173,21 @@ extension LoD {
           state.snapshotActionBudget = state.actionBudget
           return ([Log(msg: "No event this turn")], [])
 
-        case .resolveEvent(var resolution):
+        case .resolveEvent(let resolution):
           guard let card = state.currentCard else {
             return ([Log(msg: "No card for event")], [])
           }
-          resolution.dieRoll = State.effectiveDie(resolution.dieRoll)
-          if let barricadeRoll = resolution.barricadeDieRoll {
-            resolution.barricadeDieRoll = State.effectiveDie(barricadeRoll)
-          }
+          let dieRoll = LoD.rollDie()
           var logs: [Log] = []
 
           switch card.number {
           case 1: // Catapult Shrapnel
-            state.eventCatapultShrapnel(dieRoll: resolution.dieRoll)
-            logs.append(Log(msg: "Catapult Shrapnel: rolled \(resolution.dieRoll)"))
+            state.eventCatapultShrapnel(dieRoll: dieRoll)
+            logs.append(Log(msg: "Catapult Shrapnel: rolled \(dieRoll)"))
 
           case 4: // Rocks of Ages
-            state.eventRocksOfAges(dieRoll: resolution.dieRoll)
-            logs.append(Log(msg: "Rocks of Ages: rolled \(resolution.dieRoll)"))
+            state.eventRocksOfAges(dieRoll: dieRoll)
+            logs.append(Log(msg: "Rocks of Ages: rolled \(dieRoll)"))
 
           case 8: // Acts of Valor
             state.eventActsOfValor(woundHeroes: resolution.woundHeroes)
@@ -215,16 +212,16 @@ extension LoD {
             }
 
           case 16: // Lamentation of the Women
-            state.eventLamentation(dieRoll: resolution.dieRoll)
-            logs.append(Log(msg: "Lamentation: rolled \(resolution.dieRoll)"))
+            state.eventLamentation(dieRoll: dieRoll)
+            logs.append(Log(msg: "Lamentation: rolled \(dieRoll)"))
 
           case 17: // Reign of Arrows
-            state.eventReignOfArrows(dieRoll: resolution.dieRoll)
-            logs.append(Log(msg: "Reign of Arrows: rolled \(resolution.dieRoll)"))
+            state.eventReignOfArrows(dieRoll: dieRoll)
+            logs.append(Log(msg: "Reign of Arrows: rolled \(dieRoll)"))
 
           case 18: // Trapped by Flames
-            state.eventTrappedByFlames(dieRoll: resolution.dieRoll)
-            logs.append(Log(msg: "Trapped by Flames: rolled \(resolution.dieRoll)"))
+            state.eventTrappedByFlames(dieRoll: dieRoll)
+            logs.append(Log(msg: "Trapped by Flames: rolled \(dieRoll)"))
 
           case 20: // Banners in the Distance
             let results = state.eventBannersInDistance()
@@ -240,8 +237,8 @@ extension LoD {
 
           case 24: // Bloody Handprints
             if let hero = resolution.chosenHero {
-              state.eventBloodyHandprints(dieRoll: resolution.dieRoll, chosenHero: hero)
-              logs.append(Log(msg: "Bloody Handprints: rolled \(resolution.dieRoll), hero \(hero)"))
+              state.eventBloodyHandprints(dieRoll: dieRoll, chosenHero: hero)
+              logs.append(Log(msg: "Bloody Handprints: rolled \(dieRoll), hero \(hero)"))
             }
 
           case 26: // Council of Heroes
@@ -249,38 +246,38 @@ extension LoD {
             logs.append(Log(msg: "Council of Heroes"))
 
           case 27: // Midnight Magic
-            state.eventMidnightMagic(dieRoll: resolution.dieRoll)
-            logs.append(Log(msg: "Midnight Magic: rolled \(resolution.dieRoll)"))
+            state.eventMidnightMagic(dieRoll: dieRoll)
+            logs.append(Log(msg: "Midnight Magic: rolled \(dieRoll)"))
 
           case 29: // Death and Despair — enters multi-step sub-resolution
-            state.deathAndDespairState = DeathAndDespairState(dieRoll: resolution.dieRoll)
+            state.deathAndDespairState = DeathAndDespairState(dieRoll: dieRoll)
             logs.append(Log(
-              msg: "Death and Despair: rolled \(resolution.dieRoll). Choose sacrifices to reduce advance."
+              msg: "Death and Despair: rolled \(dieRoll). Choose sacrifices to reduce advance."
             ))
 
           case 30: // Assassin's Creedo
-            state.eventAssassinsCreedo(dieRoll: resolution.dieRoll, chosenHero: resolution.chosenHero)
-            logs.append(Log(msg: "Assassin's Creedo: rolled \(resolution.dieRoll)"))
+            state.eventAssassinsCreedo(dieRoll: dieRoll, chosenHero: resolution.chosenHero)
+            logs.append(Log(msg: "Assassin's Creedo: rolled \(dieRoll)"))
 
           case 31: // In the Pale Moonlight
             state.eventPaleMoonlight()
             logs.append(Log(msg: "In the Pale Moonlight"))
 
           case 32: // By the Light of the Moon (same as Midnight Magic)
-            state.eventMidnightMagic(dieRoll: resolution.dieRoll)
-            logs.append(Log(msg: "By the Light of the Moon: rolled \(resolution.dieRoll)"))
+            state.eventMidnightMagic(dieRoll: dieRoll)
+            logs.append(Log(msg: "By the Light of the Moon: rolled \(dieRoll)"))
 
           case 33: // Deserters in the Dark
             state.eventDeserters(loseTwoDefenders: resolution.deserterDefenders)
             logs.append(Log(msg: "Deserters in the Dark"))
 
           case 34: // The Waning Moon
-            state.eventWaningMoon(dieRoll: resolution.dieRoll)
-            logs.append(Log(msg: "Waning Moon: rolled \(resolution.dieRoll)"))
+            state.eventWaningMoon(dieRoll: dieRoll)
+            logs.append(Log(msg: "Waning Moon: rolled \(dieRoll)"))
 
           case 35: // Mystic Forces Reborn
-            state.eventMysticForcesReborn(dieRoll: resolution.dieRoll, randomSpell: resolution.randomSpell)
-            logs.append(Log(msg: "Mystic Forces Reborn: rolled \(resolution.dieRoll)"))
+            state.eventMysticForcesReborn(dieRoll: dieRoll)
+            logs.append(Log(msg: "Mystic Forces Reborn: rolled \(dieRoll)"))
 
           case 36: // Bump in the Night
             let results = state.eventBumpInTheNight(

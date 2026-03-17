@@ -51,25 +51,25 @@ extension LoD.State {
   }
 
   // Card #9: Distracted Defenders — If East army out of melee range, advance it one space.
-  mutating func eventDistractedDefenders(dieRoll: Int? = nil) -> [AdvanceResult] {
+  mutating func eventDistractedDefenders() -> [AdvanceResult] {
     guard let pos = armyPosition[.east] else { return [] }
     if !LoD.Track.east.isMeleeRange(space: pos) {
-      return [advanceArmy(.east, dieRoll: dieRoll)]
+      return [advanceArmy(.east)]
     }
     return []
   }
 
   // Card #20: Banners in the Distance — If West army out of melee range, advance it one space.
-  mutating func eventBannersInDistance(dieRoll: Int? = nil) -> [AdvanceResult] {
+  mutating func eventBannersInDistance() -> [AdvanceResult] {
     guard let pos = armyPosition[.west] else { return [] }
     if !LoD.Track.west.isMeleeRange(space: pos) {
-      return [advanceArmy(.west, dieRoll: dieRoll)]
+      return [advanceArmy(.west)]
     }
     return []
   }
 
   // Card #11: The Harbingers of Doom — Advance farthest army one space. If tied, player chooses.
-  mutating func eventHarbingers(chosenSlot: LoD.ArmySlot? = nil, dieRoll: Int? = nil) -> [AdvanceResult] {
+  mutating func eventHarbingers(chosenSlot: LoD.ArmySlot? = nil) -> [AdvanceResult] {
     var maxSpace = 0
     var farthestSlots: [LoD.ArmySlot] = []
     for slot in LoD.ArmySlot.allCases {
@@ -85,41 +85,41 @@ extension LoD.State {
     guard !farthestSlots.isEmpty else { return [] }
 
     if farthestSlots.count == 1 {
-      return [advanceArmy(farthestSlots[0], dieRoll: dieRoll)]
+      return [advanceArmy(farthestSlots[0])]
     }
 
     // Tied — use player choice
     if let chosen = chosenSlot, farthestSlots.contains(chosen) {
-      return [advanceArmy(chosen, dieRoll: dieRoll)]
+      return [advanceArmy(chosen)]
     }
 
-    return [advanceArmy(farthestSlots[0], dieRoll: dieRoll)]
+    return [advanceArmy(farthestSlots[0])]
   }
 
   // Card #14: Broken Walls — Advance closest of East/West. If tied, advance both.
-  mutating func eventBrokenWalls(dieRoll: Int? = nil) -> [AdvanceResult] {
+  mutating func eventBrokenWalls() -> [AdvanceResult] {
     let eastPos = armyPosition[.east]
     let westPos = armyPosition[.west]
 
     switch (eastPos, westPos) {
     case (nil, nil): return []
-    case (_?, nil): return [advanceArmy(.east, dieRoll: dieRoll)]
-    case (nil, _?): return [advanceArmy(.west, dieRoll: dieRoll)]
+    case (_?, nil): return [advanceArmy(.east)]
+    case (nil, _?): return [advanceArmy(.west)]
     case (let eastP?, let westP?):
       if eastP < westP {
-        return [advanceArmy(.east, dieRoll: dieRoll)]
+        return [advanceArmy(.east)]
       } else if westP < eastP {
-        return [advanceArmy(.west, dieRoll: dieRoll)]
+        return [advanceArmy(.west)]
       } else {
-        let result1 = advanceArmy(.east, dieRoll: dieRoll)
-        let result2 = advanceArmy(.west, dieRoll: dieRoll)
+        let result1 = advanceArmy(.east)
+        let result2 = advanceArmy(.west)
         return [result1, result2]
       }
     }
   }
 
   // Card #23: Campfires in the Distance — Gate armies out of melee range trigger advances.
-  mutating func eventCampfires(dieRoll: Int? = nil) -> [AdvanceResult] {
+  mutating func eventCampfires() -> [AdvanceResult] {
     let pos1 = armyPosition[.gate1]
     let pos2 = armyPosition[.gate2]
 
@@ -127,13 +127,13 @@ extension LoD.State {
     let out2 = pos2.map { !LoD.Track.gate.isMeleeRange(space: $0) } ?? false
 
     if out1 && out2 {
-      let result1 = advanceArmy(.gate1, dieRoll: dieRoll)
-      let result2 = advanceArmy(.gate2, dieRoll: dieRoll)
+      let result1 = advanceArmy(.gate1)
+      let result2 = advanceArmy(.gate2)
       return [result1, result2]
     } else if out1 {
-      return [advanceArmy(.gate1, dieRoll: dieRoll)]
+      return [advanceArmy(.gate1)]
     } else if out2 {
-      return [advanceArmy(.gate2, dieRoll: dieRoll)]
+      return [advanceArmy(.gate2)]
     }
 
     return []
@@ -241,7 +241,7 @@ extension LoD.State {
 
   // Card #35: Mystic Forces Reborn — Return all cast spells to pool.
   // Roll 1-3: -1 arcane. Roll 4-6: draw a random arcane spell.
-  mutating func eventMysticForcesReborn(dieRoll: Int, randomSpell: LoD.SpellType? = nil) {
+  mutating func eventMysticForcesReborn(dieRoll: Int) {
     // Return all cast spells to face-down
     for spell in LoD.SpellType.allCases where spellStatus[spell] == .cast {
       spellStatus[spell] = .faceDown
@@ -250,7 +250,8 @@ extension LoD.State {
     switch dieRoll {
     case 1, 2, 3: arcaneEnergy = max(arcaneEnergy - 1, 0)
     case 4, 5, 6:
-      if let spell = randomSpell, spell.isArcane, spellStatus[spell] == .faceDown {
+      let arcanePool = LoD.SpellType.arcaneSpells.filter { spellStatus[$0] == .faceDown }
+      if let spell = LoD.drawRandomSpell(arcanePool) {
         spellStatus[spell] = .known
       }
     default: break
@@ -263,8 +264,7 @@ extension LoD.State {
     dieRoll: Int,
     heroesToWound: [LoD.HeroType] = [],
     defendersToLose: [LoD.DefenderType] = [],
-    chosenSlot: LoD.ArmySlot? = nil,
-    dieRollForBarricade: Int? = nil
+    chosenSlot: LoD.ArmySlot? = nil
   ) -> [AdvanceResult] {
     for hero in heroesToWound {
       woundHero(hero)
@@ -302,7 +302,7 @@ extension LoD.State {
 
     var results: [AdvanceResult] = []
     for _ in 0..<advances {
-      results.append(advanceArmy(targetSlot, dieRoll: dieRollForBarricade))
+      results.append(advanceArmy(targetSlot))
     }
     return results
   }
@@ -310,15 +310,14 @@ extension LoD.State {
   // Card #36: Bump in the Night — Advance Sky 1 space OR advance other armies total 2 spaces.
   mutating func eventBumpInTheNight(
     advanceSky: Bool,
-    otherAdvances: [LoD.ArmySlot] = [],
-    dieRoll: Int? = nil
+    otherAdvances: [LoD.ArmySlot] = []
   ) -> [AdvanceResult] {
     if advanceSky {
       return [advanceArmy(.sky)]
     } else {
       var results: [AdvanceResult] = []
       for slot in otherAdvances {
-        results.append(advanceArmy(slot, dieRoll: dieRoll))
+        results.append(advanceArmy(slot))
       }
       return results
     }
@@ -336,7 +335,7 @@ extension LoD.State {
     case 24: return bloodyHandprintsResolutions()
     case 30: return assassinsCreedoResolutions()
     case 11: return harbingersResolutions()
-    default: return [LoD.EventResolution(dieRoll: 0)]
+    default: return [LoD.EventResolution()]
     }
   }
 

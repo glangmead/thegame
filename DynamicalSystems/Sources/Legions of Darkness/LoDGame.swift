@@ -78,7 +78,7 @@ extension LoD {
         GameRule(
           condition: { $0.phase == .paladinReact && $0.pendingDieRollAction != nil },
           actions: { _ in
-            [.paladinReroll(newDieRoll: 0), .declineReroll]
+            [.paladinReroll, .declineReroll]
           }
         )
       ],
@@ -89,35 +89,41 @@ extension LoD {
         case .declineReroll:
           guard let pending = state.pendingDieRollAction else { return nil }
           let returnPhase = state.phaseBeforePaladinReact ?? .action
+          let stashedRoll = state.firstDieRoll!
 
-          // Resolve the deferred action based on action type
-          if State.isHeroicDieRollAction(pending) {
-            logs += state.resolveHeroicDieRoll(pending)
-          } else {
-            logs += state.resolveActionDieRoll(pending)
+          // Resolve with the original die roll by injecting it into rollDie
+          LoD.$rollDie.withValue({ stashedRoll }) {
+            if State.isHeroicDieRollAction(pending) {
+              logs += state.resolveHeroicDieRoll(pending)
+            } else {
+              logs += state.resolveActionDieRoll(pending)
+            }
           }
 
+          state.firstDieRoll = nil
           state.pendingDieRollAction = nil
           state.phaseBeforePaladinReact = nil
           state.phase = returnPhase
           return (logs, [])
 
-        case .paladinReroll(let newDieRoll):
+        case .paladinReroll:
           guard let pending = state.pendingDieRollAction else { return nil }
           let returnPhase = state.phaseBeforePaladinReact ?? .action
 
-          // Modify the pending action with the new die roll
-          let modifiedAction = State.withNewDieRoll(pending, newDieRoll: newDieRoll)
+          let newDieRoll = LoD.rollDie()
           logs.append(Log(msg: "Paladin re-roll: new die = \(newDieRoll)"))
 
-          // Resolve with the new die roll based on action type
-          if State.isHeroicDieRollAction(modifiedAction) {
-            logs += state.resolveHeroicDieRoll(modifiedAction)
-          } else {
-            logs += state.resolveActionDieRoll(modifiedAction)
+          // Resolve with the fresh die roll by injecting it into rollDie
+          LoD.$rollDie.withValue({ newDieRoll }) {
+            if State.isHeroicDieRollAction(pending) {
+              logs += state.resolveHeroicDieRoll(pending)
+            } else {
+              logs += state.resolveActionDieRoll(pending)
+            }
           }
 
           state.usePaladinReroll()
+          state.firstDieRoll = nil
           state.pendingDieRollAction = nil
           state.phaseBeforePaladinReact = nil
           state.phase = returnPhase

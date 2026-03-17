@@ -2,8 +2,8 @@
 //  LoDDieRollTests.swift
 //  DynamicalSystems
 //
-//  Tests that die rolls are properly randomized when actions carry placeholder 0,
-//  and that explicit die rolls are preserved for deterministic testing.
+//  Tests that die rolls are properly randomized via LoD.rollDie(),
+//  and that deterministic die rolls work via LoD.$rollDie.withValue.
 //
 
 import Testing
@@ -13,40 +13,17 @@ import CoreGraphics
 @MainActor
 struct LoDDieRollTests {
 
-  // MARK: - effectiveDie
+  // MARK: - Action-phase attacks with random die rolls
 
   @Test
-  func effectiveDiePreservesExplicitRolls() {
-    // Non-zero die rolls pass through unchanged.
-    for roll in 1...6 {
-      #expect(LoD.State.effectiveDie(roll) == roll)
-    }
-  }
-
-  @Test
-  func effectiveDieRandomizesZero() {
-    // dieRoll=0 should produce values in 1...6. Run enough trials
-    // that we'd see at least two distinct values.
-    var seen = Set<Int>()
-    for _ in 0..<100 {
-      let roll = LoD.State.effectiveDie(0)
-      #expect(roll >= 1 && roll <= 6)
-      seen.insert(roll)
-    }
-    #expect(seen.count > 1, "100 rolls should produce more than one distinct value")
-  }
-
-  // MARK: - Action-phase attacks with placeholder die rolls
-
-  @Test
-  func meleeAttackWithPlaceholderDieSometimesHits() {
-    // A melee attack on a goblin (strength 2) with dieRoll=0 should
-    // sometimes succeed (when the random roll > 2).
+  func meleeAttackWithRandomDieSometimesHits() {
+    // A melee attack on a goblin (strength 2) with default random die
+    // should sometimes succeed (when the random roll > 2).
     var hitCount = 0
     for _ in 0..<100 {
       var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
       state.armyPosition[.east] = 2  // melee range
-      let action = LoD.Action.combat(.meleeAttack(.east, dieRoll: 0, bloodyBattleDefender: nil, useMagicSword: nil))
+      let action = LoD.Action.combat(.meleeAttack(.east, bloodyBattleDefender: nil, useMagicSword: nil))
       let logs = state.resolveActionDieRoll(action)
       let logText = logs.map(\.msg).joined()
       if logText.contains("hit") {
@@ -59,12 +36,12 @@ struct LoDDieRollTests {
   }
 
   @Test
-  func rangedAttackWithPlaceholderDieSometimesHits() {
+  func rangedAttackWithRandomDieSometimesHits() {
     var hitCount = 0
     for _ in 0..<100 {
       var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
       state.armyPosition[.east] = 5  // ranged range
-      let action = LoD.Action.combat(.rangedAttack(.east, dieRoll: 0, bloodyBattleDefender: nil, useMagicBow: nil))
+      let action = LoD.Action.combat(.rangedAttack(.east, bloodyBattleDefender: nil, useMagicBow: nil))
       let logs = state.resolveActionDieRoll(action)
       let logText = logs.map(\.msg).joined()
       if logText.contains("hit") {
@@ -75,13 +52,13 @@ struct LoDDieRollTests {
   }
 
   @Test
-  func heroicAttackWithPlaceholderDieSometimesHits() {
+  func heroicAttackWithRandomDieSometimesHits() {
     var hitCount = 0
     for _ in 0..<100 {
       var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
       state.armyPosition[.east] = 2
       state.heroLocation[.warrior] = .onTrack(.east)
-      let action = LoD.Action.heroic(.heroicAttack(.warrior, .east, dieRoll: 0))
+      let action = LoD.Action.heroic(.heroicAttack(.warrior, .east))
       let logs = state.resolveHeroicDieRoll(action)
       let logText = logs.map(\.msg).joined()
       if logText.contains("hit") {
@@ -94,25 +71,29 @@ struct LoDDieRollTests {
   }
 
   @Test
-  func explicitDieRollStillWorks() {
-    // Explicit dieRoll=6 against goblin (strength 2) should always hit.
+  func deterministicDieRollSixHits() {
+    // Injecting roll=6 against goblin (strength 2) should always hit.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.armyPosition[.east] = 2
-    let action = LoD.Action.combat(.meleeAttack(.east, dieRoll: 6, bloodyBattleDefender: nil, useMagicSword: nil))
-    let logs = state.resolveActionDieRoll(action)
-    let logText = logs.map(\.msg).joined()
-    #expect(logText.contains("hit"), "Explicit roll 6 vs strength 2 should hit")
+    let action = LoD.Action.combat(.meleeAttack(.east, bloodyBattleDefender: nil, useMagicSword: nil))
+    LoD.$rollDie.withValue({ 6 }) {
+      let logs = state.resolveActionDieRoll(action)
+      let logText = logs.map(\.msg).joined()
+      #expect(logText.contains("hit"), "Roll 6 vs strength 2 should hit")
+    }
   }
 
   @Test
-  func explicitDieRollOneMisses() {
-    // Explicit dieRoll=1 should always fail (natural 1 rule).
+  func deterministicDieRollOneMisses() {
+    // Injecting roll=1 should always fail (natural 1 rule).
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     state.armyPosition[.east] = 2
-    let action = LoD.Action.combat(.meleeAttack(.east, dieRoll: 1, bloodyBattleDefender: nil, useMagicSword: nil))
-    let logs = state.resolveActionDieRoll(action)
-    let logText = logs.map(\.msg).joined()
-    #expect(logText.contains("natural 1"), "Explicit roll 1 should be natural 1 fail")
+    let action = LoD.Action.combat(.meleeAttack(.east, bloodyBattleDefender: nil, useMagicSword: nil))
+    LoD.$rollDie.withValue({ 1 }) {
+      let logs = state.resolveActionDieRoll(action)
+      let logText = logs.map(\.msg).joined()
+      #expect(logText.contains("natural 1"), "Roll 1 should be natural 1 fail")
+    }
   }
 
   // MARK: - Event die rolls
@@ -120,7 +101,7 @@ struct LoDDieRollTests {
   @Test
   func eventDieRollRandomized() {
     // Catapult Shrapnel (card 1): on roll 1 lose archer, on 2-3 lose MaA.
-    // With placeholder dieRoll=0, we should see varied outcomes.
+    // With default random die, we should see varied outcomes.
     let card1 = LoD.dayCards.first { $0.number == 1 }!
     let game = LoD.composedGame(
       windsOfMagicArcane: 3,
@@ -134,7 +115,7 @@ struct LoDDieRollTests {
     for _ in 0..<100 {
       var state = game.newState()
       _ = game.reduce(into: &state, action: .drawCard)
-      // Now in event phase — resolve with placeholder die
+      // Now in event phase — resolve with random die
       _ = game.reduce(into: &state, action: .resolveEvent(LoD.EventResolution()))
 
       let archers = state.defenderValue(for: .archers)

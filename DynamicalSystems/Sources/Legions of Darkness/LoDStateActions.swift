@@ -243,7 +243,6 @@ extension LoD.State {
       for slot in targetableSlotsForArcaneSpell(spell) {
         var params = LoD.SpellCastParams()
         params.targetSlot = slot
-        params.dieRolls = [0]
         result.append(makeAction(params))
       }
 
@@ -352,7 +351,6 @@ extension LoD.State {
           for jdx in 0..<slots.count where idx != jdx {
             var params = LoD.SpellCastParams()
             params.targetSlots = [slots[idx], slots[jdx]]
-            params.dieRolls = [0, 0]
             result.append(makeAction(params))
           }
         }
@@ -360,7 +358,6 @@ extension LoD.State {
         for slot in slots {
           var params = LoD.SpellCastParams()
           params.targetSlots = [slot]
-          params.dieRolls = [0]
           result.append(makeAction(params))
         }
       }

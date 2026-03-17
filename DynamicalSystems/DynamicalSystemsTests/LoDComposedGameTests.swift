@@ -72,7 +72,7 @@ struct LoDComposedGameTests {
     #expect(state.history.count == 5) // +endPlayerTurn, +performHousekeeping
 
     #expect(state.history[0] == .drawCard)
-    #expect(state.history[1] == .advanceArmies(acidAttackDieRolls: [:]))
+    #expect(state.history[1] == .advanceArmies)
     #expect(state.history[2] == .skipEvent)
     #expect(state.history[3] == .endPlayerTurn)
     #expect(state.history[4] == .performHousekeeping)
@@ -165,9 +165,10 @@ struct LoDComposedGameTests {
     #expect(actions.contains(where: { if case .resolveEvent = $0 { return true }; return false }))
 
     // Resolve with die roll 5 (no effect for Catapult Shrapnel)
-    var resolution = LoD.EventResolution()
-    resolution.dieRoll = 5
-    _ = game.reduce(into: &state, action: .resolveEvent(resolution))
+    let resolution = LoD.EventResolution()
+    LoD.$rollDie.withValue({ 5 }) {
+      _ = game.reduce(into: &state, action: .resolveEvent(resolution))
+    }
     #expect(state.phase == .action)
     // Defenders unchanged (roll 4-6 = no effect)
     #expect(state.defenderValue(for: .archers) == 2)
@@ -187,9 +188,10 @@ struct LoDComposedGameTests {
     _ = game.reduce(into: &state, action: .drawCard)
     #expect(state.phase == .event)
 
-    var resolution = LoD.EventResolution()
-    resolution.dieRoll = 1
-    _ = game.reduce(into: &state, action: .resolveEvent(resolution))
+    let resolution = LoD.EventResolution()
+    LoD.$rollDie.withValue({ 1 }) {
+      _ = game.reduce(into: &state, action: .resolveEvent(resolution))
+    }
     #expect(state.defenderPosition[.archers] == 1)
     #expect(state.defenderValue(for: .archers) == 2) // track [2,2,1,1,0]: still 2
   }

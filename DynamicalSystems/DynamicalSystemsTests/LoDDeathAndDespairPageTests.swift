@@ -22,7 +22,9 @@ struct LoDDeathAndDespairPageTests {
     let setup = setupForDeathAndDespair()
     let game = setup.0
     var state = setup.1
-    _ = game.reduce(into: &state, action: .resolveEvent(.init(dieRoll: 3)))
+    LoD.$rollDie.withValue({ 3 }) {
+      _ = game.reduce(into: &state, action: .resolveEvent(.init()))
+    }
     #expect(state.deathAndDespairState != nil)
     #expect(state.deathAndDespairState?.dieRoll == 3)
   }
@@ -31,7 +33,9 @@ struct LoDDeathAndDespairPageTests {
     let setup = setupForDeathAndDespair()
     let game = setup.0
     var state = setup.1
-    _ = game.reduce(into: &state, action: .resolveEvent(.init(dieRoll: 3)))
+    LoD.$rollDie.withValue({ 3 }) {
+      _ = game.reduce(into: &state, action: .resolveEvent(.init()))
+    }
     let actions = game.allowedActions(state: state)
     let ddActions = actions.filter {
       if case .deathAndDespair = $0 { return true }
@@ -49,7 +53,9 @@ struct LoDDeathAndDespairPageTests {
     let setup = setupForDeathAndDespair()
     let game = setup.0
     var state = setup.1
-    _ = game.reduce(into: &state, action: .resolveEvent(.init(dieRoll: 3)))
+    LoD.$rollDie.withValue({ 3 }) {
+      _ = game.reduce(into: &state, action: .resolveEvent(.init()))
+    }
     _ = game.reduce(into: &state, action: .deathAndDespair(.sacrificeHero(.warrior)))
     #expect(state.deathAndDespairState?.remainingAdvance == 2)
     #expect(state.heroWounded.contains(.warrior))
@@ -59,7 +65,9 @@ struct LoDDeathAndDespairPageTests {
     let setup = setupForDeathAndDespair()
     let game = setup.0
     var state = setup.1
-    _ = game.reduce(into: &state, action: .resolveEvent(.init(dieRoll: 2)))
+    LoD.$rollDie.withValue({ 2 }) {
+      _ = game.reduce(into: &state, action: .resolveEvent(.init()))
+    }
     _ = game.reduce(into: &state, action: .deathAndDespair(.sacrificeDefender(.archers)))
     #expect(state.deathAndDespairState?.remainingAdvance == 1)
     let archerPos = state.defenderPosition[.archers] ?? 0
@@ -70,7 +78,9 @@ struct LoDDeathAndDespairPageTests {
     let setup = setupForDeathAndDespair()
     let game = setup.0
     var state = setup.1
-    _ = game.reduce(into: &state, action: .resolveEvent(.init(dieRoll: 2)))
+    LoD.$rollDie.withValue({ 2 }) {
+      _ = game.reduce(into: &state, action: .resolveEvent(.init()))
+    }
     _ = game.reduce(into: &state, action: .deathAndDespair(.commitAdvance(chosenSlot: nil)))
     #expect(state.deathAndDespairState == nil)
     #expect(!state.isInSubResolution)
@@ -80,7 +90,9 @@ struct LoDDeathAndDespairPageTests {
     let setup = setupForDeathAndDespair()
     let game = setup.0
     var state = setup.1
-    _ = game.reduce(into: &state, action: .resolveEvent(.init(dieRoll: 3)))
+    LoD.$rollDie.withValue({ 3 }) {
+      _ = game.reduce(into: &state, action: .resolveEvent(.init()))
+    }
     _ = game.reduce(into: &state, action: .deathAndDespair(.sacrificeHero(.warrior)))
     _ = game.reduce(into: &state, action: .deathAndDespair(.sacrificeHero(.wizard)))
     _ = game.reduce(into: &state, action: .deathAndDespair(.sacrificeDefender(.archers)))
@@ -105,7 +117,9 @@ struct LoDDeathAndDespairPageTests {
     // Make east farthest
     state.armyPosition[.east] = 6
     state.armyPosition[.west] = 3
-    _ = game.reduce(into: &state, action: .resolveEvent(.init(dieRoll: 2)))
+    LoD.$rollDie.withValue({ 2 }) {
+      _ = game.reduce(into: &state, action: .resolveEvent(.init()))
+    }
     _ = game.reduce(into: &state, action: .deathAndDespair(.commitAdvance(chosenSlot: nil)))
     // East was at 6, should advance 2 spaces to 4
     #expect(state.armyPosition[.east] == 4)
@@ -122,7 +136,9 @@ struct LoDDeathAndDespairPageTests {
     state.armyPosition[.gate1] = 3
     state.armyPosition[.gate2] = 3
     state.armyPosition[.sky] = 4
-    _ = game.reduce(into: &state, action: .resolveEvent(.init(dieRoll: 2)))
+    LoD.$rollDie.withValue({ 2 }) {
+      _ = game.reduce(into: &state, action: .resolveEvent(.init()))
+    }
     let actions = game.allowedActions(state: state)
     let commits = actions.filter {
       if case .deathAndDespair(.commitAdvance) = $0 { return true }
@@ -135,7 +151,9 @@ struct LoDDeathAndDespairPageTests {
     let setup = setupForDeathAndDespair()
     let game = setup.0
     var state = setup.1
-    _ = game.reduce(into: &state, action: .resolveEvent(.init(dieRoll: 3)))
+    LoD.$rollDie.withValue({ 3 }) {
+      _ = game.reduce(into: &state, action: .resolveEvent(.init()))
+    }
     let actions = game.allowedActions(state: state)
     for action in actions {
       switch action {

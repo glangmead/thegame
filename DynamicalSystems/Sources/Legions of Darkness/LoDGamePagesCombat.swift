@@ -27,11 +27,11 @@ extension LoD {
                   if slot.track == .gate {
                     if state.gateAttackTargets().contains(slot) {
                       actions.append(.combat(.meleeAttack(
-                        slot, dieRoll: 0, bloodyBattleDefender: nil, useMagicSword: nil)))
+                        slot, bloodyBattleDefender: nil, useMagicSword: nil)))
                     }
                   } else {
                     actions.append(.combat(.meleeAttack(
-                      slot, dieRoll: 0, bloodyBattleDefender: nil, useMagicSword: nil)))
+                      slot, bloodyBattleDefender: nil, useMagicSword: nil)))
                   }
                 }
               }
@@ -46,11 +46,11 @@ extension LoD {
                 if slot.track == .gate {
                   if state.gateAttackTargets().contains(slot) {
                     actions.append(.combat(.rangedAttack(
-                      slot, dieRoll: 0, bloodyBattleDefender: nil, useMagicBow: nil)))
+                      slot, bloodyBattleDefender: nil, useMagicBow: nil)))
                   }
                 } else {
                   actions.append(.combat(.rangedAttack(
-                    slot, dieRoll: 0, bloodyBattleDefender: nil, useMagicBow: nil)))
+                    slot, bloodyBattleDefender: nil, useMagicBow: nil)))
                 }
               }
             }
