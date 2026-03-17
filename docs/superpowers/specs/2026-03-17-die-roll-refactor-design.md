@@ -71,8 +71,11 @@ Random spell draws happen during resolution, not at action creation.
   `LoD.rollDie()` directly.
 - `withNewDieRoll(_ action:, newDieRoll:) -> Action` — no die values in
   actions to replace.
+
+## Retained Code
+
 - `isDieRollAction(_ action:) -> Bool` — still needed for
-  `resolveDieRollWithPaladinCheck`, but the check is about action type, not
+  `resolveDieRollWithPaladinCheck`. The check is about action type, not
   die value presence.
 
 ## RNG Injection via @TaskLocal
@@ -141,7 +144,12 @@ Tests override this the same way as `rollDie`.
 ## Reducer Changes
 
 Every reducer that currently reads `dieRoll` from the action instead calls
-`LoD.rollDie()`. Examples:
+`LoD.rollDie()`. The internal resolution methods (`resolveAttack`, `build`,
+`chant`, `rally`, `attemptQuest`, etc.) keep their `dieRoll: Int`
+parameter — they receive the already-rolled value. Only the top-level
+dispatch changes.
+
+### Die-roll action reducers
 
 **Before:**
 ```swift
@@ -156,9 +164,58 @@ case .combat(.meleeAttack(let slot, let bbDef, let sword)):
   return resolveMeleeAttack(slot: slot, dieRoll: dieRoll, ...)
 ```
 
-The internal resolution methods (`resolveAttack`, `build`, `chant`, `rally`,
-`attemptQuest`, etc.) keep their `dieRoll: Int` parameter — they receive
-the already-rolled value. Only the top-level dispatch changes.
+Same pattern for `rangedAttack`, `buildUpgrade`, `buildBarricade`, `chant`,
+`heroicAttack`, `rally`, `quest`.
+
+### Spell cast resolution (Fireball, Divine Wrath, Chain Lightning)
+
+`applySpellEffect` currently reads `params.dieRolls` for spells that roll
+dice. After removing `SpellCastParams.dieRolls`, each spell calls
+`LoD.rollDie()` at resolution time:
+
+**Before:**
+```swift
+case .fireball:
+  let dieRoll = params.dieRolls.first ?? 0
+  applyFireball(on: target, dieRoll: Self.effectiveDie(dieRoll))
+```
+
+**After:**
+```swift
+case .fireball:
+  let dieRoll = LoD.rollDie()
+  applyFireball(on: target, dieRoll: dieRoll)
+```
+
+Spell-cast die rolls are not eligible for paladin re-roll (per
+`isDieRollAction`). They always resolve immediately.
+
+### Event page reducer
+
+The event page reducer currently reads `resolution.dieRoll`,
+`resolution.barricadeDieRoll`, and `resolution.randomSpell`. After the
+refactor:
+
+- `resolution.dieRoll` → `LoD.rollDie()` at resolution time
+- `resolution.barricadeDieRoll` → `LoD.rollDie()` when barricade test needed
+- `resolution.randomSpell` → `LoD.drawRandomSpell(state)` (for Mystic
+  Forces Reborn)
+
+### `advanceArmy` method
+
+`advanceArmy(_:dieRoll:)` currently takes an optional `dieRoll: Int?`
+parameter used for barricade and grease checks. The `dieRoll` parameter is
+removed. The method calls `LoD.rollDie()` internally when it hits a
+barricade or grease check. All callers (armyPage, event handlers like
+`eventDistractedDefenders`, `eventBannersInDistance`, `eventHarbingers`,
+etc.) drop their die roll arguments.
+
+### Death and Despair sub-resolution
+
+`DeathAndDespairState` currently stores `let dieRoll: Int`, initialized
+from `EventResolution.dieRoll`. After the refactor, the die roll is
+generated via `LoD.rollDie()` when the Death and Despair sub-resolution
+begins, and stored in `DeathAndDespairState`.
 
 ## allowedActions Changes
 
@@ -199,9 +256,12 @@ The full paladin flow after this refactor:
 3. **If false:** calls `LoD.rollDie()`, resolves immediately.
 4. **If true:** calls `LoD.rollDie()`, stores in `state.firstDieRoll`,
    stashes action in `pendingDieRollAction`, switches to `.paladinReact`.
-5. On `.declineReroll`: resolves using `state.firstDieRoll`.
-6. On `.paladinReroll`: calls `LoD.rollDie()` for new value, resolves
-   using the new value.
+5. On `.declineReroll`: the reducer resolves the pending action using the
+   stashed value. It wraps the resolution call in
+   `LoD.$rollDie.withValue({ state.firstDieRoll! })` so that when the
+   resolver calls `LoD.rollDie()`, it gets the stashed value.
+6. On `.paladinReroll`: calls `LoD.rollDie()` for a fresh value, resolves
+   using it (the resolver's own `LoD.rollDie()` call produces this value).
 
 This matches the AutoRule spec's paladin design (minus the `newDieRoll:`
 parameter, which is now generated internally).
@@ -219,6 +279,16 @@ parameter, which is now generated internally).
 - Update all `allowedActions` closures to drop die placeholders.
 - Delete `effectiveDie`, `withNewDieRoll`.
 - Update all tests to use `LoD.$rollDie.withValue`.
+
+### Replay determinism
+
+Action history will no longer contain die values. Replaying the same
+action sequence against the default `Int.random` closure will not
+reproduce the same game. This is an accepted tradeoff — the primary
+consumers of action history are MCTS (which wants stochastic rollouts)
+and the game log (which records outcomes in `Log` messages). If
+deterministic replay is needed later, it can be added by recording
+`LoD.rollDie()` results in a separate trace, outside the action enum.
 
 ### Out of scope (deferred to AutoRule refactor)
 - Extracting acid attack to a separate choice rule.
@@ -245,15 +315,23 @@ parameter, which is now generated internally).
 - `LoDDependencies.swift` — new file with `@TaskLocal` declarations
 - `LoDStateResolve.swift` — delete `effectiveDie`, `withNewDieRoll`;
   update all resolvers
+- `LoDStateCombat.swift` — `advanceArmy` drops `dieRoll:` parameter,
+  calls `LoD.rollDie()` for barricade/grease checks
+- `LoDStateComposed.swift` — `applySpellEffect` calls `LoD.rollDie()`
+  for Fireball/Divine Wrath
 - `LoDStateEvents.swift` — `concreteEventResolutions` drops die params
 - `LoDGamePages.swift` — armyPage (drop acidAttackDieRolls), eventPage
+  (roll at resolution time instead of reading from EventResolution)
 - `LoDGamePagesCombat.swift` — drop dieRoll: 0 in actions
 - `LoDGamePagesBuild.swift` — drop dieRoll: 0 in actions
 - `LoDGamePagesMagic.swift` — drop dieRoll: 0 and randomSpell: nil
 - `LoDGamePagesHeroic.swift` — drop dieRoll: 0 in actions
 - `LoDGamePagesQuest.swift` — drop dieRoll: 0 in actions
 - `LoDChainLightningPage.swift` — drop dieRoll from action + reducer
-- `LoDGame.swift` — paladinReactPage updates
+- `LoDDeathAndDespairPage.swift` — `DeathAndDespairState.dieRoll`
+  generated via `LoD.rollDie()` at initialization
+- `LoDGame.swift` — paladinReactPage updates, declineReroll uses
+  `withValue` to inject stashed die
 
 ### Tests
 - Every test file that constructs LoD actions with die values (all of them).
