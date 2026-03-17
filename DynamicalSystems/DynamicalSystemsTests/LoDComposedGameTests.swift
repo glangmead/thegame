@@ -60,22 +60,21 @@ struct LoDComposedGameTests {
     #expect(state.phase == .card)
     #expect(state.timePosition == 0)
 
-    // Step 1: drawCard cascades through army and event (no-event card)
+    // Step 1: drawCard cascades through army (no-event card → phase set to .action directly)
     _ = game.reduce(into: &state, action: .drawCard)
     #expect(state.phase == .action)
     #expect(state.currentCard != nil)
-    #expect(state.history.count == 3) // drawCard, advanceArmies, skipEvent
+    #expect(state.history.count == 2) // drawCard, advanceArmies
 
     // Step 2: end player turn → cascades to housekeeping → phase becomes card
     _ = game.reduce(into: &state, action: .endPlayerTurn)
     #expect(state.phase == .card)
-    #expect(state.history.count == 5) // +endPlayerTurn, +performHousekeeping
+    #expect(state.history.count == 4) // +endPlayerTurn, +performHousekeeping
 
     #expect(state.history[0] == .drawCard)
     #expect(state.history[1] == .advanceArmies)
-    #expect(state.history[2] == .skipEvent)
-    #expect(state.history[3] == .endPlayerTurn)
-    #expect(state.history[4] == .performHousekeeping)
+    #expect(state.history[2] == .endPlayerTurn)
+    #expect(state.history[3] == .performHousekeeping)
   }
 
   @Test

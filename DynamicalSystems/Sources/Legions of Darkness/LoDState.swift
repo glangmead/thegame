@@ -117,6 +117,10 @@ extension LoD {
     /// Whether the acid upgrade's free attack has been used this turn.
     var acidUsedThisTurn: Bool = false
 
+    /// Whether the Last Ditch Efforts quest penalty has been applied this turn.
+    /// Guards against double-firing when auto-rules scan at multiple stack frames.
+    var questPenaltyAppliedThisTurn: Bool = false
+
     // MARK: - Slow marker
 
     /// Which army slot has the Slow marker, if any.

@@ -39,6 +39,7 @@ extension LoD {
               heroicPage, generalPage,
               paladinReactPage, housekeepingPage],
       priorities: [victoryPage, defeatPage],
+      autoRules: autoRules,
       initialState: {
         var state = greenskinSetup(
           windsOfMagicArcane: windsOfMagicArcane,

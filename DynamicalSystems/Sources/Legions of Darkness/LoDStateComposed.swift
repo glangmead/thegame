@@ -196,6 +196,7 @@ extension LoD.State {
     snapshotActionBudget = nil
     bloodyBattleArmy = nil
     pendingBloodyBattleChoices = nil
+    questPenaltyAppliedThisTurn = false
   }
 
   // MARK: - DRM Helpers (for RulePages)
