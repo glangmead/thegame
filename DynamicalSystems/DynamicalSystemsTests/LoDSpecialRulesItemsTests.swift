@@ -129,8 +129,8 @@ struct LoDSpecialRulesItemsTests {
 
   @Test
   func acidUpgradeFreeAttackOnAdvance() {
-    // Army advancing to space 1 on acid-upgraded track gets a free ranged attack.
-    // Test through composed game: inject acid die roll via advanceArmies action.
+    // Army advancing to space 1 on acid-upgraded track makes eligible.
+    // Player then dispatches .acidMeleeAttack for the free attack.
     let card1 = LoD.dayCards.first { $0.number == 1 }!
     let game = LoD.composedGame(
       windsOfMagicArcane: 3,
@@ -143,18 +143,21 @@ struct LoDSpecialRulesItemsTests {
     state.phase = .army
     state.currentCard = card1
 
-    // Manually invoke advanceArmies with acid die roll = 6 (goblin str 2, 6 > 2 = hit)
-    LoD.$rollDie.withValue({ 6 }) {
-      _ = game.reduce(into: &state, action: .advanceArmies)
-    }
+    _ = game.reduce(into: &state, action: .advanceArmies)
+    #expect(state.acidEligibleSlots.contains(.east))
 
+    // Player dispatches acid attack (die roll 6 = hit, goblin str 2)
+    LoD.$rollDie.withValue({ 6 }) {
+      _ = game.reduce(into: &state, action: .acidMeleeAttack(.east))
+    }
     // After acid attack hit, army should be pushed back from 1 to 2
     #expect(state.armyPosition[.east]! == 2)
   }
 
   @Test
-  func acidUpgradeNoAttackWithoutDieRoll() {
-    // Army advancing to space 1 on acid track but no die roll provided → no attack.
+  func acidUpgradeEligibleButNotUsed() {
+    // Army advancing to space 1 on acid track becomes eligible,
+    // but if player doesn't dispatch the acid attack, no effect.
     let card1 = LoD.dayCards.first { $0.number == 1 }!
     let game = LoD.composedGame(
       windsOfMagicArcane: 3,
@@ -167,16 +170,15 @@ struct LoDSpecialRulesItemsTests {
     state.phase = .army
     state.currentCard = card1
 
-    // advanceArmies with no acid die rolls
     _ = game.reduce(into: &state, action: .advanceArmies)
-
-    // Without die roll, army just stays at space 1 (no free attack)
+    // Army at space 1, eligible for acid but not attacked
     #expect(state.armyPosition[.east]! == 1)
+    #expect(state.acidEligibleSlots.contains(.east))
   }
 
   @Test
   func acidUpgradeNoAttackOnOtherSpaces() {
-    // Army advancing to space 3 (not 1) on acid track → no free attack.
+    // Army advancing to space 3 (not 1) on acid track — not eligible.
     let card1 = LoD.dayCards.first { $0.number == 1 }!
     let game = LoD.composedGame(
       windsOfMagicArcane: 3,
@@ -192,9 +194,9 @@ struct LoDSpecialRulesItemsTests {
     LoD.$rollDie.withValue({ 6 }) {
       _ = game.reduce(into: &state, action: .advanceArmies)
     }
-
-    // Should just advance normally to space 3 — acid only triggers at space 1
+    // Should just advance to space 3 — acid only triggers at space 1
     #expect(state.armyPosition[.east]! == 3)
+    #expect(state.acidEligibleSlots.isEmpty)
   }
 
 }

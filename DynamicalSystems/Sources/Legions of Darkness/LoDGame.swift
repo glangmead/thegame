@@ -36,7 +36,7 @@ extension LoD {
       pages: [cardPage, armyPage, eventPage,
               chainLightningPage, fortunePage, deathAndDespairPage,
               combatPage, buildPage, magicPage, questPage,
-              heroicPage, generalPage,
+              heroicPage, generalPage, acidPage,
               paladinReactPage, housekeepingPage],
       priorities: [victoryPage, defeatPage],
       autoRules: autoRules,
