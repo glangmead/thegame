@@ -23,6 +23,7 @@ struct ComposedGame<State: HistoryTracking>: PlayableGame where State.Action: Ha
   let phaseForAction: (State.Action) -> State.Phase?
   var stateEvaluator: ((State) -> Float)?
   var rolloutPolicy: (([State.Action]) -> State.Action)?
+  let autoRules: [AutoRule<State>]
 
   func isTerminal(state: State) -> Bool { terminalCheck(state) }
   func isRolloutTerminal(state: State) -> Bool {
@@ -61,25 +62,39 @@ struct ComposedGame<State: HistoryTracking>: PlayableGame where State.Action: Ha
     }
 
     // Dispatch to the first page that handles this action
-    for page in priorities {
+    var result: [Log] = []
+    var dispatched = false
+    for page in priorities where !dispatched {
       if let (logs, followUps) = page.reduce(&state, action) {
-        var result = logs
+        result = logs
         for followUp in followUps {
           result.append(contentsOf: reduce(into: &state, action: followUp))
         }
-        return result
+        dispatched = true
       }
     }
-    for page in pages {
-      if let (logs, followUps) = page.reduce(&state, action) {
-        var result = logs
-        for followUp in followUps {
-          result.append(contentsOf: reduce(into: &state, action: followUp))
+    if !dispatched {
+      for page in pages where !dispatched {
+        if let (logs, followUps) = page.reduce(&state, action) {
+          result = logs
+          for followUp in followUps {
+            result.append(contentsOf: reduce(into: &state, action: followUp))
+          }
+          dispatched = true
         }
-        return result
       }
     }
-    return []
+
+    // Scan auto-rules after this action (and its follow-ups) resolve.
+    // Note: auto-rules scan at every stack frame. If a follow-up doesn't
+    // change history.last, a predicate matching history.last may fire at
+    // multiple levels. Concrete auto-rules should use state guards to
+    // prevent double-firing (e.g., checking bloodyBattleArmy == nil).
+    for rule in autoRules where rule.when(state) {
+      result.append(contentsOf: rule.apply(&state))
+    }
+
+    return result
   }
 
   func newState() -> State {
@@ -100,6 +115,7 @@ func oapply<State: HistoryTracking>(
   gameName: String,
   pages: [RulePage<State, State.Action>],
   priorities: [RulePage<State, State.Action>] = [],
+  autoRules: [AutoRule<State>] = [],
   initialState: @escaping () -> State,
   isTerminal: @escaping (State) -> Bool,
   isRolloutTerminal: ((State) -> Bool)? = nil,
@@ -116,6 +132,7 @@ func oapply<State: HistoryTracking>(
     rolloutTerminalCheck: isRolloutTerminal,
     phaseForAction: phaseForAction,
     stateEvaluator: stateEvaluator,
-    rolloutPolicy: rolloutPolicy
+    rolloutPolicy: rolloutPolicy,
+    autoRules: autoRules
   )
 }
