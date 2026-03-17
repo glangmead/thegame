@@ -19,7 +19,8 @@ values, and rolls happen as side effects in reducers.
 
 Actions represent pure player intent. Die values are removed from all
 action enum cases. Randomness happens during resolution (in reducers).
-Tests inject determinism via a seeded RNG on state.
+Tests inject determinism via `@TaskLocal` dependency injection on the
+`LoD` namespace.
 
 ## Action Enum Changes
 
@@ -67,94 +68,80 @@ Random spell draws happen during resolution, not at action creation.
 ## Deleted Code
 
 - `effectiveDie(_ dieRoll: Int) -> Int` — no longer needed. Reducers call
-  `state.rollDie()` directly.
+  `LoD.rollDie()` directly.
 - `withNewDieRoll(_ action:, newDieRoll:) -> Action` — no die values in
   actions to replace.
 - `isDieRollAction(_ action:) -> Bool` — still needed for
   `resolveDieRollWithPaladinCheck`, but the check is about action type, not
   die value presence.
 
-## RNG on State
+## RNG Injection via @TaskLocal
 
-State gains a seedable random number generator:
-
-```swift
-var rng: SeededRNG = SeededRNG()
-```
-
-where `SeededRNG` is a simple value-type PRNG:
+Die rolling is injected as a `@TaskLocal` closure on the `LoD` namespace.
+No RNG state lives in `LoD.State`. No new types are introduced.
 
 ```swift
-struct SeededRNG: RandomNumberGenerator {
-  private var state: UInt64
-
-  init(seed: UInt64 = 0) {
-    state = seed == 0 ? UInt64.random(in: 1...UInt64.max) : seed
-  }
-
-  mutating func next() -> UInt64 {
-    // SplitMix64
-    state &+= 0x9e3779b97f4a7c15
-    var z = state
-    z = (z ^ (z >> 30)) &* 0xbf58476d1ce4e5b9
-    z = (z ^ (z >> 27)) &* 0x94d049bb133111eb
-    return z ^ (z >> 31)
-  }
+extension LoD {
+  @TaskLocal static var rollDie: () -> Int = { Int.random(in: 1...6) }
 }
 ```
 
-A convenience method on state:
-
-```swift
-mutating func rollDie() -> Int {
-  Int.random(in: 1...6, using: &rng)
-}
-```
-
-### Equatable / Hashable
-
-`SeededRNG` is excluded from `Equatable` and `Hashable` conformance on
-state. Two states that differ only in RNG seed are considered equal. This
-is correct: the RNG is an implementation detail, not game state.
+Reducers call `LoD.rollDie()` wherever they need a die value. The default
+closure uses `Int.random`, which is correct for production and MCTS — each
+rollout samples independently.
 
 ### MCTS
 
-Each MCTS rollout copies state, which copies the RNG. Different rollouts
-from the same state will produce different die sequences because the RNG
-state diverges after the first roll. This is the desired behavior — MCTS
-samples over stochastic outcomes naturally.
+MCTS rollouts use the default `Int.random` closure. Different rollouts
+from the same state produce different die sequences naturally. No RNG
+state needs to be copied with the game state.
 
 ### Tests
 
-Tests create state with a fixed seed:
+Tests override `rollDie` via `@TaskLocal` `withValue` to inject a
+deterministic sequence:
 
 ```swift
-var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-state.rng = SeededRNG(seed: 42)
-```
-
-With a fixed seed, `state.rollDie()` produces a deterministic sequence.
-Tests that currently inject `dieRoll: 5` instead set up the seed to produce
-the desired value, or call `rollDie()` and adapt expectations to the
-deterministic sequence.
-
-For tests that need a specific die value at a specific point, a helper:
-
-```swift
-extension SeededRNG {
-  /// Create an RNG that produces the given values in order, then random.
-  static func fixed(_ values: [Int]) -> SeededRNG { ... }
+var rolls = [3, 5, 1].makeIterator()
+LoD.$rollDie.withValue({ rolls.next()! }) {
+  _ = game.reduce(into: &state, action: .combat(.meleeAttack(.east, bloodyBattleDefender: nil, useMagicSword: nil)))
+  XCTAssertEqual(state.defenders[.east], 2) // die was 3
 }
 ```
 
-This is a test-only convenience. Implementation TBD — could use a wrapper
-that feeds from an array then falls through to SplitMix64, or could just
-document the seed-to-sequence mapping for common seeds.
+Tests that currently inject `dieRoll: 5` instead provide `[5]` (or
+whatever sequence is needed) via `withValue`. The closure is called once
+per `rollDie()` invocation in the reducer, consuming values in order.
+
+For tests that need multiple rolls in a single reduce call (e.g., chain
+lightning with multiple bolts), the array simply has multiple entries:
+
+```swift
+var rolls = [4, 2, 6].makeIterator()
+LoD.$rollDie.withValue({ rolls.next()! }) {
+  // three bolts, three rolls
+}
+```
+
+### Random Spell Draws
+
+`memorize` and `pray` currently carry `randomSpell: SpellType?`. After
+the refactor, the random spell draw also uses an injected closure:
+
+```swift
+extension LoD {
+  @TaskLocal static var drawRandomSpell: (LoD.State) -> SpellType? = { state in
+    state.availableSpells.randomElement()
+  }
+}
+```
+
+Tests override this the same way as `rollDie`.
 
 ## Reducer Changes
 
 Every reducer that currently reads `dieRoll` from the action instead calls
-`state.rollDie()`. Examples:
+`LoD.rollDie()`. Examples:
 
 **Before:**
 ```swift
@@ -165,7 +152,7 @@ case .combat(.meleeAttack(let slot, let dieRoll, let bbDef, let sword)):
 **After:**
 ```swift
 case .combat(.meleeAttack(let slot, let bbDef, let sword)):
-  let dieRoll = state.rollDie()
+  let dieRoll = LoD.rollDie()
   return resolveMeleeAttack(slot: slot, dieRoll: dieRoll, ...)
 ```
 
@@ -195,27 +182,25 @@ The paladin re-roll mechanism continues to work with minimal changes:
   paladin can re-roll.
 - `pendingDieRollAction` stashes the action (which no longer carries a die
   value).
-- On `.paladinReroll`: the reducer calls `state.rollDie()` to get the new
+- On `.paladinReroll`: the reducer calls `LoD.rollDie()` to get the new
   value and resolves. The `newDieRoll:` parameter is removed from the
   action.
 - On `.declineReroll`: the reducer uses the die value already rolled and
-  stashed in state during the first pass (stored in a new field,
-  `firstDieRoll: Int?`, as described in the AutoRule spec).
+  stashed in `state.firstDieRoll` during the first pass.
 
-Wait — this means the initial die roll needs to be stashed somewhere before
-the paladin deferral. Currently the die is in the action; after the refactor
-it needs to be rolled and stored in state. This is the `firstDieRoll` field
-from the AutoRule spec.
+The initial die roll needs to be stashed somewhere before the paladin
+deferral. Currently the die is in the action; after the refactor it is
+rolled via `LoD.rollDie()` and stored in `state.firstDieRoll`.
 
 The full paladin flow after this refactor:
 
 1. Page reducer receives action (no die value).
 2. Checks `canPaladinReroll`.
-3. **If false:** calls `state.rollDie()`, resolves immediately.
-4. **If true:** calls `state.rollDie()`, stores in `state.firstDieRoll`,
+3. **If false:** calls `LoD.rollDie()`, resolves immediately.
+4. **If true:** calls `LoD.rollDie()`, stores in `state.firstDieRoll`,
    stashes action in `pendingDieRollAction`, switches to `.paladinReact`.
 5. On `.declineReroll`: resolves using `state.firstDieRoll`.
-6. On `.paladinReroll`: calls `state.rollDie()` for new value, resolves
+6. On `.paladinReroll`: calls `LoD.rollDie()` for new value, resolves
    using the new value.
 
 This matches the AutoRule spec's paladin design (minus the `newDieRoll:`
@@ -228,12 +213,12 @@ parameter, which is now generated internally).
   and parameter structs.
 - Remove `acidAttackDieRolls` from `advanceArmies`.
 - Remove `newDieRoll` from `paladinReroll`.
-- Add `SeededRNG` type and `rollDie()` method to state.
+- Add `@TaskLocal static var rollDie` and `drawRandomSpell` on `LoD`.
 - Add `firstDieRoll: Int?` to state for paladin deferral.
-- Update all reducers to call `state.rollDie()`.
+- Update all reducers to call `LoD.rollDie()`.
 - Update all `allowedActions` closures to drop die placeholders.
 - Delete `effectiveDie`, `withNewDieRoll`.
-- Update all tests to use seeded RNG.
+- Update all tests to use `LoD.$rollDie.withValue`.
 
 ### Out of scope (deferred to AutoRule refactor)
 - Extracting acid attack to a separate choice rule.
@@ -243,22 +228,21 @@ parameter, which is now generated internally).
 
 ## Testing Strategy
 
-1. Add `SeededRNG` with unit tests for deterministic output.
+1. Add `@TaskLocal` declarations on `LoD`. Verify a simple test can
+   override `rollDie` via `withValue`.
 2. Update each action case one at a time — remove die parameter, update
-   reducer, update tests. Build and test after each case.
+   reducer, wrap test in `withValue`. Build and test after each case.
 3. Verify all 503 tests pass after the full migration.
 4. Verify MCTS still plays games to completion (smoke test via gamer CLI).
 
 ## Files Affected
 
-### Framework
-- New file: `SeededRNG.swift` (or in existing framework file)
-
 ### LoD Sources
 - `LoDAction.swift` — Action enum, EventResolution, SpellCastParams
 - `LoDActionGroups.swift` — CombatAction, BuildAction, MagicAction,
   HeroicAction, QuestAction
-- `LoDState.swift` — add `rng`, `firstDieRoll`
+- `LoDState.swift` — add `firstDieRoll`
+- `LoDDependencies.swift` — new file with `@TaskLocal` declarations
 - `LoDStateResolve.swift` — delete `effectiveDie`, `withNewDieRoll`;
   update all resolvers
 - `LoDStateEvents.swift` — `concreteEventResolutions` drops die params
@@ -273,4 +257,4 @@ parameter, which is now generated internally).
 
 ### Tests
 - Every test file that constructs LoD actions with die values (all of them).
-- New test file or section for `SeededRNG`.
+  Each test wraps its reduce calls in `LoD.$rollDie.withValue { ... }`.
