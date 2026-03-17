@@ -194,6 +194,8 @@ extension LoD.State {
     noMeleeThisTurn = false
     woundedHeroesCannotAct = false
     snapshotActionBudget = nil
+    bloodyBattleArmy = nil
+    pendingBloodyBattleChoices = nil
   }
 
   // MARK: - DRM Helpers (for RulePages)

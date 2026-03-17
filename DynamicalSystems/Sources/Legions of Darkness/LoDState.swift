@@ -277,12 +277,12 @@ extension LoD {
       currentCard?.heroics ?? 0
     }
 
-    /// Count action-phase actions taken this turn (since last .advanceArmies or .resolveEvent or .skipEvent).
+    /// Count action-phase actions taken this turn (since last .advanceArmies, .resolveEvent, or .skipEvent).
     var actionPointsSpent: Int {
       var count = 0
       for action in history.reversed() {
         switch action {
-        case .skipEvent, .resolveEvent:
+        case .advanceArmies, .skipEvent, .resolveEvent:
           return count
         case .combat, .build, .magic:
           count += 1
@@ -300,7 +300,7 @@ extension LoD {
       var count = 0
       for action in history.reversed() {
         switch action {
-        case .skipEvent, .resolveEvent:
+        case .advanceArmies, .skipEvent, .resolveEvent:
           return count
         case .heroic:
           count += 1
@@ -330,7 +330,7 @@ extension LoD {
       var count = 0
       for action in history.reversed() {
         switch action {
-        case .skipEvent, .resolveEvent:
+        case .advanceArmies, .skipEvent, .resolveEvent:
           return count
         case .combat(.meleeAttack):
           count += 1
@@ -346,7 +346,7 @@ extension LoD {
       var count = 0
       for action in history.reversed() {
         switch action {
-        case .skipEvent, .resolveEvent:
+        case .advanceArmies, .skipEvent, .resolveEvent:
           return count
         case .combat(.rangedAttack):
           count += 1

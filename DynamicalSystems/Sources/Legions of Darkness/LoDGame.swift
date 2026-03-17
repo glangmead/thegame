@@ -15,7 +15,7 @@ extension LoD {
   private static func nextPhase(for action: Action) -> Phase? {
     switch action {
     case .drawCard: return .army
-    case .advanceArmies: return .event
+    case .advanceArmies: return nil  // armyPage manages transition after auto-rules
     case .skipEvent, .resolveEvent: return .action
     case .endPlayerTurn: return .housekeeping
     case .performHousekeeping: return .card

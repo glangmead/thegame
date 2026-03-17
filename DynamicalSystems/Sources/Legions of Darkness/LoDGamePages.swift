@@ -86,10 +86,11 @@ extension LoD {
           let logs = [Log(msg: "Bloody battle marker placed on \(slot)")]
           if state.currentCard?.event != nil {
             state.phase = .event
-            return (logs, [])
           } else {
-            return (logs, [.skipEvent])
+            state.snapshotActionBudget = state.actionBudget
+            state.phase = .action
           }
+          return (logs, [])
         }
 
         guard case .advanceArmies = action else { return nil }
@@ -99,54 +100,17 @@ extension LoD {
             let results = state.advanceArmyOnTrack(track)
             for result in results {
               logs.append(Log(msg: "Army advance on \(track): \(result)"))
-              // Check for acid upgrade free melee attack (rule 6.3)
-              if case .advanced(let slot, _, let destination) = result,
-                destination == 1,
-                state.upgrades[slot.track] == .acid,
-                !state.acidUsedThisTurn {
-                let dieRoll = LoD.rollDie()
-                let attackResult = state.resolveAttack(
-                  on: slot, attackType: .melee, dieRoll: dieRoll, drm: 0)
-                state.acidUsedThisTurn = true
-                logs.append(Log(msg: "Acid free melee attack on \(slot): \(attackResult)"))
-              }
-            }
-          }
-          // Set bloody battle marker if card specifies it
-          if let bloodyBattleTrack = card.bloodyBattle {
-            let slotsOnTrack = ArmySlot.allCases.filter {
-              $0.track == bloodyBattleTrack && state.armyPosition[$0] != nil
-            }
-            if bloodyBattleTrack == .gate && slotsOnTrack.count == 2 {
-              let pos1 = state.armyPosition[slotsOnTrack[0]]!
-              let pos2 = state.armyPosition[slotsOnTrack[1]]!
-              if pos1 == pos2 {
-                // Tied — player chooses
-                state.pendingBloodyBattleChoices = slotsOnTrack
-                logs.append(Log(msg: "Bloody battle: Gate armies tied — choose placement"))
-              } else {
-                // Pick closest
-                let closest = pos1 < pos2 ? slotsOnTrack[0] : slotsOnTrack[1]
-                state.bloodyBattleArmy = closest
-                logs.append(Log(msg: "Bloody battle marker placed on \(closest)"))
-              }
-            } else if let first = slotsOnTrack.first {
-              state.bloodyBattleArmy = first
-              logs.append(Log(msg: "Bloody battle marker placed on \(first)"))
             }
           }
         }
-        // If pending BB choice, stay in army phase for player input
-        if state.pendingBloodyBattleChoices != nil {
-          state.phase = .army
-          return (logs, [])
-        }
-        // Transition: if card has event, offer resolveEvent; otherwise skip
+        // Phase transition: auto-rules may override to .army if gate tie detected
         if state.currentCard?.event != nil {
-          return (logs, []) // stop — rules will offer resolveEvent
+          state.phase = .event
         } else {
-          return (logs, [.skipEvent])
+          state.snapshotActionBudget = state.actionBudget
+          state.phase = .action
         }
+        return (logs, [])
       }
     )
   }

@@ -371,7 +371,7 @@ struct LoDAuditFixTests2 {
     let card3 = LoD.dayCards.first { $0.number == 3 }!
     state.currentCard = card3
     state.snapshotActionBudget = state.actionBudget
-    state.history.append(.skipEvent)
+    state.history.append(.advanceArmies)
     // Spend 2 action points on quest
     state.history.append(.quest(.quest(
       isHeroic: false, reward: LoD.QuestRewardParams(), pointsSpent: 2)))
