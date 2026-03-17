@@ -1,5 +1,12 @@
 # AutoRule: Reactive Rules for Cross-Cutting Game Logic
 
+> **Status: paused.** This spec depends on the die-roll refactor
+> (`2026-03-17-die-roll-refactor-design.md`), which removes die values from
+> action enums. After that refactor lands, this spec will be revised — the
+> paladin section simplifies (no `dieRoll` parameters to manage), the
+> determinism section changes (RNG injection replaces action-embedded dice),
+> and the "auto-rules must not call Int.random" constraint is dropped.
+
 ## Problem
 
 RulePage reducers accumulate conditional follow-up logic that belongs to
