@@ -168,9 +168,6 @@ extension LoD.State {
   mutating func performHousekeeping() {
     guard let card = currentCard else { return }
 
-    // Apply quest penalty if applicable (Last Ditch Efforts)
-    _ = applyQuestPenaltyIfNeeded(history: history)
-
     // Advance time by the card's time value
     advanceTime(by: card.time)
 

@@ -47,7 +47,7 @@ struct LoDComposedGameTests {
 
   @Test
   func composedGameFullTurnCascade() {
-    // Use card #2 (no event) so drawCard cascades: drawCard → advanceArmies → skipEvent.
+    // Use card #2 (no event) so drawCard cascades: drawCard → advanceArmies.
     // Then player explicitly ends turn.
     // endPlayerTurn cascades to performHousekeeping automatically.
     let card2 = LoD.dayCards.first { $0.number == 2 }!
