@@ -387,8 +387,11 @@ extension LoD.State {
   }
 
   // Card #24: Bloody Handprints — one resolution per living hero.
+  // If all heroes are dead, the event resolves as a no-op.
   private func bloodyHandprintsResolutions() -> [LoD.EventResolution] {
-    livingHeroes.map { hero in
+    let heroes = livingHeroes
+    guard !heroes.isEmpty else { return [LoD.EventResolution()] }
+    return heroes.map { hero in
       var res = LoD.EventResolution()
       res.chosenHero = hero
       return res
@@ -396,8 +399,11 @@ extension LoD.State {
   }
 
   // Card #30: Assassin's Creedo — one resolution per living hero.
+  // If all heroes are dead, the event still resolves (roll may give +1 DRM).
   private func assassinsCreedoResolutions() -> [LoD.EventResolution] {
-    livingHeroes.map { hero in
+    let heroes = livingHeroes
+    guard !heroes.isEmpty else { return [LoD.EventResolution()] }
+    return heroes.map { hero in
       var res = LoD.EventResolution()
       res.chosenHero = hero
       return res

@@ -162,6 +162,9 @@ class OpenLoopMCTS<
 
   func rolloutAction(from: ActionNode<Action, State.Player>, in state: State) -> Action {
     let actions = reducer.allowedActions(state: state)
+    if actions.isEmpty {
+      print("Empty actions list!")
+    }
     return rolloutPolicy?(actions) ?? actions.randomElement()!
   }
 
@@ -191,7 +194,7 @@ class OpenLoopMCTS<
         currentSearchPhase[player] = .select
       }
 
-      var state = rootState
+      var state = rootState.redeterminize()
       var rolloutDepth = 0
 
       // Explore a tree for each player, even though the player of rootState is "the player".

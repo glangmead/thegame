@@ -56,6 +56,11 @@ protocol GameState: GameComponents, Equatable {
   var endedInVictoryFor: [Player] { get set }
   var endedInDefeatFor: [Player] { get set }
   var position: [Piece: Position] { get set }
+  func redeterminize() -> Self
+}
+
+extension GameState {
+  func redeterminize() -> Self { self }
 }
 
 protocol PlayableGame<State, Action> {

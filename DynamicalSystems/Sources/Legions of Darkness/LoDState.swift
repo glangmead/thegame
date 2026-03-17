@@ -364,5 +364,19 @@ extension LoD {
       return count
     }
 
+    // MARK: - Redeterminize (information-set MCTS)
+
+    func redeterminize() -> Self {
+      var rng = SystemRandomNumberGenerator()
+      return redeterminize(using: &rng)
+    }
+
+    func redeterminize(using generator: inout some RandomNumberGenerator) -> Self {
+      var copy = self
+      copy.dayDrawPile.shuffle(using: &generator)
+      copy.nightDrawPile.shuffle(using: &generator)
+      return copy
+    }
+
   }
 }
