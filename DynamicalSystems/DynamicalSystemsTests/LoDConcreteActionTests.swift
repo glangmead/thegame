@@ -37,9 +37,7 @@ struct LoDConcreteActionTests {
     state.heroLocation[.wizard] = .onTrack(.east)
     let actions = game.allowedActions(state: state)
     let fireballActions = actions.filter {
-      if case .magic(.castSpell(.fireball, heroic: false, let params)) = $0 {
-        return params.targetSlot != nil
-      }
+      if case .fireball = $0 { return true }
       return false
     }
     #expect(!fireballActions.isEmpty, "Fireball should enumerate target slots")
@@ -54,7 +52,7 @@ struct LoDConcreteActionTests {
     state.heroLocation[.warrior] = nil
     let actions = game.allowedActions(state: state)
     let rdActions = actions.filter {
-      if case .magic(.castSpell(.raiseDead, heroic: false, _)) = $0 { return true }
+      if case .raiseDead(_, _, heroic: false) = $0 { return true }
       return false
     }
     // Should have: (archers,priests), (archers,menAtArms), (priests,menAtArms), (returnHero: warrior)
@@ -69,8 +67,8 @@ struct LoDConcreteActionTests {
     state.heroLocation[.cleric] = .onTrack(.east)
     let actions = game.allowedActions(state: state)
     let dwHeroicActions = actions.filter {
-      if case .magic(.castSpell(.divineWrath, heroic: true, let params)) = $0 {
-        return params.targetSlots.count == 2
+      if case .divineWrath(let slots, heroic: true) = $0 {
+        return slots.count == 2
       }
       return false
     }
@@ -85,8 +83,8 @@ struct LoDConcreteActionTests {
     state.heroWounded = [.warrior, .wizard]
     let actions = game.allowedActions(state: state)
     let cwActions = actions.filter {
-      if case .magic(.castSpell(.cureWounds, heroic: false, let params)) = $0 {
-        return !params.heroes.isEmpty
+      if case .cureWounds(let heroes, heroic: false) = $0 {
+        return !heroes.isEmpty
       }
       return false
     }
@@ -100,8 +98,8 @@ struct LoDConcreteActionTests {
     state.divineEnergy = 2
     let actions = game.allowedActions(state: state)
     let mhActions = actions.filter {
-      if case .magic(.castSpell(.massHeal, heroic: false, let params)) = $0 {
-        return !params.defenders.isEmpty
+      if case .massHeal(let defenders, heroic: false) = $0 {
+        return !defenders.isEmpty
       }
       return false
     }
@@ -119,7 +117,7 @@ struct LoDConcreteActionTests {
     let game = LoD.composedGame(windsOfMagicArcane: 4)
     let actions = game.allowedActions(state: state)
     let eventActions = actions.filter {
-      if case .resolveEvent = $0 { return true }
+      if case .deserters = $0 { return true }
       return false
     }
     // Should have: (archers+priests), (archers+menAtArms), (priests+menAtArms),
@@ -135,7 +133,7 @@ struct LoDConcreteActionTests {
     let game = LoD.composedGame(windsOfMagicArcane: 4)
     let actions = game.allowedActions(state: state)
     let eventActions = actions.filter {
-      if case .resolveEvent = $0 { return true }
+      if case .bumpInTheNight = $0 { return true }
       return false
     }
     // Sky path + distribution paths (2 to one army, or 1+1 to two armies)
@@ -150,7 +148,7 @@ struct LoDConcreteActionTests {
     let game = LoD.composedGame(windsOfMagicArcane: 4)
     let actions = game.allowedActions(state: state)
     let eventActions = actions.filter {
-      if case .resolveEvent(let res) = $0 { return res.chosenHero != nil }
+      if case .bloodyHandprints(.chooseHero) = $0 { return true }
       return false
     }
     // With 3 heroes alive (warrior, wizard, cleric), should enumerate hero choices

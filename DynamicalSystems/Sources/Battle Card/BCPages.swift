@@ -221,7 +221,8 @@ enum BCPages {
 
   // MARK: - MCTS State Evaluator
 
-  /// Graduated evaluation: victory = 1.0, defeat scaled by 30 Corps progress.
+  /// Graduated evaluation: victory = 1.0, no advance = 0.0,
+  /// partial credit for corps position + allied city control.
   private static func bcStateEvaluator(_ state: BattleCard.State) -> Float {
     if state.endedInVictoryFor.contains(.solo) { return 1.0 }
     let corpsProgress: Float
@@ -230,11 +231,14 @@ enum BCPages {
     } else {
       corpsProgress = 0
     }
+    guard corpsProgress > 0 else { return 0 }
+    let alliedCities = (1...4).filter { state.control[$0] == .allies }.count
+    let controlProgress = Float(alliedCities) / 4.0
     if state.endedInDefeatFor.contains(.solo) {
       return 0.5 * corpsProgress
     }
-    // Non-terminal (rollout hit max depth)
-    return 0.5 * corpsProgress + 0.25
+    // Non-terminal: corps position + allied control of cities ahead
+    return 0.5 * corpsProgress + 0.25 * controlProgress
   }
 
   static func game() -> ComposedGame<BattleCard.State> {

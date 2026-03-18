@@ -53,6 +53,7 @@ struct LoDAutoRuleTests {
     _ = game.reduce(into: &state, action: .drawCard)
     #expect(state.bloodyBattleArmy == .gate1)
     #expect(state.pendingBloodyBattleChoices == nil)
+    #expect(state.phase == .action)
   }
 
   // MARK: - Bloody Battle Gate Tie
@@ -252,5 +253,121 @@ struct LoDAutoRuleTests {
       if case .acidMeleeAttack = $0 { return true }
       return false
     }))
+  }
+
+  // MARK: - Quest Reward Forfeit
+
+  @Test
+  func questRewardForfeitWhenNoDeadHeroes() {
+    // Card 10 quest reward page (Last Ditch Efforts): return a dead hero.
+    // If no heroes are dead, the auto-rule should clear questRewardPending
+    // when it fires after a reduce.
+    let game = LoD.composedGame(windsOfMagicArcane: 3)
+    var state = game.newState()
+    state.phase = .action
+    state.currentCard = LoD.dayCards.first { $0.number == 10 }
+    state.snapshotActionBudget = 3
+    state.questRewardPending = true
+    #expect(state.heroDead.isEmpty)
+    #expect(state.isInSubResolution)
+
+    // Auto-rules fire in reduce(), not allowedActions(). Dispatch skipEvent
+    // (no page handles it from .action phase) to trigger auto-rule scan.
+    _ = game.reduce(into: &state, action: .skipEvent)
+    #expect(!state.questRewardPending, "Auto-rule should have cleared questRewardPending")
+    #expect(!state.isInSubResolution)
+    let actions = game.allowedActions(state: state)
+    #expect(!actions.isEmpty, "Normal actions should be available after forfeit")
+    #expect(actions.contains(.endPlayerTurn))
+  }
+
+  @Test
+  func questRewardNotForfeitWhenDeadHeroExists() {
+    let game = LoD.composedGame(windsOfMagicArcane: 3)
+    var state = game.newState()
+    state.phase = .action
+    state.currentCard = LoD.dayCards.first { $0.number == 10 }
+    state.snapshotActionBudget = 3
+    state.questRewardPending = true
+    state.heroDead = [.warrior]
+
+    let actions = game.allowedActions(state: state)
+    #expect(state.questRewardPending, "Should stay pending when hero is dead")
+    #expect(actions.contains(.lastDitchEfforts(.warrior)))
+  }
+
+  // MARK: - Bug Reproduction: Card 16 Empty Actions
+
+  @Test
+  func card16LamentationThenHeroicHasActions() {
+    let card16 = LoD.dayCards.first { $0.number == 16 }!
+    let game = LoD.composedGame(
+      windsOfMagicArcane: 3,
+      shuffledDayCards: [card16],
+      shuffledNightCards: LoD.nightCards
+    )
+    var state = game.newState()
+    _ = game.reduce(into: &state, action: .drawCard)
+    _ = game.reduce(into: &state, action: .lamentationOfWomen)
+    state.heroWounded = [.warrior, .wizard, .cleric]
+    _ = game.reduce(into: &state, action: .heroic(.moveHero(.warrior, .onTrack(.east))))
+
+    let actions = game.allowedActions(state: state)
+    #expect(!actions.isEmpty, "Should have actions after heroic on card 16")
+    #expect(actions.contains(.endPlayerTurn))
+    #expect(state.phase == .action)
+    #expect(!state.isInSubResolution)
+  }
+
+  @Test
+  func fullGameRolloutDoesNotDeadlock() {
+    // Run 200 full random games to find any empty-actions deadlocks
+    let game = LoD.composedGame(windsOfMagicArcane: 3)
+    for rollout in 0..<200 {
+      var state = game.newState()
+      for step in 0..<500 {
+        if game.isTerminal(state: state) { break }
+        let actions = game.allowedActions(state: state)
+        if actions.isEmpty {
+          Issue.record("""
+            Empty actions at game \(rollout), step \(step):
+            phase=\(state.phase), ended=\(state.ended),
+            isInSubResolution=\(state.isInSubResolution),
+            chainLightning=\(state.chainLightningState != nil),
+            fortune=\(state.fortuneState != nil),
+            deathAndDespair=\(state.deathAndDespairState != nil),
+            pendingBB=\(state.pendingBloodyBattleChoices != nil),
+            questRewardPending=\(state.questRewardPending),
+            card=\(state.currentCard?.number ?? -1),
+            last5=\(state.history.suffix(5))
+            """)
+          break
+        }
+        let action = actions.randomElement()!
+        _ = game.reduce(into: &state, action: action)
+      }
+    }
+  }
+
+  @Test
+  func mctsStressTestFromVariousStates() throws {
+    // Run MCTS from 10 different random game states
+    for trial in 0..<10 {
+      let game = LoD.composedGame(windsOfMagicArcane: 3)
+      var state = game.newState()
+      // Play random actions to reach a mid-game state
+      let targetSteps = 20 + trial * 5
+      for _ in 0..<targetSteps {
+        if game.isTerminal(state: state) { break }
+        let actions = game.allowedActions(state: state)
+        guard !actions.isEmpty else { break }
+        _ = game.reduce(into: &state, action: actions.randomElement()!)
+      }
+      guard !game.isTerminal(state: state) else { continue }
+      // Run MCTS from this mid-game state
+      let mcts = OpenLoopMCTS(state: state, reducer: game)
+      let result = try mcts.recommendation(iters: 200, numRollouts: 1)
+      #expect(!result.isEmpty, "Trial \(trial): MCTS should produce recommendations")
+    }
   }
 }

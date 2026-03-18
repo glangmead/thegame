@@ -199,7 +199,7 @@ struct ThreeParamCRT<T, U, V, W> {
 
 protocol AnytimePlayer {
   associatedtype Action: Hashable
-  func recommendation(iters: Int, numRollouts: Int) -> [Action: (Float, Float)]
+  func recommendation(iters: Int, numRollouts: Int) throws -> [Action: (Float, Float)]
 }
 
 // MARK: - Action Grouping

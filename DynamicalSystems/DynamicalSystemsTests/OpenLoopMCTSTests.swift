@@ -13,14 +13,14 @@ struct OpenLoopMCTSTests {
   // MARK: - CantStop MCTS
 
   @Test
-  func testCantStopMCTSRecommendation() {
+  func testCantStopMCTSRecommendation() throws {
     let game = CantStopPages.game()
     var state = game.newState()
     // Roll dice so MCTS has something to think about
     _ = game.reduce(into: &state, action: .rollDice)
 
     let mcts = OpenLoopMCTS(state: state, reducer: game)
-    let results = mcts.recommendation(iters: 10, numRollouts: 1)
+    let results = try mcts.recommendation(iters: 10, numRollouts: 1)
     #expect(!results.isEmpty)
     // Every recommended action should have been visited
     for (_, valCount) in results {
@@ -29,19 +29,19 @@ struct OpenLoopMCTSTests {
   }
 
   @Test
-  func testCantStopMCTSRecommendationOnTerminalState() {
+  func testCantStopMCTSRecommendationOnTerminalState() throws {
     let game = CantStopPages.game()
     var state = game.newState()
     state.ended = true
     state.endedInVictoryFor = [.player1]
 
     let mcts = OpenLoopMCTS(state: state, reducer: game)
-    let results = mcts.recommendation(iters: 10, numRollouts: 1)
+    let results = try mcts.recommendation(iters: 10, numRollouts: 1)
     #expect(results.isEmpty)
   }
 
   @Test
-  func testCantStopFullGameMCTS() {
+  func testCantStopFullGameMCTS() throws {
     let game = CantStopPages.game()
     var state = game.newState()
     let maxTurns = 1000
@@ -59,7 +59,7 @@ struct OpenLoopMCTSTests {
         action = actions[0]
       } else {
         let mcts = OpenLoopMCTS(state: state, reducer: game)
-        let results = mcts.recommendation(iters: 2, numRollouts: 1)
+        let results = try mcts.recommendation(iters: 2, numRollouts: 1)
 
         let ratio: ((Float, Float)) -> Float = { valCount in
           valCount.0 / (valCount.1 > 0 ? valCount.1 : 1)
@@ -87,19 +87,19 @@ struct OpenLoopMCTSTests {
   // MARK: - BattleCard MCTS
 
   @Test
-  func testBattleCardMCTSRecommendation() {
+  func testBattleCardMCTSRecommendation() throws {
     let game = BCPages.game()
     let state = game.newState()
 
     let mcts = OpenLoopMCTS(state: state, reducer: game)
-    let results = mcts.recommendation(iters: 10, numRollouts: 1)
+    let results = try mcts.recommendation(iters: 10, numRollouts: 1)
     #expect(!results.isEmpty)
     // Initial state should recommend .initialize
     #expect(results.keys.contains(.initialize))
   }
 
   @Test
-  func testBattleCardFullGameMCTS() {
+  func testBattleCardFullGameMCTS() throws {
     let game = BCPages.game()
     var state = game.newState()
     let maxTurns = 5000
@@ -107,7 +107,7 @@ struct OpenLoopMCTSTests {
     var turns = 0
     while !state.ended && turns < maxTurns {
       let mcts = OpenLoopMCTS(state: state, reducer: game)
-      let results = mcts.recommendation(iters: 5, numRollouts: 1)
+      let results = try mcts.recommendation(iters: 5, numRollouts: 1)
 
       let ratio: ((Float, Float)) -> Float = { valCount in
         valCount.0 / (valCount.1 > 0 ? valCount.1 : 1)

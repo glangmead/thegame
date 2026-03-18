@@ -374,7 +374,7 @@ struct LoDAuditFixTests2 {
     state.history.append(.advanceArmies)
     // Spend 2 action points on quest
     state.history.append(.quest(.quest(
-      isHeroic: false, reward: LoD.QuestRewardParams(), pointsSpent: 2)))
+      isHeroic: false, pointsSpent: 2)))
     #expect(state.actionPointsSpent == 2)
   }
 

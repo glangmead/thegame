@@ -116,7 +116,7 @@ struct LoDGameLoopTests {
     #expect(state.livingHeroes.isEmpty)
 
     // Advance time to a night space so card 30 is drawn
-    state.timePosition = 8  // first night space
+    state.timePosition = 4  // night space (timeTrack index 4)
 
     // Draw and process
     _ = game.reduce(into: &state, action: .drawCard)

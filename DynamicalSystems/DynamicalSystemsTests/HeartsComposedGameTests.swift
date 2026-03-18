@@ -296,7 +296,7 @@ struct HeartsComposedGameTests {
   // MARK: - MCTS Produces Legal Actions
 
   @Test
-  func mctsProducesLegalActions() {
+  func mctsProducesLegalActions() throws {
     let allAI: [Hearts.Seat: PlayerMode] = [
       .north: .fastAI, .east: .fastAI,
       .south: .fastAI, .west: .fastAI
@@ -314,7 +314,7 @@ struct HeartsComposedGameTests {
     _ = game.reduce(into: &state, action: .confirmPass)
 
     let search = OpenLoopMCTS(state: state, reducer: game)
-    let results = search.recommendation(iters: 50)
+    let results = try search.recommendation(iters: 50)
     #expect(!results.isEmpty)
 
     let legalActions = Set(game.allowedActions(state: state))

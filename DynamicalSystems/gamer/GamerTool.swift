@@ -266,7 +266,7 @@ struct GameRunner<
 
   func treeSearch(state: State) -> [Action: (Float, Float)] {
     let search = OpenLoopMCTS(state: state, reducer: reducer)
-    let results = search.recommendation(iters: numMCTSIters, numRollouts: numRollouts)
+    let results = (try? search.recommendation(iters: numMCTSIters, numRollouts: numRollouts)) ?? [:]
     if !logFile.isEmpty {
       var logStream: any TextOutputStream = LogDestination(path: logFile)
       search.printTree(to: &logStream)
@@ -293,16 +293,22 @@ where Reducer.State: GameState & TextTableAble & Sendable & CustomStringConverti
     if actions.count == 1 {
       action = actions[0]
     } else {
-      let search = OpenLoopMCTS(state: state, reducer: reducer)
-      let results = search.recommendation(iters: iters, numRollouts: rollouts)
-      let ratio: ((Float, Float)) -> Float = { val in
-        val.0 / (val.1 > 0 ? val.1 : 1)
+      do {
+        let search = OpenLoopMCTS(state: state, reducer: reducer)
+        let results = try search.recommendation(iters: iters, numRollouts: rollouts)
+        let ratio: ((Float, Float)) -> Float = { val in
+          val.0 / (val.1 > 0 ? val.1 : 1)
+        }
+        let bestValue = results.values.map({ ratio($0) }).max() ?? 0
+        let bestAction = results.keys.filter { key in
+          ratio(results[key]!).near(bestValue)
+        }.randomElement()
+        action = bestAction ?? actions[0]
+      } catch {
+        var tableString = ""
+        state.printTable(to: &tableString)
+        action = actions[0]
       }
-      let bestValue = results.values.map({ ratio($0) }).max() ?? 0
-      let bestAction = results.keys.filter { key in
-        ratio(results[key]!).near(bestValue)
-      }.randomElement()
-      action = bestAction ?? actions[0]
     }
     _ = reducer.reduce(into: &state, action: action)
   }

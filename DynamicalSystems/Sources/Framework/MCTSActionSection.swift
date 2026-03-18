@@ -15,7 +15,7 @@ func mctsRecommendation<Game: PlayableGame>(
 where Game.State: GameState & CustomStringConvertible,
       Game.Action: Hashable & Equatable & CustomStringConvertible {
   let search = OpenLoopMCTS(state: state, reducer: game)
-  return search.recommendation(iters: iters)
+  return (try? search.recommendation(iters: iters)) ?? [:]
 }
 
 /// Schedule an AI move if the current player's mode requires it.

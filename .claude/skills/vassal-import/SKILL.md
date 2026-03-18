@@ -31,7 +31,7 @@ to see the Components → State → Engine → Pages → Graph → SceneConfig p
 
 ### Phase 1: Deep Study of Source Material
 
-**Vassal module gives nouns.** Read the `buildFile` XML to catalog:
+**Vassal module contains components.** Read the `buildFile` XML to catalog:
 - Army/piece counters (names, images, properties)
 - Board layout (tracks, grids, regions)
 - Decks and card counts
@@ -40,12 +40,8 @@ to see the Components → State → Engine → Pages → Graph → SceneConfig p
 
 See [vassal_reference_manual.md](vassal_reference_manual.md) for how to interpret the XML.
 
-**Rules PDF gives verbs — and is the primary source of truth.** Read the entire
-rulebook carefully, section by section. **Account for every single sentence.**
-
-**Produce a sentence-level JSON as the primary Phase 1 deliverable.** Extract
-every sentence from the rulebook into a JSON array stored at
-`docs/<game>_rules_sentences.json`. Each entry has:
+**Rules PDF gives logic — and is the primary source of truth.** 
+Extract every sentence from the rulebook into a JSON array stored at `docs/<game>_rules_sentences.json`. Each entry has:
 
 ```json
 {

@@ -159,14 +159,13 @@ struct LoDComposedGameTests {
     _ = game.reduce(into: &state, action: .drawCard)
     #expect(state.phase == .event)
 
-    // Rules should offer resolveEvent
+    // Rules should offer catapultShrapnel
     let actions = game.allowedActions(state: state)
-    #expect(actions.contains(where: { if case .resolveEvent = $0 { return true }; return false }))
+    #expect(actions.contains(.catapultShrapnel))
 
     // Resolve with die roll 5 (no effect for Catapult Shrapnel)
-    let resolution = LoD.EventResolution()
     LoD.$rollDie.withValue({ 5 }) {
-      _ = game.reduce(into: &state, action: .resolveEvent(resolution))
+      _ = game.reduce(into: &state, action: .catapultShrapnel)
     }
     #expect(state.phase == .action)
     // Defenders unchanged (roll 4-6 = no effect)
@@ -187,9 +186,8 @@ struct LoDComposedGameTests {
     _ = game.reduce(into: &state, action: .drawCard)
     #expect(state.phase == .event)
 
-    let resolution = LoD.EventResolution()
     LoD.$rollDie.withValue({ 1 }) {
-      _ = game.reduce(into: &state, action: .resolveEvent(resolution))
+      _ = game.reduce(into: &state, action: .catapultShrapnel)
     }
     #expect(state.defenderPosition[.archers] == 1)
     #expect(state.defenderValue(for: .archers) == 2) // track [2,2,1,1,0]: still 2

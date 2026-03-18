@@ -337,7 +337,7 @@ struct SiteAppearanceTests {
     #expect(header.labelStyle?.weight == .bold)
 
     let invisible = SiteAppearance.resolve(tags: ["invisible"], from: defaults)
-    #expect(invisible.shape == .none)
+    #expect(invisible.shape == SiteShape.none)
 
     let crown = SiteAppearance.resolve(tags: ["crown"], from: defaults)
     #expect(crown.fill == "yellow")

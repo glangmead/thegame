@@ -56,7 +56,7 @@ struct LoDComposedGameActionTests {
 
     _ = game.reduce(into: &state, action: .drawCard)
     if state.phase == .event {
-      _ = game.reduce(into: &state, action: .resolveEvent(LoD.EventResolution()))
+      _ = game.reduce(into: &state, action: .councilOfHeroes)
     }
     #expect(state.phase == .action)
     #expect(state.actionBudgetRemaining == 1)

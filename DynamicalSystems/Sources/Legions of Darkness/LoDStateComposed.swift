@@ -9,73 +9,6 @@ import Foundation
 
 extension LoD.State {
 
-  // MARK: - Quest Reward Dispatch (for composed game)
-
-  // Apply the reward for a successful quest on the current card.
-  // Dispatches by card number to the appropriate quest reward method.
-  // swiftlint:disable:next cyclomatic_complexity
-  mutating func applyQuestReward(params: LoD.QuestRewardParams) -> [Log] {
-    guard let card = currentCard, card.quest != nil else { return [] }
-    var logs: [Log] = []
-
-    switch card.number {
-    case 3: // Forlorn Hope — advance time +1
-      questForlornHope()
-      logs.append(Log(msg: "Quest reward: Forlorn Hope — time +1"))
-
-    case 2: // Scrolls of the Dead — draw a spell
-      if let spell = params.chosenSpell {
-        questScrollsOfDead(chosenSpell: spell)
-        logs.append(Log(msg: "Quest reward: Scrolls of the Dead — learned \(spell)"))
-      }
-
-    case 5: // Search for the Manastones
-      questManastones()
-      logs.append(Log(msg: "Quest reward: Manastones — +1 arcane, +1 divine"))
-
-    case 6: // Arrows of the Dead — gain Magic Bow
-      questMagicBow()
-      logs.append(Log(msg: "Quest reward: Magic Bow acquired"))
-
-    case 7: // Put Forth the Call — +1 defender
-      if let defender = params.chosenDefender {
-        questPutForthCall(defender: defender)
-        logs.append(Log(msg: "Quest reward: Put Forth the Call — +1 \(defender)"))
-      }
-
-    case 10: // Last Ditch Efforts — add hero
-      if let hero = params.chosenHero {
-        questLastDitchEfforts(hero: hero)
-        logs.append(Log(msg: "Quest reward: Last Ditch Efforts — added \(hero)"))
-      }
-
-    case 12: // The Vorpal Blade — gain Magic Sword
-      questVorpalBlade()
-      logs.append(Log(msg: "Quest reward: Vorpal Blade acquired"))
-
-    case 22: // Pillars of the Earth — retreat army 2 spaces
-      if let slot = params.chosenSlot {
-        questPillarsOfEarth(slot: slot)
-        logs.append(Log(msg: "Quest reward: Pillars of the Earth — retreated \(slot)"))
-      }
-
-    case 25: // Save the Mirror of the Moon — +2 arcane
-      questMirrorOfMoon()
-      logs.append(Log(msg: "Quest reward: Mirror of the Moon — +2 arcane"))
-
-    case 28: // Prophecy Revealed — reveal/discard day cards
-      if let idx = params.discardIndex {
-        questProphecyRevealed(discardIndex: idx)
-        logs.append(Log(msg: "Quest reward: Prophecy Revealed"))
-      }
-
-    default:
-      break
-    }
-
-    return logs
-  }
-
   /// Check if the current card's quest has a penalty for not attempting (Last Ditch Efforts).
   /// Called during housekeeping. Returns true if penalty was applied.
   mutating func applyQuestPenaltyIfNeeded(history: [LoD.Action]) -> Bool {
@@ -96,68 +29,6 @@ extension LoD.State {
     }
     questLastDitchPenalty()
     return true
-  }
-
-  // MARK: - Spell Cast Dispatch (for composed game)
-
-  // Apply a spell's effect via the composed game.
-  // Returns logs describing what happened.
-  // swiftlint:disable:next cyclomatic_complexity
-  mutating func applySpellEffect(
-    spell: LoD.SpellType,
-    heroic: Bool,
-    params: LoD.SpellCastParams
-  ) -> [Log] {
-    var logs: [Log] = []
-
-    switch spell {
-    case .fireball:
-      if let slot = params.targetSlot {
-        let dieRoll = LoD.rollDie()
-        let result = applyFireball(on: slot, dieRoll: dieRoll)
-        logs.append(Log(msg: "Fireball on \(slot): \(result)"))
-      }
-
-    case .slow:
-      if let slot = params.targetSlot {
-        applySlow(on: slot, heroic: heroic)
-        logs.append(Log(msg: "Slow on \(slot)\(heroic ? " (heroic)" : "")"))
-      }
-
-    case .chainLightning:
-      chainLightningState = LoD.ChainLightningState(heroic: heroic)
-      logs.append(Log(msg: "Chain Lightning: choose bolt targets one at a time"))
-
-    case .fortune:
-      let cards = fortunePeek()
-      fortuneState = LoD.FortuneState(heroic: heroic, drawnCards: cards)
-      logs.append(Log(msg: "Fortune: viewing \(cards.count) cards"))
-
-    case .cureWounds:
-      applyCureWounds(heroes: params.heroes)
-      logs.append(Log(msg: "Cure Wounds: healed \(params.heroes)"))
-
-    case .massHeal:
-      applyMassHeal(defenders: params.defenders)
-      logs.append(Log(msg: "Mass Heal: +1 \(params.defenders)"))
-
-    case .divineWrath:
-      let targets = params.targetSlots.map { (slot: $0, dieRoll: LoD.rollDie()) }
-      let results = applyDivineWrath(targets: targets)
-      for (index, result) in results.enumerated() {
-        logs.append(Log(msg: "Divine Wrath attack \(index+1): \(result)"))
-      }
-
-    case .inspire:
-      applyInspire(heroic: heroic)
-      logs.append(Log(msg: "Inspire\(heroic ? " (heroic)" : ""): morale=\(morale), +1 DRM all rolls"))
-
-    case .raiseDead:
-      applyRaiseDead(gainDefenders: params.defenders, returnHero: params.returnHero)
-      logs.append(Log(msg: "Raise Dead: defenders \(params.defenders), hero \(String(describing: params.returnHero))"))
-    }
-
-    return logs
   }
 
   // MARK: - Housekeeping (rule 3.0 step 5)
@@ -195,6 +66,7 @@ extension LoD.State {
     bloodyBattleArmy = nil
     pendingBloodyBattleChoices = nil
     questPenaltyAppliedThisTurn = false
+    questRewardPending = false
   }
 
   // MARK: - DRM Helpers (for RulePages)

@@ -29,7 +29,7 @@ extension LoD.State {
   static func isHeroicDieRollAction(_ action: LoD.Action) -> Bool {
     switch action {
     case .heroic(.heroicAttack), .heroic(.rally): return true
-    case .quest(.quest(isHeroic: true, _, _)): return true
+    case .quest(.quest(isHeroic: true, _)): return true
     default: return false
     }
   }
@@ -87,10 +87,10 @@ extension LoD.State {
       let success = chant(dieRoll: dieRoll, drm: drm)
       return [Log(msg: "Chant: \(success ? "success" : "failed")")]
 
-    case .quest(.quest(let isHeroic, let reward, let pointsSpent)) where !isHeroic:
+    case .quest(.quest(let isHeroic, let pointsSpent)) where !isHeroic:
       let dieRoll = LoD.rollDie()
       return resolveQuestAction(
-        dieRoll: dieRoll, reward: reward, isHeroic: false, pointsSpent: pointsSpent)
+        dieRoll: dieRoll, isHeroic: false, pointsSpent: pointsSpent)
 
     default:
       return []
@@ -140,14 +140,35 @@ extension LoD.State {
   }
 
   private mutating func resolveQuestAction(
-    dieRoll: Int, reward: LoD.QuestRewardParams, isHeroic: Bool, pointsSpent: Int
+    dieRoll: Int, isHeroic: Bool, pointsSpent: Int
   ) -> [Log] {
     let result = attemptQuest(
       isHeroic: isHeroic, dieRoll: dieRoll, additionalDRM: questDRM(), pointsSpent: pointsSpent)
     let label = isHeroic ? "heroic" : "action"
     var logs = [Log(msg: "Quest (\(label)): \(result)")]
     if result == .success {
-      logs += applyQuestReward(params: reward)
+      guard let card = currentCard else { return logs }
+      switch card.number {
+      case 3:
+        questForlornHope()
+        logs.append(Log(msg: "Quest reward: Forlorn Hope — time +1"))
+      case 5:
+        questManastones()
+        logs.append(Log(msg: "Quest reward: Manastones — +1 arcane, +1 divine"))
+      case 6:
+        questMagicBow()
+        logs.append(Log(msg: "Quest reward: Magic Bow acquired"))
+      case 12:
+        questVorpalBlade()
+        logs.append(Log(msg: "Quest reward: Vorpal Blade acquired"))
+      case 25:
+        questMirrorOfMoon()
+        logs.append(Log(msg: "Quest reward: Mirror of the Moon — +2 arcane"))
+      case 2, 7, 10, 22, 28:
+        questRewardPending = true
+        logs.append(Log(msg: "Quest succeeded — choose reward"))
+      default: break
+      }
     }
     return logs
   }
@@ -165,10 +186,10 @@ extension LoD.State {
       let success = rally(dieRoll: dieRoll, drm: drm)
       return [Log(msg: "Rally: \(success ? "success" : "failed")")]
 
-    case .quest(.quest(let isHeroic, let reward, let pointsSpent)) where isHeroic:
+    case .quest(.quest(let isHeroic, let pointsSpent)) where isHeroic:
       let dieRoll = LoD.rollDie()
       return resolveQuestAction(
-        dieRoll: dieRoll, reward: reward, isHeroic: true, pointsSpent: pointsSpent)
+        dieRoll: dieRoll, isHeroic: true, pointsSpent: pointsSpent)
 
     default:
       return []

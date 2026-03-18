@@ -184,10 +184,12 @@ extension LoD {
     /// Pending player choice for bloody battle marker when Gate armies are tied.
     var pendingBloodyBattleChoices: [ArmySlot]?
 
+    var questRewardPending: Bool = false
+
     /// Whether a multi-step sub-resolution is in progress, blocking normal action pages.
     var isInSubResolution: Bool {
       chainLightningState != nil || fortuneState != nil || deathAndDespairState != nil
-        || pendingBloodyBattleChoices != nil
+        || pendingBloodyBattleChoices != nil || questRewardPending
     }
 
     // MARK: - Victory / defeat (rule 11.0)
@@ -284,16 +286,18 @@ extension LoD {
       currentCard?.heroics ?? 0
     }
 
-    /// Count action-phase actions taken this turn (since last .advanceArmies, .resolveEvent, or .skipEvent).
+    /// Count action-phase actions taken this turn (since last .advanceArmies or .skipEvent).
     var actionPointsSpent: Int {
       var count = 0
       for action in history.reversed() {
         switch action {
-        case .advanceArmies, .skipEvent, .resolveEvent:
+        case .advanceArmies, .skipEvent:
           return count
-        case .combat, .build, .magic:
+        case .combat, .build, .magic,
+             .fireball, .slow, .cureWounds, .massHeal, .divineWrath,
+             .raiseDead, .inspire, .castChainLightning, .castFortune:
           count += 1
-        case .quest(.quest(isHeroic: false, _, let pointsSpent)):
+        case .quest(.quest(isHeroic: false, let pointsSpent)):
           count += pointsSpent
         default:
           break
@@ -307,11 +311,11 @@ extension LoD {
       var count = 0
       for action in history.reversed() {
         switch action {
-        case .advanceArmies, .skipEvent, .resolveEvent:
+        case .advanceArmies, .skipEvent:
           return count
         case .heroic:
           count += 1
-        case .quest(.quest(isHeroic: true, _, let pointsSpent)):
+        case .quest(.quest(isHeroic: true, let pointsSpent)):
           count += pointsSpent
         default:
           break
@@ -337,7 +341,7 @@ extension LoD {
       var count = 0
       for action in history.reversed() {
         switch action {
-        case .advanceArmies, .skipEvent, .resolveEvent:
+        case .advanceArmies, .skipEvent:
           return count
         case .combat(.meleeAttack):
           count += 1
@@ -353,7 +357,7 @@ extension LoD {
       var count = 0
       for action in history.reversed() {
         switch action {
-        case .advanceArmies, .skipEvent, .resolveEvent:
+        case .advanceArmies, .skipEvent:
           return count
         case .combat(.rangedAttack):
           count += 1

@@ -233,7 +233,7 @@ struct CantStopGameTests {
     #expect(state.players == [.player1, .player2, .player3])
     #expect(state.player == .player1)
     let p4placeholder = CantStop.Piece.placeholder(.player4, .seven)
-    #expect(state.position[p4placeholder]?.col == .none)
+    #expect(state.position[p4placeholder]?.col == CantStop.Column.none)
     let p3placeholder = CantStop.Piece.placeholder(.player3, .seven)
     #expect(state.position[p3placeholder]?.col == .seven)
   }

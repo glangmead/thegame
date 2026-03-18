@@ -2,9 +2,8 @@
 //  LoDStateEvents.swift
 //  DynamicalSystems
 //
-//  Legions of Darkness — Event handlers and concrete resolution enumeration.
+//  Legions of Darkness — Event handlers.
 //
-// swiftlint:disable file_length
 
 import Foundation
 
@@ -149,8 +148,7 @@ extension LoD.State {
   }
 
   // Card #8: Acts of Valor — Wound all unwounded heroes. If ≥1 wounded, +1 attack DRM this turn.
-  mutating func eventActsOfValor(woundHeroes: Bool) {
-    guard woundHeroes else { return }
+  mutating func eventActsOfValor() {
     var woundedAny = false
     for hero in LoD.HeroType.allCases {
       if heroLocation[hero] != nil && !heroDead.contains(hero) && !heroWounded.contains(hero) {
@@ -320,117 +318,6 @@ extension LoD.State {
         results.append(advanceArmy(slot))
       }
       return results
-    }
-  }
-
-  // MARK: - Concrete Event Resolution Enumeration
-
-  /// Enumerate all valid concrete `EventResolution` choices for a given event card.
-  /// Each resolution represents one distinct player decision path.
-  func concreteEventResolutions(for card: LoD.Card) -> [LoD.EventResolution] {
-    guard card.event != nil else { return [] }
-    switch card.number {
-    case 33: return deserterResolutions()
-    case 36: return bumpInTheNightResolutions()
-    case 24: return bloodyHandprintsResolutions()
-    case 30: return assassinsCreedoResolutions()
-    case 11: return harbingersResolutions()
-    default: return [LoD.EventResolution()]
-    }
-  }
-
-  // Card #33: Deserters — lose 2 defenders OR reduce morale (if not Low).
-  private func deserterResolutions() -> [LoD.EventResolution] {
-    var resolutions: [LoD.EventResolution] = []
-    let types = LoD.DefenderType.allCases
-    // One resolution per pair of defender types
-    for first in 0..<types.count {
-      for second in first..<types.count {
-        var res = LoD.EventResolution()
-        res.deserterDefenders = (types[first], types[second])
-        resolutions.append(res)
-      }
-    }
-    // Morale loss option if morale is not Low
-    if morale != .low {
-      resolutions.append(LoD.EventResolution())
-    }
-    return resolutions
-  }
-
-  // Card #36: Bump in the Night — advance Sky 1 OR distribute 2 advances among non-sky armies.
-  private func bumpInTheNightResolutions() -> [LoD.EventResolution] {
-    var resolutions: [LoD.EventResolution] = []
-    // Sky path
-    var skyRes = LoD.EventResolution()
-    skyRes.advanceSky = true
-    resolutions.append(skyRes)
-    // Non-sky armies that are on the board
-    let nonSkySlots = LoD.ArmySlot.allCases.filter {
-      $0.track != .sky && armyPosition[$0] != nil
-    }
-    // 2-to-one: both advances on a single army
-    for slot in nonSkySlots {
-      var res = LoD.EventResolution()
-      res.otherAdvances = [slot, slot]
-      resolutions.append(res)
-    }
-    // 1+1: one advance each to two different armies
-    for first in 0..<nonSkySlots.count {
-      for second in (first + 1)..<nonSkySlots.count {
-        var res = LoD.EventResolution()
-        res.otherAdvances = [nonSkySlots[first], nonSkySlots[second]]
-        resolutions.append(res)
-      }
-    }
-    return resolutions
-  }
-
-  // Card #24: Bloody Handprints — one resolution per living hero.
-  // If all heroes are dead, the event resolves as a no-op.
-  private func bloodyHandprintsResolutions() -> [LoD.EventResolution] {
-    let heroes = livingHeroes
-    guard !heroes.isEmpty else { return [LoD.EventResolution()] }
-    return heroes.map { hero in
-      var res = LoD.EventResolution()
-      res.chosenHero = hero
-      return res
-    }
-  }
-
-  // Card #30: Assassin's Creedo — one resolution per living hero.
-  // If all heroes are dead, the event still resolves (roll may give +1 DRM).
-  private func assassinsCreedoResolutions() -> [LoD.EventResolution] {
-    let heroes = livingHeroes
-    guard !heroes.isEmpty else { return [LoD.EventResolution()] }
-    return heroes.map { hero in
-      var res = LoD.EventResolution()
-      res.chosenHero = hero
-      return res
-    }
-  }
-
-  // Card #11: Harbingers of Doom — advance farthest army; if tied, one per tied slot.
-  private func harbingersResolutions() -> [LoD.EventResolution] {
-    var maxSpace = 0
-    var farthestSlots: [LoD.ArmySlot] = []
-    for slot in LoD.ArmySlot.allCases {
-      guard let pos = armyPosition[slot] else { continue }
-      if pos > maxSpace {
-        maxSpace = pos
-        farthestSlots = [slot]
-      } else if pos == maxSpace {
-        farthestSlots.append(slot)
-      }
-    }
-    guard !farthestSlots.isEmpty else { return [LoD.EventResolution()] }
-    if farthestSlots.count == 1 {
-      return [LoD.EventResolution()]
-    }
-    return farthestSlots.map { slot in
-      var res = LoD.EventResolution()
-      res.chosenSlot = slot
-      return res
     }
   }
 

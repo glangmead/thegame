@@ -2,7 +2,7 @@
 //  LoDGamePagesMagic.swift
 //  DynamicalSystems
 //
-//  Legions of Darkness — Magic phase rule page (chant, memorize, pray, cast).
+//  Legions of Darkness — Magic phase rule page (chant, memorize, pray).
 //
 
 import Foundation
@@ -17,38 +17,15 @@ extension LoD {
           condition: { $0.phase == .action && $0.actionBudgetRemaining > 0 && !$0.isInSubResolution },
           actions: { state in
             var actions: [Action] = []
-
-            // Chant (if priests > 0)
             if state.defenderValue(for: .priests) > 0 {
               actions.append(.magic(.chant))
             }
-
-            // Memorize (one action, random draw from face-down arcane spells)
             if !state.faceDownArcaneSpells.isEmpty {
               actions.append(.magic(.memorize))
             }
-
-            // Pray (one action, random draw from face-down divine spells)
             if !state.faceDownDivineSpells.isEmpty {
               actions.append(.magic(.pray))
             }
-
-            // Cast known spells with sufficient energy — enumerate concrete params
-            for spell in state.knownSpells {
-              let cost = spell.energyCost
-              let hasEnergy = spell.isArcane
-                ? state.arcaneEnergy >= cost
-                : state.divineEnergy >= cost
-              if hasEnergy {
-                let normalActions = state.concreteSpellActions(spell: spell, heroic: false)
-                actions.append(contentsOf: normalActions)
-                if state.canHeroicCast(spell) {
-                  let heroicActions = state.concreteSpellActions(spell: spell, heroic: true)
-                  actions.append(contentsOf: heroicActions)
-                }
-              }
-            }
-
             return actions
           }
         )
@@ -56,12 +33,10 @@ extension LoD {
       reduce: { state, action in
         guard case .magic(let magicAction) = action else { return nil }
         var logs: [Log] = []
-
         switch magicAction {
         case .chant:
           let chantLogs = state.resolveDieRollWithPaladinCheck(action, phase: .action)
           return (chantLogs, [])
-
         case .memorize:
           let spell = LoD.drawRandomSpell(state.faceDownArcaneSpells)
           if let spell {
@@ -69,27 +44,11 @@ extension LoD {
             logs.append(Log(msg: "Memorize \(spell): \(success ? "success" : "failed")"))
           }
           return (logs, [])
-
         case .pray:
           let spell = LoD.drawRandomSpell(state.faceDownDivineSpells)
           if let spell {
             let success = state.pray(spell: spell)
             logs.append(Log(msg: "Pray \(spell): \(success ? "success" : "failed")"))
-          }
-          return (logs, [])
-
-        case .castSpell(let spell, let heroic, let params):
-          let castResult = state.castSpell(spell, heroic: heroic)
-          switch castResult {
-          case .success:
-            logs.append(Log(msg: "Cast \(spell)\(heroic ? " (heroic)" : "")"))
-            logs += state.applySpellEffect(spell: spell, heroic: heroic, params: params)
-          case .spellNotKnown:
-            logs.append(Log(msg: "Cannot cast \(spell): not known"))
-          case .insufficientEnergy:
-            logs.append(Log(msg: "Cannot cast \(spell): insufficient energy"))
-          case .heroicRequiresHero:
-            logs.append(Log(msg: "Cannot cast \(spell) heroically: no hero"))
           }
           return (logs, [])
         }

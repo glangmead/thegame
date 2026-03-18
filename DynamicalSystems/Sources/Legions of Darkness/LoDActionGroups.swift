@@ -53,7 +53,6 @@ extension LoD {
     case chant
     case memorize
     case pray
-    case castSpell(SpellType, heroic: Bool, SpellCastParams)
 
     var description: String {
       switch self {
@@ -63,8 +62,6 @@ extension LoD {
         return "Memorize"
       case .pray:
         return "Pray"
-      case .castSpell(let spell, let heroic, _):
-        return heroic ? "Heroic Cast \(spell)" : "Cast \(spell)"
       }
     }
   }
@@ -95,11 +92,11 @@ extension LoD {
   enum QuestAction: ActionGroup, CustomStringConvertible {
     static let groupName = "Quest"
 
-    case quest(isHeroic: Bool, reward: QuestRewardParams, pointsSpent: Int = 1)
+    case quest(isHeroic: Bool, pointsSpent: Int = 1)
 
     var description: String {
       switch self {
-      case .quest(let isHeroic, _, let pts):
+      case .quest(let isHeroic, let pts):
         let label = isHeroic ? "Heroic Quest" : "Quest"
         let spendLabel = pts > 1 ? " (spend \(pts))" : ""
         return "\(label)\(spendLabel)"

@@ -116,7 +116,7 @@ struct LoDDieRollTests {
       var state = game.newState()
       _ = game.reduce(into: &state, action: .drawCard)
       // Now in event phase — resolve with random die
-      _ = game.reduce(into: &state, action: .resolveEvent(LoD.EventResolution()))
+      _ = game.reduce(into: &state, action: .catapultShrapnel)
 
       let archers = state.defenderValue(for: .archers)
       let maA = state.defenderValue(for: .menAtArms)
@@ -176,7 +176,7 @@ struct LoDDieRollTests {
   // MARK: - MCTS integration: attacks produce pushbacks
 
   @Test
-  func mctsRolloutsProduceAttackHits() {
+  func mctsRolloutsProduceAttackHits() throws {
     // Run a short MCTS from the action phase with an army in melee range.
     // Verify that at least some rollouts push armies back (i.e., the die
     // rolls are working inside MCTS simulations).
@@ -196,7 +196,7 @@ struct LoDDieRollTests {
     state.armyPosition[.east] = 2
 
     let mcts = OpenLoopMCTS(state: state, reducer: game)
-    let results = mcts.recommendation(iters: 100)
+    let results = try mcts.recommendation(iters: 100)
 
     // The MCTS should have explored melee/ranged attack actions
     let attackActions = results.keys.filter { action in

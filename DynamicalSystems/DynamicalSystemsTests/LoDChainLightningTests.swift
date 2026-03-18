@@ -19,7 +19,7 @@ struct LoDChainLightningTests {
     let setup = setupForChainLightning()
     let game = setup.0
     var state = setup.1
-    let action = LoD.Action.magic(.castSpell(.chainLightning, heroic: false, .init()))
+    let action = LoD.Action.castChainLightning(heroic: false)
     _ = game.reduce(into: &state, action: action)
     #expect(state.chainLightningState != nil, "Should enter Chain Lightning sub-resolution")
     #expect(state.chainLightningState?.boltIndex == 0)
@@ -30,7 +30,7 @@ struct LoDChainLightningTests {
     let setup = setupForChainLightning()
     let game = setup.0
     var state = setup.1
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.chainLightning, heroic: false, .init())))
+    _ = game.reduce(into: &state, action: .castChainLightning(heroic: false))
     let actions = game.allowedActions(state: state)
     let clActions = actions.filter {
       if case .chainLightning = $0 { return true }
@@ -50,7 +50,7 @@ struct LoDChainLightningTests {
     var state = setup.1
     state.armyPosition[.east] = 3
     state.armyPosition[.west] = 4
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.chainLightning, heroic: false, .init())))
+    _ = game.reduce(into: &state, action: .castChainLightning(heroic: false))
 
     // Bolt 1
     LoD.$rollDie.withValue({ 6 }) {
@@ -78,7 +78,7 @@ struct LoDChainLightningTests {
     let game = setup.0
     var state = setup.1
     state.armyPosition[.east] = 3
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.chainLightning, heroic: true, .init())))
+    _ = game.reduce(into: &state, action: .castChainLightning(heroic: true))
 
     #expect(state.chainLightningState != nil)
     #expect(state.chainLightningState?.heroic == true)
@@ -106,7 +106,7 @@ struct LoDChainLightningTests {
     let game = setup.0
     var state = setup.1
     state.armyPosition[.east] = 3
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.chainLightning, heroic: false, .init())))
+    _ = game.reduce(into: &state, action: .castChainLightning(heroic: false))
 
     // During sub-resolution, only chain lightning actions should be available
     let actions = game.allowedActions(state: state)

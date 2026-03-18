@@ -9,69 +9,6 @@ import Foundation
 
 extension LoD {
 
-  /// All parameters needed to resolve an event, packed into one struct
-  /// so that a single `.resolveEvent(EventResolution)` action captures
-  /// every player choice.
-  struct EventResolution: Hashable {
-    var chosenHero: HeroType?
-    var woundHeroes: Bool = false
-    var deserterDefenders: (DefenderType, DefenderType)?
-    var sacrificedHeroes: [HeroType] = []
-    var sacrificedDefenders: [DefenderType] = []
-    var chosenSlot: ArmySlot?
-    var advanceSky: Bool = false
-    var otherAdvances: [ArmySlot] = []
-
-    // Hashable conformance for the tuple
-    static func == (lhs: EventResolution, rhs: EventResolution) -> Bool {
-      lhs.chosenHero == rhs.chosenHero
-        && lhs.woundHeroes == rhs.woundHeroes
-        && lhs.deserterDefenders?.0 == rhs.deserterDefenders?.0
-        && lhs.deserterDefenders?.1 == rhs.deserterDefenders?.1
-        && lhs.sacrificedHeroes == rhs.sacrificedHeroes
-        && lhs.sacrificedDefenders == rhs.sacrificedDefenders
-        && lhs.chosenSlot == rhs.chosenSlot
-        && lhs.advanceSky == rhs.advanceSky
-        && lhs.otherAdvances == rhs.otherAdvances
-    }
-
-    func hash(into hasher: inout Hasher) {
-      hasher.combine(chosenHero)
-      hasher.combine(woundHeroes)
-      hasher.combine(deserterDefenders?.0)
-      hasher.combine(deserterDefenders?.1)
-      hasher.combine(sacrificedHeroes)
-      hasher.combine(sacrificedDefenders)
-      hasher.combine(chosenSlot)
-      hasher.combine(advanceSky)
-      hasher.combine(otherAdvances)
-    }
-  }
-
-  /// Parameters for quest reward application (only used on success).
-  struct QuestRewardParams: Hashable {
-    var chosenSpell: SpellType?              // Scrolls of the Dead
-    var chosenDefender: DefenderType?        // Put Forth the Call
-    var chosenHero: HeroType?                // Last Ditch Efforts
-    var chosenSlot: ArmySlot?                // Pillars of the Earth
-    var discardIndex: Int?                   // Prophecy Revealed
-  }
-
-  /// Parameters for spell effect application.
-  struct SpellCastParams: Hashable {
-    // Targeting (Fireball, Slow, Chain Lightning, Divine Wrath)
-    var targetSlot: ArmySlot?
-    var targetSlots: [ArmySlot] = []
-    // Cure Wounds
-    var heroes: [HeroType] = []
-    // Mass Heal / Raise Dead
-    var defenders: [DefenderType] = []
-    var returnHero: HeroType?
-    // Fortune
-    var newOrder: [Int] = []
-    var discardIndex: Int?
-  }
-
   /// All possible actions in the composed game.
   /// Actions represent pure player intent — die rolls happen during resolution.
   indirect enum Action: Hashable, CustomStringConvertible, GroupedAction {
@@ -94,7 +31,49 @@ extension LoD {
 
     // -- Event phase --
     case skipEvent                          // card has no event
-    case resolveEvent(EventResolution)      // card has event
+
+    // -- Events (no choice) --
+    case catapultShrapnel
+    case rocksOfAges
+    case actsOfValor
+    case distractedDefenders
+    case brokenWalls
+    case lamentationOfWomen
+    case reignOfArrows
+    case trappedByFlames
+    case bannersInDistance
+    case campfires
+    case councilOfHeroes
+    case paleMoonlight
+    case midnightMagic
+    case deathAndDespairEvent
+    case waningMoon
+    case mysticForcesReborn
+
+    // -- Events (player choice) --
+    case bumpInTheNight(BumpInTheNightAction)
+    case deserters(DesertersAction)
+    case bloodyHandprints(BloodyHandprintsAction)
+    case assassinsCreedo(AssassinsCreedoAction)
+    case harbingers(HarbingersAction)
+
+    // -- Spells --
+    case fireball(slot: ArmySlot)
+    case slow(slot: ArmySlot, heroic: Bool)
+    case cureWounds(heroes: [HeroType], heroic: Bool)
+    case massHeal(defenders: [DefenderType], heroic: Bool)
+    case divineWrath(slots: [ArmySlot], heroic: Bool)
+    case raiseDead(defenders: [DefenderType], returnHero: HeroType?, heroic: Bool)
+    case inspire(heroic: Bool)
+    case castChainLightning(heroic: Bool)
+    case castFortune(heroic: Bool)
+
+    // -- Quest rewards --
+    case scrollsOfTheDead(SpellType)
+    case putForthTheCall(DefenderType)
+    case lastDitchEfforts(HeroType)
+    case pillarsOfTheEarth(ArmySlot)
+    case prophecyRevealed(discardIndex: Int)
 
     // -- Player turn (ungrouped) --
     case rogueMove(HeroLocation)           // free move, no action cost (rule 10.4)
@@ -128,7 +107,45 @@ extension LoD {
       case .drawCard: return "Draw Card"
       case .advanceArmies: return "Advance Armies"
       case .skipEvent: return "Skip Event"
-      case .resolveEvent: return "Resolve Event"
+      case .catapultShrapnel: return "Catapult Shrapnel"
+      case .rocksOfAges: return "Rocks of Ages"
+      case .actsOfValor: return "Acts of Valor"
+      case .distractedDefenders: return "Distracted Defenders"
+      case .brokenWalls: return "Broken Walls"
+      case .lamentationOfWomen: return "Lamentation of the Women"
+      case .reignOfArrows: return "Reign of Arrows"
+      case .trappedByFlames: return "Trapped by Flames"
+      case .bannersInDistance: return "Banners in the Distance"
+      case .campfires: return "Campfires in the Distance"
+      case .councilOfHeroes: return "Council of Heroes"
+      case .paleMoonlight: return "In the Pale Moonlight"
+      case .midnightMagic: return "Midnight Magic"
+      case .waningMoon: return "The Waning Moon"
+      case .mysticForcesReborn: return "Mystic Forces Reborn"
+      case .deathAndDespairEvent: return "Death and Despair"
+      case .bumpInTheNight(let sub): return sub.description
+      case .deserters(let sub): return sub.description
+      case .bloodyHandprints(let sub): return sub.description
+      case .assassinsCreedo(let sub): return sub.description
+      case .harbingers(let sub): return sub.description
+      case .fireball(let slot): return "Fireball on \(slot)"
+      case .slow(let slot, let heroic): return "Slow on \(slot)\(heroic ? " (heroic)" : "")"
+      case .cureWounds(let heroes, let heroic):
+        return "Cure Wounds: \(heroes)\(heroic ? " (heroic)" : "")"
+      case .massHeal(let defs, let heroic):
+        return "Mass Heal: \(defs)\(heroic ? " (heroic)" : "")"
+      case .divineWrath(let slots, let heroic):
+        return "Divine Wrath: \(slots)\(heroic ? " (heroic)" : "")"
+      case .raiseDead(let defs, let hero, let heroic):
+        return "Raise Dead: \(defs)\(hero.map { ", \($0)" } ?? "")\(heroic ? " (heroic)" : "")"
+      case .inspire(let heroic): return "Inspire\(heroic ? " (heroic)" : "")"
+      case .castChainLightning(let heroic): return "Chain Lightning\(heroic ? " (heroic)" : "")"
+      case .castFortune(let heroic): return "Fortune\(heroic ? " (heroic)" : "")"
+      case .scrollsOfTheDead(let spell): return "Quest: learn \(spell)"
+      case .putForthTheCall(let def): return "Quest: recruit \(def)"
+      case .lastDitchEfforts(let hero): return "Quest: add \(hero)"
+      case .pillarsOfTheEarth(let slot): return "Quest: retreat \(slot)"
+      case .prophecyRevealed: return "Quest: Prophecy Revealed"
       case .chooseBloodyBattle(let slot): return "Place Bloody Battle on \(slot)"
       case .rogueMove(let loc): return "Rogue Move → \(loc)"
       case .acidMeleeAttack(let slot): return "Acid Attack on \(slot)"
@@ -138,6 +155,32 @@ extension LoD {
       case .performHousekeeping: return "End Turn"
       case .claimVictory: return "Victory!"
       case .declareLoss: return "Defeat"
+      }
+    }
+
+    var actionGroup: String {
+      switch self {
+      case .fireball, .slow, .cureWounds, .massHeal, .divineWrath,
+           .raiseDead, .inspire, .castChainLightning, .castFortune:
+        return "Magic"
+      case .scrollsOfTheDead, .putForthTheCall, .lastDitchEfforts,
+           .pillarsOfTheEarth, .prophecyRevealed:
+        return "Quest"
+      case .catapultShrapnel, .rocksOfAges, .actsOfValor, .distractedDefenders,
+           .brokenWalls, .lamentationOfWomen, .reignOfArrows, .trappedByFlames,
+           .bannersInDistance, .campfires, .councilOfHeroes, .paleMoonlight,
+           .midnightMagic, .waningMoon, .mysticForcesReborn,
+           .deathAndDespairEvent,
+           .bumpInTheNight, .deserters, .bloodyHandprints, .assassinsCreedo,
+           .harbingers, .skipEvent:
+        return "Event"
+      default:
+        let mirror = Mirror(reflecting: self)
+        guard let child = mirror.children.first,
+              let group = child.value as? any ActionGroup else {
+          return "General"
+        }
+        return type(of: group).groupName
       }
     }
   }

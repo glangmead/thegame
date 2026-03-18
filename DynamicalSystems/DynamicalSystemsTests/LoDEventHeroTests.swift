@@ -19,20 +19,11 @@ struct LoDEventHeroTests {
     // Wound all unwounded heroes → +1 attack DRM this turn.
     var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     #expect(state.eventAttackDRMBonus == 0)
-    state.eventActsOfValor(woundHeroes: true)
+    state.eventActsOfValor()
     #expect(state.heroWounded.contains(.warrior))
     #expect(state.heroWounded.contains(.wizard))
     #expect(state.heroWounded.contains(.cleric))
     #expect(state.eventAttackDRMBonus == 1)
-  }
-
-  @Test
-  func actsOfValorDecline() {
-    // Choose not to wound → no bonus.
-    var state = LoD.greenskinSetup(windsOfMagicArcane: 3)
-    state.eventActsOfValor(woundHeroes: false)
-    #expect(state.heroWounded.isEmpty)
-    #expect(state.eventAttackDRMBonus == 0)
   }
 
   // -- Bloody Handprints (card #24) --

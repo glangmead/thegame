@@ -160,10 +160,10 @@ class OpenLoopMCTS<
     }).randomElement()!
   }
 
-  func rolloutAction(from: ActionNode<Action, State.Player>, in state: State) -> Action {
+  func rolloutAction(from: ActionNode<Action, State.Player>, in state: State) throws -> Action {
     let actions = reducer.allowedActions(state: state)
     if actions.isEmpty {
-      print("Empty actions list!")
+      fatalError("Empty action list")
     }
     return rolloutPolicy?(actions) ?? actions.randomElement()!
   }
@@ -175,7 +175,7 @@ class OpenLoopMCTS<
   }
 
   // swiftlint:disable:next cyclomatic_complexity function_body_length
-  func recommendation(iters: Int, numRollouts: Int = 1) -> [Action: (Float, Float)] {
+  func recommendation(iters: Int, numRollouts: Int = 1) throws -> [Action: (Float, Float)] {
     var result = [Action: (Float, Float)]()
     guard !reducer.isRolloutTerminal(state: rootState) else {
       return result
@@ -199,7 +199,8 @@ class OpenLoopMCTS<
 
       // Explore a tree for each player, even though the player of rootState is "the player".
       //
-      while rolloutDepth < maxRolloutDepth && !reducer.isRolloutTerminal(state: state) {
+      while rolloutDepth < maxRolloutDepth
+        && !reducer.isRolloutTerminal(state: state) {
         let player = state.player
 
         // Pick one next action for the current player.
@@ -216,7 +217,7 @@ class OpenLoopMCTS<
           // let _ = selectAction(for: currentNode, in: state) // as a side effect this will create all
           nextAction = expandAction(from: currentNode, in: state)
         case .rollout:
-          nextAction = rolloutAction(from: currentNode, in: state)
+          nextAction = try rolloutAction(from: currentNode, in: state)
           rolloutDepth += 1
         }
 

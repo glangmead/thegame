@@ -24,7 +24,7 @@ struct LoDFortunePageTests {
 
   @Test func castingFortuneSetsUpSubResolution() {
     var (game, state) = setupForFortune()
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.fortune, heroic: false, .init())))
+    _ = game.reduce(into: &state, action: .castFortune(heroic: false))
     #expect(state.fortuneState != nil, "Should enter Fortune sub-resolution")
     #expect(state.fortuneState?.heroic == false)
     #expect(state.arcaneEnergy == 0, "Energy should be spent")
@@ -33,7 +33,7 @@ struct LoDFortunePageTests {
 
   @Test func normalFortuneOffersReorderChoices() {
     var (game, state) = setupForFortune()
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.fortune, heroic: false, .init())))
+    _ = game.reduce(into: &state, action: .castFortune(heroic: false))
     let actions = game.allowedActions(state: state)
     let fortuneActions = actions.filter {
       if case .fortune(.chooseOrder) = $0 { return true }
@@ -48,7 +48,7 @@ struct LoDFortunePageTests {
 
   @Test func heroicFortuneOffersDiscardFirst() {
     var (game, state) = setupForFortune(heroic: true)
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.fortune, heroic: true, .init())))
+    _ = game.reduce(into: &state, action: .castFortune(heroic: true))
     let actions = game.allowedActions(state: state)
     let discardActions = actions.filter {
       if case .fortune(.discardCard) = $0 { return true }
@@ -64,7 +64,7 @@ struct LoDFortunePageTests {
 
   @Test func heroicDiscardThenReorder() {
     var (game, state) = setupForFortune(heroic: true)
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.fortune, heroic: true, .init())))
+    _ = game.reduce(into: &state, action: .castFortune(heroic: true))
     // Discard card 0
     _ = game.reduce(into: &state, action: .fortune(.discardCard(0)))
     #expect(state.fortuneState?.discardedIndex == 0)
@@ -82,7 +82,7 @@ struct LoDFortunePageTests {
 
   @Test func skipDiscardThenReorder() {
     var (game, state) = setupForFortune(heroic: true)
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.fortune, heroic: true, .init())))
+    _ = game.reduce(into: &state, action: .castFortune(heroic: true))
     // Skip discard
     _ = game.reduce(into: &state, action: .fortune(.skipDiscard))
     #expect(state.fortuneState?.discardedIndex == -1)
@@ -100,7 +100,7 @@ struct LoDFortunePageTests {
 
   @Test func reorderAppliesAndClearsState() {
     var (game, state) = setupForFortune()
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.fortune, heroic: false, .init())))
+    _ = game.reduce(into: &state, action: .castFortune(heroic: false))
     // Choose order [2, 1, 0] (reverse)
     _ = game.reduce(into: &state, action: .fortune(.chooseOrder([2, 1, 0])))
     #expect(state.fortuneState == nil, "Fortune sub-resolution should be cleared after reorder")
@@ -110,7 +110,7 @@ struct LoDFortunePageTests {
   @Test func heroicDiscardAndReorderApplies() {
     var (game, state) = setupForFortune(heroic: true)
     let originalPeek = state.fortunePeek()
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.fortune, heroic: true, .init())))
+    _ = game.reduce(into: &state, action: .castFortune(heroic: true))
     // Discard card 1 (middle)
     _ = game.reduce(into: &state, action: .fortune(.discardCard(1)))
     // Reorder remaining [0, 2] as [2, 0]

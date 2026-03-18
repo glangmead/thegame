@@ -16,7 +16,7 @@ extension LoD {
     switch action {
     case .drawCard: return .army
     case .advanceArmies: return nil  // armyPage manages transition after auto-rules
-    case .skipEvent, .resolveEvent: return .action
+    case .skipEvent: return .action
     case .endPlayerTurn: return .housekeeping
     case .performHousekeeping: return .card
     default: return nil  // stay in current phase
@@ -33,11 +33,34 @@ extension LoD {
   ) -> ComposedGame<State> {
     oapply(
       gameName: gameName,
-      pages: [cardPage, armyPage, eventPage,
-              chainLightningPage, fortunePage, deathAndDespairPage,
-              combatPage, buildPage, magicPage, questPage,
-              heroicPage, generalPage, acidPage,
-              paladinReactPage, housekeepingPage],
+      pages: [
+        cardPage, armyPage, noEventPage,
+        // Simple event pages
+        catapultShrapnelPage, rocksOfAgesPage, actsOfValorPage,
+        distractedDefendersPage, brokenWallsPage, lamentationPage,
+        reignOfArrowsPage, trappedByFlamesPage, bannersInDistancePage,
+        campfiresPage, councilOfHeroesPage, paleMoonlightPage,
+        midnightMagicPage, waningMoonPage, mysticForcesRebornPage,
+        // Death and Despair trigger
+        deathAndDespairEventPage,
+        // Choice event pages
+        bumpInTheNightPage, desertersPage, bloodyHandprintsPage,
+        assassinsCreedoPage, harbingersPage,
+        // Sub-resolution pages
+        chainLightningPage, fortunePage, deathAndDespairPage,
+        // Spell pages
+        fireballPage, slowPage, cureWoundsPage, massHealPage,
+        divineWrathPage, raiseDeadPage, inspirePage,
+        chainLightningCastPage, fortuneCastPage,
+        // Player-turn pages
+        magicPage, questPage,
+        // Quest reward pages
+        scrollsOfTheDeadPage, putForthTheCallPage, lastDitchEffortsPage,
+        pillarsOfTheEarthPage, prophecyRevealedPage,
+        // Remaining pages
+        combatPage, buildPage, heroicPage, generalPage, acidPage,
+        paladinReactPage, housekeepingPage
+      ],
       priorities: [victoryPage, defeatPage],
       autoRules: autoRules,
       initialState: {

@@ -15,7 +15,7 @@ struct LoDSubResolutionIntegrationTests {
     state.armyPosition[.west] = 4
 
     // Cast Chain Lightning
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.chainLightning, heroic: false, .init())))
+    _ = game.reduce(into: &state, action: .castChainLightning(heroic: false))
     #expect(state.isInSubResolution)
     #expect(state.chainLightningState != nil)
 
@@ -55,7 +55,7 @@ struct LoDSubResolutionIntegrationTests {
     state.arcaneEnergy = 4
 
     // Cast Fortune (normal)
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.fortune, heroic: false, .init())))
+    _ = game.reduce(into: &state, action: .castFortune(heroic: false))
     #expect(state.isInSubResolution)
     #expect(state.fortuneState != nil)
     #expect(state.fortuneState?.heroic == false)
@@ -80,7 +80,7 @@ struct LoDSubResolutionIntegrationTests {
     state.heroLocation[.wizard] = .onTrack(.east)
 
     // Cast Fortune (heroic)
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.fortune, heroic: true, .init())))
+    _ = game.reduce(into: &state, action: .castFortune(heroic: true))
     #expect(state.fortuneState?.heroic == true)
 
     // Should offer discard choices first
@@ -119,7 +119,7 @@ struct LoDSubResolutionIntegrationTests {
 
     // Trigger event
     LoD.$rollDie.withValue({ 4 }) {
-      _ = game.reduce(into: &state, action: .resolveEvent(.init()))
+      _ = game.reduce(into: &state, action: .deathAndDespairEvent)
     }
     #expect(state.isInSubResolution)
     #expect(state.deathAndDespairState != nil)
@@ -153,7 +153,7 @@ struct LoDSubResolutionIntegrationTests {
     state.arcaneEnergy = 3
 
     // Put the game into sub-resolution
-    _ = game.reduce(into: &state, action: .magic(.castSpell(.chainLightning, heroic: false, .init())))
+    _ = game.reduce(into: &state, action: .castChainLightning(heroic: false))
     #expect(state.isInSubResolution)
 
     // Simulate what MCTS would do: random playout from sub-resolution

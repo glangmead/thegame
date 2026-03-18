@@ -17,7 +17,8 @@ extension LoD {
   ///
   /// Rules #1 and #2 are mutually exclusive.
   static var autoRules: [AutoRule<State>] {
-    [bloodyBattlePlacementRule, bloodyBattleGateTieRule, questPenaltyRule]
+    [bloodyBattlePlacementRule, bloodyBattleGateTieRule, questPenaltyRule,
+     snapshotBudgetRule, questRewardForfeitRule]
   }
 
   // MARK: - Bloody Battle Marker Placement
@@ -95,6 +96,48 @@ extension LoD {
         state.pendingBloodyBattleChoices = slotsOnTrack
         state.phase = .army
         return [Log(msg: "Bloody battle: Gate armies tied — choose placement")]
+      }
+    )
+  }
+
+  // MARK: - Snapshot Action Budget
+
+  private static var snapshotBudgetRule: AutoRule<State> {
+    AutoRule(
+      name: "snapshotActionBudget",
+      when: { $0.phase == .action && $0.snapshotActionBudget == nil },
+      apply: { state in
+        state.snapshotActionBudget = state.actionBudget
+        return []
+      }
+    )
+  }
+
+  // MARK: - Quest Reward Forfeit
+
+  /// Clears questRewardPending when the reward has no valid choices,
+  /// preventing an empty-actions deadlock.
+  static var questRewardForfeitRule: AutoRule<State> {
+    AutoRule(
+      name: "questRewardForfeit",
+      when: { state in
+        guard state.questRewardPending, let card = state.currentCard else { return false }
+        switch card.number {
+        case 2:
+          return (state.faceDownArcaneSpells + state.faceDownDivineSpells).isEmpty
+        case 10:
+          return state.heroDead.isEmpty
+        case 22:
+          return ArmySlot.allCases.allSatisfy { state.armyPosition[$0] == nil }
+        case 28:
+          return state.dayDrawPile.isEmpty
+        default:
+          return false
+        }
+      },
+      apply: { state in
+        state.questRewardPending = false
+        return [Log(msg: "Quest reward forfeit — no valid choices")]
       }
     )
   }
