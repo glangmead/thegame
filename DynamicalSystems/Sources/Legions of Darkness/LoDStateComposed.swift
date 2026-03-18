@@ -12,7 +12,7 @@ extension LoD.State {
   /// Check if the current card's quest has a penalty for not attempting (Last Ditch Efforts).
   /// Called during housekeeping. Returns true if penalty was applied.
   mutating func applyQuestPenaltyIfNeeded(history: [LoD.Action]) -> Bool {
-    guard let card = currentCard, card.number == 10 else { return false }
+    guard let card = currentCard, card.number == 15 else { return false }
 
     // Check if quest was attempted this turn (scan history backwards from housekeeping)
     for action in history.reversed() {

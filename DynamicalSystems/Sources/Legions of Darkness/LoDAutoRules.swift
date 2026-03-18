@@ -125,8 +125,8 @@ extension LoD {
         switch card.number {
         case 2:
           return (state.faceDownArcaneSpells + state.faceDownDivineSpells).isEmpty
-        case 10:
-          return state.heroDead.isEmpty
+        case 15:
+          return state.unselectedHeroes.isEmpty
         case 22:
           return ArmySlot.allCases.allSatisfy { state.armyPosition[$0] == nil }
         case 28:
@@ -150,7 +150,7 @@ extension LoD {
       when: { state in
         guard state.history.last == .performHousekeeping else { return false }
         guard !state.questPenaltyAppliedThisTurn else { return false }
-        guard let card = state.currentCard, card.number == 10 else { return false }
+        guard let card = state.currentCard, card.number == 15 else { return false }
 
         for action in state.history.dropLast().reversed() {
           switch action {

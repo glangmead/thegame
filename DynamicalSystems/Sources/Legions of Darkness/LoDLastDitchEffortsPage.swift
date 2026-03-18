@@ -2,7 +2,7 @@
 //  LoDLastDitchEffortsPage.swift
 //  DynamicalSystems
 //
-//  Legions of Darkness — Last Ditch Efforts quest reward page (card #10).
+//  Legions of Darkness — Last Ditch Efforts quest reward page (card #15).
 //
 
 import Foundation
@@ -15,11 +15,10 @@ extension LoD {
       rules: [
         GameRule(
           condition: {
-            $0.phase == .action && $0.questRewardPending && $0.currentCard?.number == 10
+            $0.phase == .action && $0.questRewardPending && $0.currentCard?.number == 15
           },
           actions: { state in
-            Array(state.heroDead).sorted { $0.rawValue < $1.rawValue }
-              .map { .lastDitchEfforts($0) }
+            state.unselectedHeroes.map { .lastDitchEfforts($0) }
           }
         )
       ],

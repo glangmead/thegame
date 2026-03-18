@@ -2,7 +2,7 @@
 //  LoDPutForthTheCallPage.swift
 //  DynamicalSystems
 //
-//  Legions of Darkness — Put Forth the Call quest reward page (card #7).
+//  Legions of Darkness — Put Forth the Call quest reward page (card #10).
 //
 
 import Foundation
@@ -14,7 +14,7 @@ extension LoD {
       name: "Put Forth the Call",
       rules: [
         GameRule(
-          condition: { $0.phase == .action && $0.questRewardPending && $0.currentCard?.number == 7 },
+          condition: { $0.phase == .action && $0.questRewardPending && $0.currentCard?.number == 10 },
           actions: { _ in
             DefenderType.allCases.map { .putForthTheCall($0) }
           }

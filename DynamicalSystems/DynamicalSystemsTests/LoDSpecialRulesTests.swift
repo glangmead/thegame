@@ -19,11 +19,11 @@ struct LoDSpecialRulesTests {
 
   @Test
   func composedGameLastDitchPenalty() {
-    // Card #10: Last Ditch Efforts quest. Penalty if not attempted: morale -1.
-    let card10 = LoD.dayCards.first { $0.number == 10 }!
+    // Card #15: Last Ditch Efforts quest. Penalty if not attempted: morale -1.
+    let card15 = LoD.dayCards.first { $0.number == 15 }!
     let game = LoD.composedGame(
       windsOfMagicArcane: 3,
-      shuffledDayCards: [card10],
+      shuffledDayCards: [card15],
       shuffledNightCards: LoD.nightCards
     )
     var state = game.newState()

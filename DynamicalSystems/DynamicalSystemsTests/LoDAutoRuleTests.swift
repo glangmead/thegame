@@ -112,10 +112,10 @@ struct LoDAutoRuleTests {
 
   @Test
   func questPenaltyFiresExactlyOnce() {
-    let card10 = LoD.dayCards.first { $0.number == 10 }!
+    let card15 = LoD.dayCards.first { $0.number == 15 }!
     let game = LoD.composedGame(
       windsOfMagicArcane: 3,
-      shuffledDayCards: [card10],
+      shuffledDayCards: [card15],
       shuffledNightCards: LoD.nightCards
     )
     var state = game.newState()
@@ -258,17 +258,20 @@ struct LoDAutoRuleTests {
   // MARK: - Quest Reward Forfeit
 
   @Test
-  func questRewardForfeitWhenNoDeadHeroes() {
-    // Card 10 quest reward page (Last Ditch Efforts): return a dead hero.
-    // If no heroes are dead, the auto-rule should clear questRewardPending
-    // when it fires after a reduce.
-    let game = LoD.composedGame(windsOfMagicArcane: 3)
+  func questRewardForfeitWhenAllHeroesSelected() {
+    // Card 15 quest reward (Last Ditch Efforts): add an unselected hero.
+    // If all heroes are already selected, the auto-rule should clear
+    // questRewardPending when it fires after a reduce.
+    let game = LoD.composedGame(
+      windsOfMagicArcane: 3,
+      heroes: LoD.HeroType.allCases
+    )
     var state = game.newState()
     state.phase = .action
-    state.currentCard = LoD.dayCards.first { $0.number == 10 }
+    state.currentCard = LoD.dayCards.first { $0.number == 15 }
     state.snapshotActionBudget = 3
     state.questRewardPending = true
-    #expect(state.heroDead.isEmpty)
+    #expect(state.unselectedHeroes.isEmpty)
     #expect(state.isInSubResolution)
 
     // Auto-rules fire in reduce(), not allowedActions(). Dispatch skipEvent
@@ -282,18 +285,19 @@ struct LoDAutoRuleTests {
   }
 
   @Test
-  func questRewardNotForfeitWhenDeadHeroExists() {
+  func questRewardNotForfeitWhenUnselectedHeroExists() {
+    // Default setup selects 3 heroes, leaving 3 unselected.
     let game = LoD.composedGame(windsOfMagicArcane: 3)
     var state = game.newState()
     state.phase = .action
-    state.currentCard = LoD.dayCards.first { $0.number == 10 }
+    state.currentCard = LoD.dayCards.first { $0.number == 15 }
     state.snapshotActionBudget = 3
     state.questRewardPending = true
-    state.heroDead = [.warrior]
+    #expect(!state.unselectedHeroes.isEmpty)
 
     let actions = game.allowedActions(state: state)
-    #expect(state.questRewardPending, "Should stay pending when hero is dead")
-    #expect(actions.contains(.lastDitchEfforts(.warrior)))
+    #expect(state.questRewardPending, "Should stay pending when unselected heroes exist")
+    #expect(actions.contains(.lastDitchEfforts(state.unselectedHeroes.first!)))
   }
 
   // MARK: - Bug Reproduction: Card 16 Empty Actions

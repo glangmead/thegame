@@ -265,6 +265,11 @@ extension LoD {
       heroLocation.keys.filter { !heroDead.contains($0) }.sorted { $0.rawValue < $1.rawValue }
     }
 
+    /// Heroes never selected during setup (no location, not dead).
+    var unselectedHeroes: [HeroType] {
+      HeroType.allCases.filter { heroLocation[$0] == nil && !heroDead.contains($0) }
+    }
+
     /// Whether a given track has an army at space 1 (relevant for breach/build rules).
     func armyAtSpace1(on track: Track) -> Bool {
       for slot in ArmySlot.allCases where slot.track == track {
