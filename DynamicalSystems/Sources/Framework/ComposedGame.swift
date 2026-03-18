@@ -13,7 +13,8 @@ import Foundation
 /// Each page contributes rules and handles its own slice of the action space.
 /// Priority pages (e.g., victory/defeat) are checked first and override
 /// normal pages when they fire.
-struct ComposedGame<State: HistoryTracking>: PlayableGame where State.Action: Hashable {
+struct ComposedGame<State: HistoryTracking>: PlayableGame, @unchecked Sendable
+where State.Action: Hashable {
   let gameName: String
   let pages: [RulePage<State, State.Action>]
   let priorities: [RulePage<State, State.Action>]

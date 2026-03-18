@@ -11,7 +11,7 @@ import Foundation
 /// and mutate it. They never emit follow-up actions or return choices.
 /// An auto-rule may set up state that a subsequent GameRule reads
 /// to offer a player choice.
-struct AutoRule<State> {
+struct AutoRule<State>: @unchecked Sendable {
   let name: String
   let when: (State) -> Bool
   let apply: (inout State) -> [Log]

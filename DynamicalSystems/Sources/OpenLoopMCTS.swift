@@ -15,7 +15,7 @@ class ActionNode<Action: Hashable & Equatable & CustomStringConvertible, Player:
   let inboundAction: Action?
   let player: Player
   var children = [Action: ActionNode]() // successor nodes after applying some action
-  var parent: ActionNode?
+  weak var parent: ActionNode?
 
   var visitableCount: Int = 0 // how often we were legal to be visited by our parent
   var visitCount: Int = 0
