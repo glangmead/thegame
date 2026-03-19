@@ -26,7 +26,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Catapult",
-          "text": "Roll. 1: lose one Archer. 2-3: lose one Swordsman."
+          "text": "Roll. 1: lose 1 Archer. 2-3: lose 1 Swordsman."
         },
         "quest": null,
         "time": 0,
@@ -45,9 +45,9 @@ extension LoDComponents {
         "event": null,
         "quest": {
           "title": "Ancient Parchment",
-          "text": "Spend actions (+1 drm) or heroics (+2 drm). Roll >7 to draw a spell of your choice, then shuffle the remaining spells of that type still in the pool.",
+          "text": "Spend actions (+1 DRM) or heroics (+2 DRM). Roll >7. Choose a face-down spell and learn it.",
           "target": 7,
-          "reward": "Draw a spell of your choice, shuffle remaining of that type"
+          "reward": "Choose a face-down spell and learn it"
         },
         "time": 0,
         "bloodyBattle": null
@@ -65,9 +65,9 @@ extension LoDComponents {
         "event": null,
         "quest": {
           "title": "Estel",
-          "text": "Spend actions (+1 drm) or heroics (+2 drm). Roll >6 to advance the Time marker +1.",
+          "text": "Spend actions (+1 DRM) or heroics (+2 DRM). Roll >6. Time marker +1.",
           "target": 6,
-          "reward": "Advance time marker +1"
+          "reward": "Time marker +1"
         },
         "time": 1,
         "bloodyBattle": "gate"
@@ -84,7 +84,7 @@ extension LoDComponents {
         "heroicDRMs": [{"action": "rally", "value": -1}],
         "event": {
           "title": "Casualties",
-          "text": "Roll. On a 1, lose one Priest. On a 2-3, lose one Swordsman."
+          "text": "Roll. 1: lose 1 Priest. 2-3: lose 1 Swordsman."
         },
         "quest": null,
         "time": 0,
@@ -103,9 +103,9 @@ extension LoDComponents {
         "event": null,
         "quest": {
           "title": "Mystic Consultation",
-          "text": "Spend actions (+1 drm) or heroics (+2 drm). Roll >6 to add +1 arcane energy and +1 divine energy.",
+          "text": "Spend actions (+1 DRM) or heroics (+2 DRM). Roll >6. +1 arcane, +1 divine.",
           "target": 6,
-          "reward": "+1 arcane energy, +1 divine energy"
+          "reward": "+1 arcane, +1 divine"
         },
         "time": 0,
         "bloodyBattle": null
@@ -123,9 +123,9 @@ extension LoDComponents {
         "event": null,
         "quest": {
           "title": "A Storied Weapon",
-          "text": "Spend actions (+1 drm) or heroics (+2 drm). Roll >6 to find a Magic Bow.",
+          "text": "Spend actions (+1 DRM) or heroics (+2 DRM). Roll >6. Gain Magic Bow.",
           "target": 6,
-          "reward": "Magic Bow: Discard before a ranged attack to add +2 drm or after the attack to add +1 drm"
+          "reward": "Gain Magic Bow: +2 DRM before ranged attack, +1 DRM after"
         },
         "time": 0,
         "bloodyBattle": null
@@ -157,7 +157,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Sacrifice",
-          "text": "You may wound all unwounded Heroes. If you wound at least one hero, add a +1 drm to all Attacks and Heroic Attacks until the end of this turn."
+          "text": "You may wound all unwounded Heroes. If at least one wounded: +1 Attack DRM this turn."
         },
         "quest": null,
         "time": 0,
@@ -175,7 +175,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Sneak Advance",
-          "text": "If the Army in the East is out of melee range, advance the Army in the East one space."
+          "text": "If East army out of melee range, advance East 1."
         },
         "quest": null,
         "time": 0,
@@ -194,9 +194,9 @@ extension LoDComponents {
         "event": null,
         "quest": {
           "title": "To Me!",
-          "text": "Spend actions (+1 drm) or heroics (+2 drm). Roll >6 to add +1 defender.",
+          "text": "Spend actions (+1 DRM) or heroics (+2 DRM). Roll >6. +1 defender (your choice).",
           "target": 6,
-          "reward": "+1 defender"
+          "reward": "+1 defender (your choice)"
         },
         "time": 1,
         "bloodyBattle": null
@@ -213,7 +213,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Something Gives Haste",
-          "text": "Advance the farthest Army one space. If two or more armies are tied, choose one to advance."
+          "text": "Advance farthest army 1. If tied, choose one."
         },
         "quest": null,
         "time": 0,
@@ -247,9 +247,9 @@ extension LoDComponents {
         "event": null,
         "quest": {
           "title": "Amdir",
-          "text": "Spend actions (+1 drm) or heroics (+2 drm). Roll >7 to advance the Time marker +1.",
+          "text": "Spend actions (+1 DRM) or heroics (+2 DRM). Roll >7. Time marker +1.",
           "target": 7,
-          "reward": "Advance time marker +1"
+          "reward": "Time marker +1"
         },
         "time": 0,
         "bloodyBattle": null
@@ -266,7 +266,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Squeezed",
-          "text": "Advance the closest of the East or West armies one space. If tied, advance both one space."
+          "text": "Advance closest of East/West 1. If tied, advance both 1."
         },
         "quest": null,
         "time": 0,
@@ -285,10 +285,10 @@ extension LoDComponents {
         "event": null,
         "quest": {
           "title": "Now or Never",
-          "text": "Spend actions (+1 drm) or heroics (+2 drm). Roll >6 to add one unselected Hero to the Reserves. If this Quest is not attempted, or if it fails, reduce Morale by one.",
+          "text": "Spend actions (+1 DRM) or heroics (+2 DRM). Roll >6. Add 1 unselected Hero to Reserves. If not attempted or failed: Morale -1.",
           "target": 6,
-          "reward": "+1 unselected Hero to Reserves",
-          "penalty": "Reduce Morale by one"
+          "reward": "Add 1 unselected Hero to Reserves",
+          "penalty": "Morale -1"
         },
         "time": 0,
         "bloodyBattle": null
@@ -305,7 +305,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Something Wicked",
-          "text": "Roll. On a 1-3, reduce Morale by one. On a 4-6, no melee attacks this turn."
+          "text": "Roll. 1-3: Morale -1. 4-6: no melee this turn."
         },
         "quest": null,
         "time": 1,
@@ -323,7 +323,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "He Fell",
-          "text": "Roll. On a 1, lose one Priest. On a 2-3, lose one Archer."
+          "text": "Roll. 1: lose 1 Priest. 2-3: lose 1 Archer."
         },
         "quest": null,
         "time": 0,
@@ -341,7 +341,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "He has Fallen",
-          "text": "Roll. On a 1-2, lose one Swordsman. On a 3-4, lose one Archer and one Priest."
+          "text": "Roll. 1-2: lose 1 Swordsman. 3-4: lose 1 Archer and 1 Priest."
         },
         "quest": null,
         "time": 0,
@@ -360,9 +360,9 @@ extension LoDComponents {
         "event": null,
         "quest": {
           "title": "The Blade that was Broken",
-          "text": "Spend actions (+1 drm) or heroics (+2 drm). Roll >6 to take the Magic Sword.",
+          "text": "Spend actions (+1 DRM) or heroics (+2 DRM). Roll >6. Gain Magic Sword.",
           "target": 6,
-          "reward": "Magic Sword: Discard before a melee attack to add +2 drm or after the attack to add +1 drm"
+          "reward": "Gain Magic Sword: +2 DRM before melee attack, +1 DRM after"
         },
         "time": 0,
         "bloodyBattle": "sky"
@@ -379,7 +379,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Closing In",
-          "text": "If the Army in the West is out of melee range, advance the Army in the West one space."
+          "text": "If West army out of melee range, advance West 1."
         },
         "quest": null,
         "time": 1,
@@ -413,9 +413,9 @@ extension LoDComponents {
         "event": null,
         "quest": {
           "title": "Hurrah!",
-          "text": "Spend actions (+1 drm) or heroics (+2 drm). Roll >7 to retreat one army (except Sky) two spaces.",
+          "text": "Spend actions (+1 DRM) or heroics (+2 DRM). Roll >7. Retreat 1 army (not Sky) 2 spaces.",
           "target": 7,
-          "reward": "Retreat one army (except Sky) two spaces"
+          "reward": "Retreat 1 army (not Sky) 2 spaces"
         },
         "time": 0,
         "bloodyBattle": "sky"
@@ -432,7 +432,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Castle Panic",
-          "text": "If either of the Armies at the Gate are out of melee range, advance the farthest Army at the Gate one space. If both Armies at the Gate are out of melee range, advance both Armies at the Gate one space."
+          "text": "If both Gate armies out of melee range, advance both 1. Otherwise advance whichever Gate army is out of melee range 1."
         },
         "quest": null,
         "time": 0,
@@ -450,7 +450,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Hail the Victorious Dead",
-          "text": "Roll. On a 1-3, kill a Hero (wounded first). On a 4-6, wound a Hero (your choice)."
+          "text": "Roll. 1-3: kill a Hero (wounded first). 4-6: wound a Hero (your choice)."
         },
         "quest": null,
         "time": 0,
@@ -469,9 +469,9 @@ extension LoDComponents {
         "event": null,
         "quest": {
           "title": "The Red Flicker",
-          "text": "Spend actions (+1 drm) or heroics (+2 drm). Roll >6 to add +2 arcane magic.",
+          "text": "Spend actions (+1 DRM) or heroics (+2 DRM). Roll >6. +2 arcane.",
           "target": 6,
-          "reward": "+2 arcane magic"
+          "reward": "+2 arcane"
         },
         "time": 0,
         "bloodyBattle": "west"
@@ -488,7 +488,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "The Gathering",
-          "text": "Return all living Heroes to the Reserves. Wounded Heroes cannot act this turn."
+          "text": "Return all living Heroes to Reserves. Wounded Heroes cannot act this turn."
         },
         "quest": null,
         "time": 1,
@@ -506,7 +506,7 @@ extension LoDComponents {
         "heroicDRMs": [{"action": "rally", "value": -1}],
         "event": {
           "title": "The Blue Flicker",
-          "text": "Roll. On a 1-3, add +1 arcane magic. On a 4-6, add +2 arcane magic."
+          "text": "Roll. 1-3: +1 arcane. 4-6: +2 arcane."
         },
         "quest": null,
         "time": 1,
@@ -525,9 +525,9 @@ extension LoDComponents {
         "event": null,
         "quest": {
           "title": "The Seeing Stone",
-          "text": "Spend actions (+1 drm) or heroics (+2 drm). Roll >7 to reveal the top three cards of the Day deck and discard one.",
+          "text": "Spend actions (+1 DRM) or heroics (+2 DRM). Roll >7. Reveal top 3 Day cards, discard 1.",
           "target": 7,
-          "reward": "Reveal top 3 Day cards, discard one"
+          "reward": "Reveal top 3 Day cards, discard 1"
         },
         "time": 0,
         "bloodyBattle": "east"
@@ -544,7 +544,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Take Him Down!",
-          "text": "Roll. Advance the farthest Army that number of spaces. Reduce the result by one for each Hero you wound or defender you choose to lose."
+          "text": "Roll N. Advance farthest army N spaces. If tied, choose army. Wound Heroes or lose defenders to reduce N by 1 each."
         },
         "quest": null,
         "time": 1,
@@ -562,7 +562,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Black and White",
-          "text": "Roll. On a 1-3, kill a Hero of your choice. On a 4-6, add a +1 drm to Attack this turn."
+          "text": "Roll. 1-3: kill a Hero (your choice). 4-6: +1 Attack DRM this turn."
         },
         "quest": null,
         "time": 1,
@@ -580,7 +580,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Unholy Bargain",
-          "text": "Subtract 1 divine magic and add +1 arcane magic. Lose one priest."
+          "text": "-1 divine, +1 arcane. Lose 1 Priest."
         },
         "quest": null,
         "time": 0,
@@ -598,7 +598,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Light of the Stars",
-          "text": "Roll. On a 1-3, add +1 arcane magic. On a 4-6, add +2 arcane magic."
+          "text": "Roll. 1-3: +1 arcane. 4-6: +2 arcane."
         },
         "quest": null,
         "time": 0,
@@ -616,7 +616,7 @@ extension LoDComponents {
         "heroicDRMs": [{"action": "rally", "value": -1}],
         "event": {
           "title": "It Broke Them",
-          "text": "Lose two defenders OR reduce Morale by one (can't choose Morale if Morale is Low)."
+          "text": "Lose 2 defenders OR Morale -1 (cannot choose Morale if Low)."
         },
         "quest": null,
         "time": 1,
@@ -634,7 +634,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Handwriting",
-          "text": "Roll. On a 1-3, subtract 1 arcane magic. On a 4-6, add +1 arcane magic."
+          "text": "Roll. 1-3: -1 arcane. 4-6: +1 arcane."
         },
         "quest": null,
         "time": 0,
@@ -652,7 +652,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Turn Back the Page",
-          "text": "Return all used spells to the appropriate spell draw pool. Roll: On a 1-3, subtract 1 arcane magic. On a 4-6, draw a random arcane spell."
+          "text": "Return all cast spells to pool. Roll. 1-3: -1 arcane. 4-6: draw 1 random arcane spell."
         },
         "quest": null,
         "time": 0,
@@ -670,7 +670,7 @@ extension LoDComponents {
         "heroicDRMs": [],
         "event": {
           "title": "Even Closer",
-          "text": "Advance the Sky army one space OR any other combination of armies two spaces."
+          "text": "Advance Sky 1 OR advance other armies total 2 spaces."
         },
         "quest": null,
         "time": 1,
