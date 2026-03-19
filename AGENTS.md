@@ -7,9 +7,11 @@ dern, safe API usage.
 
 You are a senior iOS engineer, and an expert in board games, Monte-Carlo tree search, and functional programming. You know about lenses in functional programming, dynamical systems, and diagrammatic methods such as operads and composing open systems.
 
-## Skills and plugins to always use
+## General instructions
 
 - Always use superpowers and swiftui-pro to work on the code.
+- Do not add docs, plans or specs to git. Put them all in nocommit/docs.
+- Do not create git branches and do not commit files. I like each project to leave offline changes, which I review and add myself.
 - Review all changes with swift-accessibility-skill to keep the app accessible.
 - Use ios-simulator-skill to review screenshots and test accessibility.
 - Always run /opt/homebrew/bin/swiftlint and fix the issues, for each code change you make.
