@@ -104,10 +104,9 @@ enum GameBuilder {
     let actions = try sections.actionsExpr.map { try ActionSchema($0) }
       ?? ActionSchema.empty()
     let defines = try DefineExpander(defineExprs)
-    let engine = ReduceEngine(components: components, defines: defines)
 
     let buildContext = PageBuilder.BuildContext(
-      components: components, schema: schema, engine: engine,
+      components: components, schema: schema, randomSource: nil,
       actionSchema: actions, defines: defines
     )
     let rulesResult = try sections.rulesExpr.map {
@@ -131,16 +130,18 @@ enum GameBuilder {
         return state
       },
       terminalCheck: makeTerminalCheck(
-        capturedTerminalExpr, components: components
+        capturedTerminalExpr, components: components, schema: schema
       ),
       rolloutTerminalCheck: capturedRolloutExpr.map {
-        makeExprCheck($0, components: components)
+        makeExprCheck($0, components: components, schema: schema)
       },
       phaseForAction: { action in capturedPhaseMap[action.name] },
       autoRules: rulesResult?.reactions ?? []
     )
     game.stateEvaluator = sections.metadataExpr.flatMap {
-      MetadataBuilder.buildHeuristic($0, components: components, defines: defines)
+      MetadataBuilder.buildHeuristic(
+        $0, components: components, defines: defines, schema: schema
+      )
     }
     return game
   }
@@ -149,24 +150,27 @@ enum GameBuilder {
 
   private static func makeTerminalCheck(
     _ expr: SExpr?,
-    components: ComponentRegistry
+    components: ComponentRegistry,
+    schema: StateSchema
   ) -> (InterpretedState) -> Bool {
     guard let expr else {
       return { state in state.gameAcknowledged }
     }
-    return makeExprCheck(expr, components: components)
+    return makeExprCheck(expr, components: components, schema: schema)
   }
 
   private static func makeExprCheck(
     _ expr: SExpr,
-    components: ComponentRegistry
+    components: ComponentRegistry,
+    schema: StateSchema
   ) -> (InterpretedState) -> Bool {
-    { state in
-      let ctx = ExpressionEvaluator.Context(
-        state: state, components: components,
-        bindings: [:], actionParams: [:], randomSource: nil
-      )
-      return (try? ExpressionEvaluator.eval(expr, context: ctx))?.asBool ?? false
+    let compiler = ExpressionCompiler(
+      components: components, schema: schema
+    )
+    let compiled = compiler.expr(expr)
+    return { state in
+      let env = ExpressionCompiler.Env(state: state)
+      return (try? compiled(env))?.asBool ?? false
     }
   }
 }

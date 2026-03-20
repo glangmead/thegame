@@ -4,7 +4,7 @@ enum PageBuilder {
   struct BuildContext {
     let components: ComponentRegistry
     let schema: StateSchema
-    let engine: ReduceEngine
+    let randomSource: RandomSource?
     let actionSchema: ActionSchema
     let defines: DefineExpander
   }
@@ -21,6 +21,7 @@ enum PageBuilder {
   }
 
   // Build a simple RulePage from `(page ...)` or `(priority ...)` form.
+  // swiftlint:disable:next cyclomatic_complexity function_body_length
   static func buildPage(
     _ sexpr: SExpr,
     context: BuildContext
@@ -53,18 +54,27 @@ enum PageBuilder {
       }
     }
 
-    let engine = context.engine
-    let capturedReducers = reducers
+    let compiler = ExpressionCompiler(
+      components: context.components, schema: context.schema
+    )
+    let randomSource = context.randomSource
+    var compiledReducers: [String: ExpressionCompiler.Stmt] = [:]
+    for (key, value) in reducers {
+      let expanded = try context.defines.expand(value)
+      compiledReducers[key] = compiler.stmt(expanded)
+    }
+    let capturedReducers = compiledReducers
     return RulePage(
       name: name,
       rules: rules,
       reduce: { state, action in
         guard let body = capturedReducers[action.name] else { return nil }
         do {
-          let result = try engine.execute(
-            body, state: state,
-            actionParams: action.parameters
+          let env = ExpressionCompiler.Env(
+            state: state, actionParams: action.parameters,
+            randomSource: randomSource
           )
+          let result = try body(env)
           return (result.logs, result.followUps)
         } catch {
           return nil
@@ -97,35 +107,34 @@ enum PageBuilder {
       }
     }
 
-    let components = context.components
-    let capturedCondition = try conditionExpr.map { try context.defines.expand($0) }
+    let compiler = ExpressionCompiler(
+      components: context.components, schema: context.schema
+    )
+    let compiledCondition: ExpressionCompiler.Expr? = try conditionExpr.map {
+      compiler.expr(try context.defines.expand($0))
+    }
+    let precomputedActions: [ActionValue] = offerExprs.map { offerExpr in
+      if let name = offerExpr.atomValue {
+        return ActionValue(name)
+      }
+      if let parts = offerExpr.children, let name = parts.first?.atomValue {
+        var params: [String: DSLValue] = [:]
+        for paramExpr in parts.dropFirst() {
+          if let pair = paramExpr.children, pair.count >= 2 {
+            params[pair[0].atomValue ?? ""] = .string(pair[1].atomValue ?? "")
+          }
+        }
+        return ActionValue(name, params)
+      }
+      return ActionValue(offerExpr.atomValue ?? "")
+    }
     return GameRule(
       condition: { state in
-        guard let cond = capturedCondition else { return true }
-        let ctx = ExpressionEvaluator.Context(
-          state: state, components: components,
-          bindings: [:], actionParams: [:], randomSource: nil
-        )
-        let result = try? ExpressionEvaluator.eval(cond, context: ctx)
-        return result?.asBool ?? false
+        guard let check = compiledCondition else { return true }
+        let env = ExpressionCompiler.Env(state: state)
+        return (try? check(env))?.asBool ?? false
       },
-      actions: { _ in
-        offerExprs.map { expr in
-          if let name = expr.atomValue {
-            return ActionValue(name)
-          }
-          if let parts = expr.children, let name = parts.first?.atomValue {
-            var params: [String: DSLValue] = [:]
-            for paramExpr in parts.dropFirst() {
-              if let pair = paramExpr.children, pair.count >= 2 {
-                params[pair[0].atomValue ?? ""] = .string(pair[1].atomValue ?? "")
-              }
-            }
-            return ActionValue(name, params)
-          }
-          return ActionValue(expr.atomValue ?? "")
-        }
-      }
+      actions: { _ in precomputedActions }
     )
   }
 
@@ -150,25 +159,30 @@ enum PageBuilder {
       }
     }
 
-    let components = context.components
-    let engine = context.engine
-    let capturedCondition = try conditionExpr.map { try context.defines.expand($0) }
-    let capturedApply = applyExpr
+    let compiler = ExpressionCompiler(
+      components: context.components, schema: context.schema
+    )
+    let randomSource = context.randomSource
+    let compiledCondition: ExpressionCompiler.Expr? = try conditionExpr.map {
+      compiler.expr(try context.defines.expand($0))
+    }
+    let compiledApply: ExpressionCompiler.Stmt? = try applyExpr.map {
+      compiler.stmt(try context.defines.expand($0))
+    }
 
     return AutoRule(
       name: name,
       when: { state in
-        guard let cond = capturedCondition else { return false }
-        let ctx = ExpressionEvaluator.Context(
-          state: state, components: components,
-          bindings: [:], actionParams: [:], randomSource: nil
-        )
-        return (try? ExpressionEvaluator.eval(cond, context: ctx))?.asBool ?? false
+        guard let check = compiledCondition else { return false }
+        let env = ExpressionCompiler.Env(state: state)
+        return (try? check(env))?.asBool ?? false
       },
       apply: { state in
-        guard let body = capturedApply else { return [] }
-        let result = try? engine.execute(body, state: state, actionParams: [:])
-        return result?.logs ?? []
+        guard let body = compiledApply else { return [] }
+        let env = ExpressionCompiler.Env(
+          state: state, randomSource: randomSource
+        )
+        return (try? body(env))?.logs ?? []
       }
     )
   }
@@ -206,31 +220,37 @@ enum PageBuilder {
       }
     }
 
-    let components = context.components
-    let engine = context.engine
+    let compiler = ExpressionCompiler(
+      components: context.components, schema: context.schema
+    )
+    let randomSource = context.randomSource
     let actionSchema = context.actionSchema
-    let capturedCondition = try conditionExpr.map { try context.defines.expand($0) }
-    let capturedItems = try itemsExpr.map { try context.defines.expand($0) }
-    let capturedReducers = reducers
+    let capturedComponents = context.components
+    let compiledCondition: ExpressionCompiler.Expr? = try conditionExpr.map {
+      compiler.expr(try context.defines.expand($0))
+    }
+    let compiledItems: ExpressionCompiler.Expr? = try itemsExpr.map {
+      compiler.expr(try context.defines.expand($0))
+    }
+    var compiledReducers: [String: ExpressionCompiler.Stmt] = [:]
+    for (key, value) in reducers {
+      let expanded = try context.defines.expand(value)
+      compiledReducers[key] = compiler.stmt(expanded)
+    }
+    let capturedReducers = compiledReducers
     let transition = ActionValue(transitionName)
 
     return ForEachPage(
       name: name,
       isActive: { state in
-        guard let cond = capturedCondition else { return true }
-        let ctx = ExpressionEvaluator.Context(
-          state: state, components: components,
-          bindings: [:], actionParams: [:], randomSource: nil
-        )
-        return (try? ExpressionEvaluator.eval(cond, context: ctx))?.asBool ?? false
+        guard let check = compiledCondition else { return true }
+        let env = ExpressionCompiler.Env(state: state)
+        return (try? check(env))?.asBool ?? false
       },
       items: { state in
-        guard let expr = capturedItems else { return [] }
-        let ctx = ExpressionEvaluator.Context(
-          state: state, components: components,
-          bindings: [:], actionParams: [:], randomSource: nil
-        )
-        let result = try? ExpressionEvaluator.eval(expr, context: ctx)
+        guard let check = compiledItems else { return [] }
+        let env = ExpressionCompiler.Env(state: state)
+        let result = try? check(env)
         return result?.asList?.compactMap(\.displayString) ?? []
       },
       actionsFor: { _, item in
@@ -238,7 +258,7 @@ enum PageBuilder {
           let paramName = actionSchema.action(actionName)?
             .parameters.first?.name ?? "item"
           let value: DSLValue
-          if let enumType = components.isEnumCase(item) {
+          if let enumType = capturedComponents.isEnumCase(item) {
             value = .enumCase(type: enumType, value: item)
           } else {
             value = .string(item)
@@ -258,9 +278,11 @@ enum PageBuilder {
       reduce: { state, action in
         guard let body = capturedReducers[action.name] else { return nil }
         do {
-          let result = try engine.execute(
-            body, state: state, actionParams: action.parameters
+          let env = ExpressionCompiler.Env(
+            state: state, actionParams: action.parameters,
+            randomSource: randomSource
           )
+          let result = try body(env)
           return (result.logs, result.followUps)
         } catch {
           return nil
@@ -304,12 +326,24 @@ enum PageBuilder {
       }
     }
 
-    let components = context.components
-    let engine = context.engine
+    let compiler = ExpressionCompiler(
+      components: context.components, schema: context.schema
+    )
+    let randomSource = context.randomSource
     let actionSchema = context.actionSchema
-    let capturedCondition = try conditionExpr.map { try context.defines.expand($0) }
-    let capturedItems = try itemsExpr.map { try context.defines.expand($0) }
-    let capturedReducers = reducers
+    let capturedComponents = context.components
+    let compiledCondition: ExpressionCompiler.Expr? = try conditionExpr.map {
+      compiler.expr(try context.defines.expand($0))
+    }
+    let compiledItems: ExpressionCompiler.Expr? = try itemsExpr.map {
+      compiler.expr(try context.defines.expand($0))
+    }
+    var compiledReducers: [String: ExpressionCompiler.Stmt] = [:]
+    for (key, value) in reducers {
+      let expanded = try context.defines.expand(value)
+      compiledReducers[key] = compiler.stmt(expanded)
+    }
+    let capturedReducers = compiledReducers
     let transition = ActionValue(transitionName)
     let pass = passName.map { ActionValue($0) }
     let budget: Budget = .atMost(99)
@@ -318,20 +352,14 @@ enum PageBuilder {
       name: name,
       budget: budget,
       isActive: { state in
-        guard let cond = capturedCondition else { return true }
-        let ctx = ExpressionEvaluator.Context(
-          state: state, components: components,
-          bindings: [:], actionParams: [:], randomSource: nil
-        )
-        return (try? ExpressionEvaluator.eval(cond, context: ctx))?.asBool ?? false
+        guard let check = compiledCondition else { return true }
+        let env = ExpressionCompiler.Env(state: state)
+        return (try? check(env))?.asBool ?? false
       },
       items: { state in
-        guard let expr = capturedItems else { return [] }
-        let ctx = ExpressionEvaluator.Context(
-          state: state, components: components,
-          bindings: [:], actionParams: [:], randomSource: nil
-        )
-        let result = try? ExpressionEvaluator.eval(expr, context: ctx)
+        guard let check = compiledItems else { return [] }
+        let env = ExpressionCompiler.Env(state: state)
+        let result = try? check(env)
         return result?.asList?.compactMap(\.displayString) ?? []
       },
       actionsFor: { _, item in
@@ -339,7 +367,7 @@ enum PageBuilder {
           let paramName = actionSchema.action(actionName)?
             .parameters.first?.name ?? "item"
           let value: DSLValue
-          if let enumType = components.isEnumCase(item) {
+          if let enumType = capturedComponents.isEnumCase(item) {
             value = .enumCase(type: enumType, value: item)
           } else {
             value = .string(item)
@@ -360,9 +388,11 @@ enum PageBuilder {
       reduce: { state, action in
         guard let body = capturedReducers[action.name] else { return nil }
         do {
-          let result = try engine.execute(
-            body, state: state, actionParams: action.parameters
+          let env = ExpressionCompiler.Env(
+            state: state, actionParams: action.parameters,
+            randomSource: randomSource
           )
+          let result = try body(env)
           return (result.logs, result.followUps)
         } catch {
           return nil
@@ -408,11 +438,11 @@ enum PageBuilder {
         }
       case "terminal":
         if let parts = child.children, parts.count > 1 {
-          result.terminalExpr = parts[1]
+          result.terminalExpr = try context.defines.expand(parts[1])
         }
       case "rolloutTerminal":
         if let parts = child.children, parts.count > 1 {
-          result.rolloutTerminalExpr = parts[1]
+          result.rolloutTerminalExpr = try context.defines.expand(parts[1])
         }
       case "redeterminize":
         if let parts = child.children {

@@ -1,7 +1,7 @@
 // MARK: - DSLValue
 
 /// Runtime value type for the S-expression DSL interpreter.
-indirect enum DSLValue: Hashable, Sendable {
+enum DSLValue: Hashable, Sendable {
   case int(Int)
   case float(Float)
   case bool(Bool)

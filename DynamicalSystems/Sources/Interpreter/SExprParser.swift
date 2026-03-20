@@ -1,5 +1,5 @@
 /// A parsed S-expression: either an atom or a list of sub-expressions.
-indirect enum SExpr: Equatable, Sendable {
+enum SExpr: Equatable, Sendable {
   case atom(String)
   case list([SExpr])
 }
@@ -37,6 +37,33 @@ extension SExpr {
   /// For a list, the first child's atom string — the "tag" or "head" of the form.
   var tag: String? {
     children?.first?.atomValue
+  }
+}
+
+// MARK: - SExprArgs
+
+/// Zero-copy view into an SExpr children array.  Avoids the
+/// `Array(children.dropFirst())` copy that bulk-retains every String buffer.
+struct SExprArgs: RandomAccessCollection {
+  private let storage: [SExpr]
+  private let offset: Int
+
+  init(_ array: [SExpr], droppingFirst drop: Int = 0) {
+    self.storage = array
+    self.offset = drop
+  }
+
+  var startIndex: Int { 0 }
+  var endIndex: Int { storage.count - offset }
+
+  subscript(_ index: Int) -> SExpr {
+    storage[offset + index]
+  }
+
+  func index(after idx: Int) -> Int { idx + 1 }
+
+  func dropFirst(_ count: Int = 1) -> SExprArgs {
+    SExprArgs(storage, droppingFirst: offset + count)
   }
 }
 

@@ -8,11 +8,8 @@ struct PageBuilderTests {
     let stateInput = "(state (field phase Phase) (flag ended))"
     let registry = try ComponentRegistry(try SExprParser.parse(compInput))
     let schema = try StateSchema(try SExprParser.parse(stateInput))
-    let engine = ReduceEngine(
-      components: registry, defines: try DefineExpander([])
-    )
     return PageBuilder.BuildContext(
-      components: registry, schema: schema, engine: engine,
+      components: registry, schema: schema, randomSource: nil,
       actionSchema: ActionSchema.empty(),
       defines: try DefineExpander([])
     )
@@ -70,11 +67,8 @@ struct PageBuilderTests {
     """
     let registry = try ComponentRegistry(try SExprParser.parse(compInput))
     let schema = try StateSchema(try SExprParser.parse(stateInput))
-    let engine = ReduceEngine(
-      components: registry, defines: try DefineExpander([])
-    )
     let ctx = PageBuilder.BuildContext(
-      components: registry, schema: schema, engine: engine,
+      components: registry, schema: schema, randomSource: nil,
       actionSchema: ActionSchema.empty(),
       defines: try DefineExpander([])
     )
