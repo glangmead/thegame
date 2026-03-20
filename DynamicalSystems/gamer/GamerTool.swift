@@ -11,6 +11,7 @@ import Foundation
 enum Games: String, Codable, ExpressibleByArgument {
   case cantStop = "CantStop"
   case battleCard = "BattleCard"
+  case battleCardDotGame = "BattleCardDotGame"
   case BCMC = "MalayanCampaign"
   case legionsOfDarkness = "LegionsOfDarkness"
   case hearts = "Hearts"
@@ -43,6 +44,18 @@ struct GamerTool: AsyncParsableCommand {
     case .battleCard:
       var gameRunner = GameRunner(
         reducer: BCPages.game(),
+        numTrials: numTrials,
+        numMCTSIters: numMCTSIters,
+        numRollouts: numRollouts,
+        interactive: interactive,
+        logFile: logFile,
+        showAIHints: showAIHints
+      )
+      await gameRunner.run()
+    case .battleCardDotGame:
+      let game = try loadDotGame("BattleCard")
+      var gameRunner = GameRunner(
+        reducer: game,
         numTrials: numTrials,
         numMCTSIters: numMCTSIters,
         numRollouts: numRollouts,
@@ -319,4 +332,14 @@ where Reducer.State: GameState & TextTableAble & Sendable & CustomStringConverti
     lost: state.endedInDefeatFor.contains(player),
     table: tableString
   )
+}
+
+/// Load a .game file from the Resources directory, located relative to this source file.
+private func loadDotGame(_ name: String) throws -> ComposedGame<InterpretedState> {
+  let sourceDir = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent() // gamer/
+    .deletingLastPathComponent() // DynamicalSystems/
+  let gameURL = sourceDir.appendingPathComponent("Resources/\(name).game")
+  let source = try String(contentsOf: gameURL, encoding: .utf8)
+  return try GameBuilder.build(from: source)
 }

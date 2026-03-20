@@ -117,6 +117,65 @@ struct ComponentRegistryTests {
     }
   }
 
+  @Test func parseCrt2D() throws {
+    let input = """
+    (components
+      (enum Advantage {allies equal germans})
+      (crt attackCRT
+        (row Advantage) (col 1 6)
+        (results allyHits germanHits controlGained)
+        (allies  {1 (1 0 false) 2-4 (1 1 true)  5-6 (0 1 true)})
+        (equal   {1 (2 0 false) 2-4 (1 1 false) 5-6 (1 1 true)})
+        (germans {1 (3 0 false) 2-4 (2 1 false) 5-6 (1 0 true)})))
+    """
+    let sexpr = try SExprParser.parse(input)
+    let registry = try ComponentRegistry(sexpr)
+    let crt = registry.crts["attackCRT"]
+    #expect(crt != nil)
+    #expect(crt?.rowEnumName == "Advantage")
+    #expect(crt?.resultFields == ["allyHits", "germanHits", "controlGained"])
+    #expect(crt?.rows.count == 3)
+    #expect(crt?.lookup(row: "allies", dieRoll: 1)
+      == [.int(1), .int(0), .bool(false)])
+    #expect(crt?.lookup(row: "allies", dieRoll: 3)
+      == [.int(1), .int(1), .bool(true)])
+    #expect(crt?.lookup(row: "germans", dieRoll: 6)
+      == [.int(1), .int(0), .bool(true)])
+  }
+
+  @Test func parseCrt1D() throws {
+    let input = """
+    (components
+      (crt airdropPenalty
+        (col 1 6)
+        {1-2 2  3-4 1  5-6 0}))
+    """
+    let sexpr = try SExprParser.parse(input)
+    let registry = try ComponentRegistry(sexpr)
+    let crt = registry.crts["airdropPenalty"]
+    #expect(crt != nil)
+    #expect(crt?.rowEnumName == nil)
+    #expect(crt?.resultFields.isEmpty == true)
+    #expect(crt?.lookup(row: nil, dieRoll: 1) == [.int(2)])
+    #expect(crt?.lookup(row: nil, dieRoll: 4) == [.int(1)])
+    #expect(crt?.lookup(row: nil, dieRoll: 5) == [.int(0)])
+  }
+
+  @Test func crtLookupOutOfRange() throws {
+    let input = """
+    (components
+      (crt test
+        (col 1 6)
+        {1-3 10  4-6 20}))
+    """
+    let sexpr = try SExprParser.parse(input)
+    let registry = try ComponentRegistry(sexpr)
+    let crt = registry.crts["test"]
+    #expect(crt?.lookup(row: nil, dieRoll: 0) == nil)
+    #expect(crt?.lookup(row: nil, dieRoll: 7) == nil)
+    #expect(crt?.lookup(row: nil, dieRoll: 3) == [.int(10)])
+  }
+
   @Test func fnWithBoolValues() throws {
     let input = """
     (components

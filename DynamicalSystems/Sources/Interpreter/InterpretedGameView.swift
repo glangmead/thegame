@@ -68,6 +68,20 @@ struct InterpretedGameView: View {
     .navigationBarTitleDisplayMode(.inline)
   }
 
+  // MARK: - Bundle loading
+
+  static func loadBundleGame(
+    _ name: String
+  ) -> ComposedGame<InterpretedState> {
+    guard let url = Bundle.main.url(
+      forResource: name, withExtension: "game"
+    ) else {
+      fatalError("Missing resource: \(name).game")
+    }
+    let source = try! String(contentsOf: url) // swiftlint:disable:this force_try
+    return try! GameBuilder.build(from: source) // swiftlint:disable:this force_try
+  }
+
   // MARK: - Sample game for the main menu
 
   static let sampleGameSource = """

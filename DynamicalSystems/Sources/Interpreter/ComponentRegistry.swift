@@ -17,6 +17,30 @@ struct EnumFunction: Sendable {
   let mapping: [String: DSLValue] // case name -> value
 }
 
+// MARK: - CRT Definitions
+
+struct CRTEntry: Sendable {
+  let low: Int
+  let high: Int
+  let values: [DSLValue]
+}
+
+struct CRTDefinition: Sendable {
+  let name: String
+  let rowEnumName: String?
+  let resultFields: [String]
+  let rows: [String: [CRTEntry]]
+
+  func lookup(row: String?, dieRoll: Int) -> [DSLValue]? {
+    let key = row ?? ""
+    guard let entries = rows[key] else { return nil }
+    for entry in entries where dieRoll >= entry.low && dieRoll <= entry.high {
+      return entry.values
+    }
+    return nil
+  }
+}
+
 // MARK: - ComponentRegistry
 
 struct ComponentRegistry: Sendable {
@@ -24,6 +48,7 @@ struct ComponentRegistry: Sendable {
   private(set) var structs: [String: StructDefinition] = [:]
   private(set) var functions: [String: EnumFunction] = [:]
   private(set) var cards: [DSLValue] = []
+  private(set) var crts: [String: CRTDefinition] = [:]
 
   init(_ sexpr: SExpr) throws {
     guard let children = sexpr.children, sexpr.tag == "components" else {
@@ -36,6 +61,7 @@ struct ComponentRegistry: Sendable {
       case "struct": try parseStruct(child)
       case "fn": try parseFn(child)
       case "cards": try parseCards(child)
+      case "crt": try parseCrt(child)
       default: throw DSLError.unknownForm(tag)
       }
     }
@@ -180,6 +206,107 @@ extension ComponentRegistry {
     }
   }
 
+  // MARK: CRT
+
+  private mutating func parseCrt(_ sexpr: SExpr) throws {
+    guard let children = sexpr.children, children.count >= 3 else {
+      throw DSLError.malformed("crt needs name and data")
+    }
+    guard let name = children[1].atomValue else {
+      throw DSLError.malformed("crt name must be an atom")
+    }
+    let (rowEnumName, resultFields, dataChildren) =
+      classifyCrtChildren(Array(children.dropFirst(2)))
+    let rows = try buildCrtRows(
+      dataChildren, rowEnumName: rowEnumName,
+      multiResult: !resultFields.isEmpty
+    )
+    crts[name] = CRTDefinition(
+      name: name, rowEnumName: rowEnumName,
+      resultFields: resultFields, rows: rows
+    )
+  }
+
+  private func classifyCrtChildren(
+    _ children: [SExpr]
+  ) -> (rowEnum: String?, results: [String], data: [SExpr]) { // swiftlint:disable:this large_tuple
+    var rowEnumName: String?
+    var resultFields: [String] = []
+    var dataChildren: [SExpr] = []
+    for child in children {
+      switch child.tag {
+      case "row":
+        if let parts = child.children, parts.count >= 2 {
+          rowEnumName = parts[1].atomValue
+        }
+      case "col":
+        continue
+      case "results":
+        resultFields = child.children?.dropFirst().compactMap(\.atomValue) ?? []
+      default:
+        dataChildren.append(child)
+      }
+    }
+    return (rowEnumName, resultFields, dataChildren)
+  }
+
+  private func buildCrtRows(
+    _ dataChildren: [SExpr], rowEnumName: String?, multiResult: Bool
+  ) throws -> [String: [CRTEntry]] {
+    var rows: [String: [CRTEntry]] = [:]
+    if rowEnumName != nil {
+      for dataChild in dataChildren {
+        guard let parts = dataChild.children,
+              let caseName = parts.first?.atomValue,
+              parts.count >= 2,
+              let columnData = parts[1].children else {
+          throw DSLError.malformed("CRT row needs case name and data")
+        }
+        rows[caseName] = try parseCrtColumns(
+          columnData, multiResult: multiResult
+        )
+      }
+    } else if let dataChild = dataChildren.first,
+              let columnData = dataChild.children {
+      rows[""] = try parseCrtColumns(columnData, multiResult: false)
+    }
+    return rows
+  }
+
+  private func parseCrtColumns(
+    _ data: [SExpr], multiResult: Bool
+  ) throws -> [CRTEntry] {
+    var entries: [CRTEntry] = []
+    var idx = 0
+    while idx < data.count - 1 {
+      let (low, high) = try parseCrtRange(data[idx])
+      let valueExpr = data[idx + 1]
+      let values: [DSLValue]
+      if multiResult, let parts = valueExpr.children {
+        values = parts.map(parseLiteralValue)
+      } else {
+        values = [parseLiteralValue(valueExpr)]
+      }
+      entries.append(CRTEntry(low: low, high: high, values: values))
+      idx += 2
+    }
+    return entries
+  }
+
+  private func parseCrtRange(_ expr: SExpr) throws -> (Int, Int) {
+    guard let atom = expr.atomValue else {
+      throw DSLError.malformed("CRT range must be an atom")
+    }
+    if let single = Int(atom) { return (single, single) }
+    let parts = atom.split(separator: "-")
+    guard parts.count == 2,
+          let low = Int(parts[0]),
+          let high = Int(parts[1]) else {
+      throw DSLError.malformed("Invalid CRT range: \(atom)")
+    }
+    return (low, high)
+  }
+
   // MARK: Literal values
 
   private func parseLiteralValue(_ sexpr: SExpr) -> DSLValue {
@@ -190,6 +317,9 @@ extension ComponentRegistry {
       if str == "nil" { return .nil }
       if str.hasPrefix("\"") && str.hasSuffix("\"") && str.count >= 2 {
         return .string(String(str.dropFirst().dropLast()))
+      }
+      if let enumType = isEnumCase(str) {
+        return .enumCase(type: enumType, value: str)
       }
       return .string(str)
     }

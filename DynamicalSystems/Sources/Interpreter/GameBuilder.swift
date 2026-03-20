@@ -101,13 +101,14 @@ enum GameBuilder {
       ?? ComponentRegistry.empty()
     let schema = try sections.stateExpr.map { try StateSchema($0) }
       ?? StateSchema.empty()
-    _ = try sections.actionsExpr.map { try ActionSchema($0) }
+    let actions = try sections.actionsExpr.map { try ActionSchema($0) }
       ?? ActionSchema.empty()
     let defines = try DefineExpander(defineExprs)
     let engine = ReduceEngine(components: components, defines: defines)
 
     let buildContext = PageBuilder.BuildContext(
-      components: components, schema: schema, engine: engine
+      components: components, schema: schema, engine: engine,
+      actionSchema: actions, defines: defines
     )
     let rulesResult = try sections.rulesExpr.map {
       try PageBuilder.buildRules($0, context: buildContext)
@@ -139,7 +140,7 @@ enum GameBuilder {
       autoRules: rulesResult?.reactions ?? []
     )
     game.stateEvaluator = sections.metadataExpr.flatMap {
-      MetadataBuilder.buildHeuristic($0, components: components)
+      MetadataBuilder.buildHeuristic($0, components: components, defines: defines)
     }
     return game
   }

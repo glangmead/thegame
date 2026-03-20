@@ -1,0 +1,493 @@
+;; Battle Card: Market Garden
+;; Solo wargame — advance 30 Corps from Belgium to Arnhem
+;; Track positions: 0=Belgium, 1=Eindhoven, 2=Grave, 3=Nijmegen, 4=Arnhem
+;; Victory: 30 Corps reaches Arnhem. Defeat: turn 7 or any ally destroyed.
+
+(game "Battle Card: Market Garden"
+  (players 1)
+
+  (components
+    (enum Phase {setup airdrop battle reinforceGermans
+                 advance rollForWeather reinforce1st})
+    (enum AllyPiece {allied101st allied82nd allied1st})
+    (enum GermanPiece {germanEindhoven germanGrave
+                       germanNijmegen germanArnhem})
+    (enum City {eindhoven grave nijmegen arnhem})
+    (enum Weather {fog clear})
+    (enum Control {allies germans})
+    (enum Advantage {allies equal germans})
+
+    ;; German piece -> home city (enum, for control dict keys)
+    (fn germanCity GermanPiece
+      {germanEindhoven eindhoven germanGrave grave
+       germanNijmegen nijmegen germanArnhem arnhem})
+
+    ;; German piece -> home position (integer, for position comparisons)
+    (fn germanCityPos GermanPiece
+      {germanEindhoven 1 germanGrave 2
+       germanNijmegen 3 germanArnhem 4})
+
+    ;; Combat results tables
+    ;; Attack: ally initiates. Results are (damage-to-ally, damage-to-german, allied-control-gained?)
+    (crt attackCRT
+      (row Advantage) (col 1 6)
+      (results allyHits germanHits controlGained)
+      (allies  {1 (1 0 false) 2-4 (1 1 true)  5-6 (0 1 true)})
+      (equal   {1 (2 0 false) 2-4 (1 1 false) 5-6 (1 1 true)})
+      (germans {1 (3 0 false) 2-4 (2 1 false) 5-6 (1 0 true)}))
+
+    ;; Defend: ally defends. Results are (damage-to-ally, damage-to-german)
+    ;; After hits, if german stronger than ally, german takes control.
+    (crt defendCRT
+      (row Advantage) (col 1 6)
+      (results allyHits germanHits)
+      (allies  {1 (1 1) 2-6 (0 0)})
+      (equal   {1 (1 0) 2-4 (1 1) 5-6 (0 0)})
+      (germans {1 (2 0) 2-4 (1 0) 5-6 (0 0)}))
+
+    ;; Airdrop penalty: strength reduction on landing
+    (crt airdropPenalty
+      (col 1 6)
+      {1-2 2  3-4 1  5-6 0}))
+
+  (state
+    (field phase Phase)
+    (field weather Weather)
+    (counter corpsPosition 0 4)
+    (counter turnNumber 1 7)
+    (flag weatherCleared)
+    (flag reinforced1st)
+    (flag ended)
+    (flag victory)
+    (flag gameAcknowledged)
+    (dict allyPosition AllyPiece Int)
+    (dict allyStrength AllyPiece Int)
+    (dict germanStrength GermanPiece Int)
+    (dict control City Control)
+    (set alliesOnBoard AllyPiece)
+    (set germansOnBoard GermanPiece))
+
+  (graph
+    (track "road" length: 5))
+
+  (actions
+    ;; Setup
+    (action initialize)
+    ;; Airdrop (ForEachPage, parameterized by ally)
+    (action airdrop (piece AllyPiece))
+    ;; Battle (ForEachPage, parameterized by ally)
+    (action rollForAttack (piece AllyPiece))
+    (action rollForDefend (piece AllyPiece))
+    ;; Reinforce Germans (ForEachPage, parameterized by german)
+    (action reinforceGerman (piece GermanPiece))
+    ;; Advance
+    (action advance30Corps)
+    (action advanceAllies101st)
+    (action advanceAllies82nd)
+    (action advanceAllies1st)
+    (action skipAdvance)
+    ;; Weather and 1st reinforcement
+    (action rollWeather)
+    (action reinforce1stAirborne)
+    (action skipReinforce1st)
+    (action advanceTurn)
+    ;; ForEachPage transition actions
+    (action enterBattle)
+    (action enterReinforceGermans)
+    (action enterAdvance)
+    ;; Victory/defeat
+    (action claimVictory)
+    (action declareLoss)
+
+    ;; UI groups
+    (group "Battle" {rollForAttack rollForDefend})
+    (group "Advance" {advance30Corps advanceAllies101st
+                      advanceAllies82nd advanceAllies1st skipAdvance}))
+
+  (rules
+    (phases {setup airdrop battle reinforceGermans
+             advance rollForWeather reinforce1st})
+    (terminal (field ended))
+    (rolloutTerminal (field ended))
+
+    ;; ── Setup ──────────────────────────────────────────────
+    (page "Setup"
+      (rule (when (== phase setup))
+            (offer initialize))
+      (reduce initialize
+        (seq
+          ;; Allied positions and strengths
+          (setEntry allyPosition allied101st 1)
+          (setEntry allyPosition allied82nd 2)
+          (setEntry allyPosition allied1st 4)
+          (setEntry allyStrength allied101st 6)
+          (setEntry allyStrength allied82nd 6)
+          (setEntry allyStrength allied1st 5)
+          ;; German strengths (positions implicit in piece names)
+          (setEntry germanStrength germanEindhoven 2)
+          (setEntry germanStrength germanGrave 2)
+          (setEntry germanStrength germanNijmegen 1)
+          (setEntry germanStrength germanArnhem 2)
+          ;; All cities start German-controlled
+          (setEntry control eindhoven germans)
+          (setEntry control grave germans)
+          (setEntry control nijmegen germans)
+          (setEntry control arnhem germans)
+          ;; Populate on-board sets
+          (insertInto alliesOnBoard allied101st)
+          (insertInto alliesOnBoard allied82nd)
+          (insertInto alliesOnBoard allied1st)
+          (insertInto germansOnBoard germanEindhoven)
+          (insertInto germansOnBoard germanGrave)
+          (insertInto germansOnBoard germanNijmegen)
+          (insertInto germansOnBoard germanArnhem)
+          (setPhase airdrop))))
+
+    ;; ── Airdrop ────────────────────────────────────────────
+    ;; Each allied piece rolls for landing penalty.
+    (forEachPage "Airdrop"
+      (when (== phase airdrop))
+      (items (list allied101st allied82nd allied1st))
+      (transition enterBattle)
+      (reduce airdrop
+        (let piece (param piece)
+          (let roll (rollDie 6)
+            (let penalty (airdropPenalty $roll)
+              (seq
+                (setEntry allyStrength $piece
+                  (max 0 (- (lookup allyStrength $piece) $penalty)))
+                (log (format "Airdrop for {}: rolled {}, -{} strength"
+                  $piece $roll $penalty))))))))
+
+    ;; ── Battle ─────────────────────────────────────────────
+    ;; Each ally facing a german chooses attack or defend.
+    (forEachPage "Battle"
+      (when (== phase battle))
+      (items (filter (list allied101st allied82nd allied1st)
+        (\ (ally) (and (contains alliesOnBoard $ally)
+                       (hasFacingGerman $ally)))))
+      (transition enterReinforceGermans)
+
+      (reduce rollForAttack
+        (let piece (param piece)
+          (let opponent (germanAtCity (positionToCity (lookup allyPosition $piece)))
+            (let roll (rollDie 6)
+              (let result (attackCRT
+                    (compareStrength
+                      (lookup allyStrength $piece)
+                      (lookup germanStrength $opponent))
+                    $roll)
+                (seq
+                  (setEntry allyStrength $piece
+                    (max 0 (- (lookup allyStrength $piece)
+                              (. $result allyHits))))
+                  (setEntry germanStrength $opponent
+                    (max 1 (- (lookup germanStrength $opponent)
+                              (. $result germanHits))))
+                  (if (. $result controlGained)
+                    (setEntry control
+                      (positionToCity (lookup allyPosition $piece))
+                      allies)
+                    (log "No control change"))
+                  (log (format "Attack {}: rolled {}, ally -{}, german -{}"
+                    $piece $roll
+                    (. $result allyHits)
+                    (. $result germanHits)))))))))
+
+      (reduce rollForDefend
+        (let piece (param piece)
+          (let opponent (germanAtCity (positionToCity (lookup allyPosition $piece)))
+            (let roll (rollDie 6)
+              (let result (defendCRT
+                    (compareStrength
+                      (lookup allyStrength $piece)
+                      (lookup germanStrength $opponent))
+                    $roll)
+                (let newAllyStr (max 0 (- (lookup allyStrength $piece)
+                                          (. $result allyHits)))
+                  (let newGermanStr (max 1 (- (lookup germanStrength $opponent)
+                                              (. $result germanHits)))
+                    (seq
+                      (setEntry allyStrength $piece $newAllyStr)
+                      (setEntry germanStrength $opponent $newGermanStr)
+                      (if (> $newGermanStr $newAllyStr)
+                        (setEntry control
+                          (positionToCity (lookup allyPosition $piece))
+                          germans)
+                        (log "Control unchanged"))
+                      (log (format "Defend {}: rolled {}, ally -{}, german -{}"
+                        $piece $roll
+                        (. $result allyHits)
+                        (. $result germanHits))))))))))))
+
+    ;; ── Reinforce Germans ──────────────────────────────────
+    ;; Each german on board gets +1 strength.
+    ;; Nijmegen only reinforced if Arnhem is German-controlled.
+    ;; After reinforcing, check city control.
+    (forEachPage "Reinforce Germans"
+      (when (== phase reinforceGermans))
+      (items (filter (list germanEindhoven germanGrave
+                          germanNijmegen germanArnhem)
+        (\ (g) (contains germansOnBoard $g))))
+      (transition enterAdvance)
+      (reduce reinforceGerman
+        (let piece (param piece)
+          (seq
+            ;; Reinforce strength
+            (if (== $piece germanNijmegen)
+              (if (== (lookup control arnhem) germans)
+                (seq
+                  (setEntry germanStrength $piece
+                    (min 6 (+ (lookup germanStrength $piece) 1)))
+                  (log (format "+1 to {}" $piece)))
+                (log (format "+0 to {} (Allies control Arnhem)" $piece)))
+              (seq
+                (setEntry germanStrength $piece
+                  (min 6 (+ (lookup germanStrength $piece) 1)))
+                (log (format "+1 to {}" $piece))))
+            ;; Control check: if no opponent or german stronger, german control
+            (let allyHere (allyAtPosition (germanCityPos $piece))
+              (if (== $allyHere nil)
+                (setEntry control (germanCity $piece) germans)
+                (if (> (lookup germanStrength $piece)
+                       (lookup allyStrength $allyHere))
+                  (setEntry control (germanCity $piece) germans)
+                  (log "Control unchanged"))))))))
+
+    ;; ── Advance ────────────────────────────────────────────
+    ;; 30 Corps advances if next city is allied-controlled.
+    ;; Ally at 30 Corps' position can advance forward (or merge).
+    ;; Skip if blocked by German control.
+    (page "Advance"
+      ;; 30 Corps advances, removing german at destination
+      (rule (when (and (== phase advance)
+                       (< corpsPosition 4)
+                       (== (lookup control
+                             (positionToCity (+ corpsPosition 1)))
+                           allies)))
+            (offer advance30Corps))
+      ;; Ally at 30 Corps' position advances
+      (rule (when (and (== phase advance)
+                       (contains alliesOnBoard allied101st)
+                       (== (lookup allyPosition allied101st) corpsPosition)))
+            (offer advanceAllies101st))
+      (rule (when (and (== phase advance)
+                       (contains alliesOnBoard allied82nd)
+                       (== (lookup allyPosition allied82nd) corpsPosition)))
+            (offer advanceAllies82nd))
+      (rule (when (and (== phase advance)
+                       (contains alliesOnBoard allied1st)
+                       (== (lookup allyPosition allied1st) corpsPosition)))
+            (offer advanceAllies1st))
+      ;; Can't advance — next city is German-controlled
+      (rule (when (and (== phase advance)
+                       (< corpsPosition 4)
+                       (== (lookup control
+                             (positionToCity (+ corpsPosition 1)))
+                           germans)))
+            (offer skipAdvance))
+
+      (reduce advance30Corps
+        (let destPos (+ corpsPosition 1)
+          (let german (germanAtPosition $destPos)
+            (seq
+              (set corpsPosition $destPos)
+              (removeGerman $german)
+              (log (format "30 Corps advances to position {}" $destPos))
+              (setPhase rollForWeather)))))
+      (reduce advanceAllies101st
+        (seq (AdvanceAlly allied101st) (setPhase rollForWeather)))
+      (reduce advanceAllies82nd
+        (seq (AdvanceAlly allied82nd) (setPhase rollForWeather)))
+      (reduce advanceAllies1st
+        (seq (AdvanceAlly allied1st) (setPhase rollForWeather)))
+      (reduce skipAdvance
+        (seq
+          (log "Cannot advance into German control")
+          (setPhase rollForWeather))))
+
+    ;; ── Check Weather ──────────────────────────────────────
+    ;; If fog: roll d6, clear if roll <= turn number.
+    (page "Check Weather"
+      (rule (when (== phase rollForWeather))
+            (offer rollWeather))
+      (reduce rollWeather
+        (seq
+          (if (== weather fog)
+            (let roll (rollDie 6)
+              (if (<= $roll turnNumber)
+                (seq
+                  (set weather clear)
+                  (set weatherCleared true)
+                  (log (format "Rolled {} vs turn {}: weather clears"
+                    $roll turnNumber)))
+                (log (format "Rolled {} vs turn {}: still foggy"
+                  $roll turnNumber))))
+            (log "Already clear"))
+          (setPhase reinforce1st))))
+
+    ;; ── Reinforce 1st Airborne ─────────────────────────────
+    ;; If weather just cleared and not yet reinforced: +1 to 1st.
+    ;; Then advance turn and loop back to battle.
+    (page "Reinforce 1st"
+      (rule (when (and (== phase reinforce1st)
+                       weatherCleared
+                       (not reinforced1st)))
+            (offer reinforce1stAirborne))
+      (rule (when (and (== phase reinforce1st)
+                       (or (not weatherCleared) reinforced1st)))
+            (offer skipReinforce1st))
+      (reduce reinforce1stAirborne
+        (seq
+          (setEntry allyStrength allied1st
+            (min 6 (+ (lookup allyStrength allied1st) 1)))
+          (set reinforced1st true)
+          (log "Reinforcements reach 1st Airborne: +1 strength")
+          (chain advanceTurn)))
+      (reduce skipReinforce1st
+        (seq
+          (log "Unable to reinforce 1st Airborne")
+          (chain advanceTurn)))
+      (reduce advanceTurn
+        (seq
+          (increment turnNumber 1)
+          (log (format "Turn {}" turnNumber))
+          (setPhase battle))))
+
+    ;; ── ForEachPage Transitions ────────────────────────────
+    ;; Reducer-only page: handles actions auto-dispatched by
+    ;; ForEachPages when all items are processed.
+    (page "Phase Transitions"
+      (reduce enterBattle (setPhase battle))
+      (reduce enterReinforceGermans (setPhase reinforceGermans))
+      (reduce enterAdvance (setPhase advance)))
+
+    ;; ── Victory ────────────────────────────────────────────
+    (priority "Victory"
+      (rule (when (and (== corpsPosition 4) (not ended)))
+            (offer claimVictory))
+      (reduce claimVictory
+        (seq (endGame victory)
+             (log "30 Corps reaches Arnhem — Victory!"))))
+
+    ;; ── Defeat ─────────────────────────────────────────────
+    (priority "Defeat"
+      (rule (when (and (not ended)
+                       (or (>= turnNumber 7)
+                           (allyDestroyed))))
+            (offer declareLoss))
+      (reduce declareLoss
+        (seq (endGame defeat)
+             (log "Defeat"))))))
+
+;; ── Defines ──────────────────────────────────────────────
+
+;; Int position -> City enum (for control dict lookups)
+(define "positionToCity" (pos)
+  (if (== $pos 1) eindhoven
+  (if (== $pos 2) grave
+  (if (== $pos 3) nijmegen
+  arnhem))))
+
+;; Int position -> GermanPiece at that position (or nil)
+(define "germanAtPosition" (pos)
+  (if (== $pos 1) germanEindhoven
+  (if (== $pos 2) germanGrave
+  (if (== $pos 3) germanNijmegen
+  (if (== $pos 4) germanArnhem
+  nil)))))
+
+;; City enum -> GermanPiece via component fn is germanAtCity
+;; (declared as fn in components would require City exhaustiveness
+;;  including belgium which has no german — use define instead)
+(define "germanAtCity" (city)
+  (if (== $city eindhoven) germanEindhoven
+  (if (== $city grave) germanGrave
+  (if (== $city nijmegen) germanNijmegen
+  germanArnhem))))
+
+;; Does this ally face a living german at the same position?
+(define "hasFacingGerman" (ally)
+  (contains germansOnBoard
+    (germanAtPosition (lookup allyPosition $ally))))
+
+;; Find the allied piece at an integer position (or nil)
+(define "allyAtPosition" (pos)
+  (if (and (contains alliesOnBoard allied101st)
+           (== (lookup allyPosition allied101st) $pos))
+    allied101st
+  (if (and (contains alliesOnBoard allied82nd)
+           (== (lookup allyPosition allied82nd) $pos))
+    allied82nd
+  (if (and (contains alliesOnBoard allied1st)
+           (== (lookup allyPosition allied1st) $pos))
+    allied1st
+  nil))))
+
+;; Compare two strength values -> Advantage enum
+(define "compareStrength" (allyStr germanStr)
+  (if (> $allyStr $germanStr) allies
+  (if (< $allyStr $germanStr) germans
+  equal)))
+
+;; Remove an allied piece from all state
+(define "removeAlly" (piece)
+  (seq
+    (removeFrom alliesOnBoard $piece)
+    (removeEntry allyPosition $piece)
+    (removeEntry allyStrength $piece)))
+
+;; Remove a german piece from all state
+(define "removeGerman" (piece)
+  (seq
+    (removeFrom germansOnBoard $piece)
+    (removeEntry germanStrength $piece)))
+
+;; Advance an allied piece one position forward.
+;; If another ally is already at the destination, merge strengths.
+(define "AdvanceAlly" (piece)
+  (let destPos (+ (lookup allyPosition $piece) 1)
+    (let existing (allyAtPosition $destPos)
+      (if (!= $existing nil)
+        ;; Merge into existing ally
+        (seq
+          (setEntry allyStrength $existing
+            (min 6 (+ (lookup allyStrength $piece)
+                      (lookup allyStrength $existing))))
+          (removeAlly $piece)
+          (log (format "{} merges into {} at position {}"
+            $piece $existing $destPos)))
+        ;; Normal advance
+        (seq
+          (setEntry allyPosition $piece $destPos)
+          (log (format "{} advances to position {}"
+            $piece $destPos)))))))
+
+;; Is any on-board ally at 0 strength?
+(define "allyDestroyed" ()
+  (or (and (contains alliesOnBoard allied101st)
+           (== (lookup allyStrength allied101st) 0))
+      (or (and (contains alliesOnBoard allied82nd)
+               (== (lookup allyStrength allied82nd) 0))
+          (and (contains alliesOnBoard allied1st)
+               (== (lookup allyStrength allied1st) 0)))))
+
+;; Count allied-controlled cities (for heuristic)
+(define "alliedCityCount" ()
+  (+ (+ (if (== (lookup control eindhoven) allies) 1 0)
+        (if (== (lookup control grave) allies) 1 0))
+     (+ (if (== (lookup control nijmegen) allies) 1 0)
+        (if (== (lookup control arnhem) allies) 1 0))))
+
+;; ── Metadata ─────────────────────────────────────────────
+
+(metadata
+  (ai
+    (heuristic
+      (if ended
+        (if victory 1.0
+          (* 0.5 (/ corpsPosition 4.0)))
+        (if (== corpsPosition 0)
+          0.0
+          (+ (* 0.5 (/ corpsPosition 4.0))
+             (* 0.25 (/ (alliedCityCount) 4.0))))))))

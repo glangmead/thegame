@@ -1,7 +1,8 @@
 enum MetadataBuilder {
   static func buildHeuristic(
     _ sexpr: SExpr,
-    components: ComponentRegistry
+    components: ComponentRegistry,
+    defines: DefineExpander
   ) -> ((InterpretedState) -> Float)? {
     guard let children = sexpr.children, sexpr.tag == "metadata" else { return nil }
     for child in children.dropFirst() {
@@ -9,7 +10,8 @@ enum MetadataBuilder {
       for aiChild in aiParts.dropFirst() {
         if aiChild.tag == "heuristic",
            let hParts = aiChild.children, hParts.count > 1 {
-          let expr = hParts[1]
+          let expanded = try? defines.expand(hParts[1])
+          guard let expr = expanded else { continue }
           let capturedComponents = components
           return { state in
             let ctx = ExpressionEvaluator.Context(

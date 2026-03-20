@@ -12,7 +12,9 @@ struct PageBuilderTests {
       components: registry, defines: try DefineExpander([])
     )
     return PageBuilder.BuildContext(
-      components: registry, schema: schema, engine: engine
+      components: registry, schema: schema, engine: engine,
+      actionSchema: ActionSchema.empty(),
+      defines: try DefineExpander([])
     )
   }
 
@@ -72,7 +74,9 @@ struct PageBuilderTests {
       components: registry, defines: try DefineExpander([])
     )
     let ctx = PageBuilder.BuildContext(
-      components: registry, schema: schema, engine: engine
+      components: registry, schema: schema, engine: engine,
+      actionSchema: ActionSchema.empty(),
+      defines: try DefineExpander([])
     )
     let input = try SExprParser.parse("""
     (rules

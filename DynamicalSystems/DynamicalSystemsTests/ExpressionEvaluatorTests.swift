@@ -91,4 +91,85 @@ struct ExpressionEvaluatorTests {
     let result = try ExpressionEvaluator.eval(expr, context: ctx)
     #expect(result == .list([.int(2), .int(4), .int(6)]))
   }
+
+  // MARK: - CRT tests
+
+  @Test func crt2DLookup() throws {
+    let compInput = """
+    (components
+      (enum Advantage {allies equal germans})
+      (crt attackCRT
+        (row Advantage) (col 1 6)
+        (results allyHits germanHits controlGained)
+        (allies  {1 (1 0 false) 2-4 (1 1 true)  5-6 (0 1 true)})
+        (equal   {1 (2 0 false) 2-4 (1 1 false) 5-6 (1 1 true)})
+        (germans {1 (3 0 false) 2-4 (2 1 false) 5-6 (1 0 true)})))
+    """
+    let stateInput = "(state (counter x 0 1))"
+    let registry = try ComponentRegistry(try SExprParser.parse(compInput))
+    let schema = try StateSchema(try SExprParser.parse(stateInput))
+    let state = InterpretedState(schema: schema)
+    let ctx = ExpressionEvaluator.Context(
+      state: state, components: registry, bindings: [:],
+      actionParams: [:], randomSource: nil
+    )
+    let expr = try SExprParser.parse("(attackCRT allies 3)")
+    let result = try ExpressionEvaluator.eval(expr, context: ctx)
+    #expect(result.asStruct?.type == "attackCRTResult")
+    #expect(result.asStruct?.fields["allyHits"] == .int(1))
+    #expect(result.asStruct?.fields["germanHits"] == .int(1))
+    #expect(result.asStruct?.fields["controlGained"] == .bool(true))
+  }
+
+  @Test func crt2DDotAccess() throws {
+    let compInput = """
+    (components
+      (enum Advantage {allies equal germans})
+      (crt attackCRT
+        (row Advantage) (col 1 6)
+        (results allyHits germanHits controlGained)
+        (allies  {1 (1 0 false) 2-4 (1 1 true)  5-6 (0 1 true)})
+        (equal   {1 (2 0 false) 2-4 (1 1 false) 5-6 (1 1 true)})
+        (germans {1 (3 0 false) 2-4 (2 1 false) 5-6 (1 0 true)})))
+    """
+    let stateInput = "(state (counter x 0 1))"
+    let registry = try ComponentRegistry(try SExprParser.parse(compInput))
+    let schema = try StateSchema(try SExprParser.parse(stateInput))
+    let state = InterpretedState(schema: schema)
+    let ctx = ExpressionEvaluator.Context(
+      state: state, components: registry, bindings: [:],
+      actionParams: [:], randomSource: nil
+    )
+    let expr = try SExprParser.parse("(. (attackCRT equal 1) allyHits)")
+    let result = try ExpressionEvaluator.eval(expr, context: ctx)
+    #expect(result == .int(2))
+  }
+
+  @Test func crt1DLookup() throws {
+    let compInput = """
+    (components
+      (crt airdropPenalty
+        (col 1 6)
+        {1-2 2  3-4 1  5-6 0}))
+    """
+    let stateInput = "(state (counter x 0 1))"
+    let registry = try ComponentRegistry(try SExprParser.parse(compInput))
+    let schema = try StateSchema(try SExprParser.parse(stateInput))
+    let state = InterpretedState(schema: schema)
+    let ctx = ExpressionEvaluator.Context(
+      state: state, components: registry, bindings: [:],
+      actionParams: [:], randomSource: nil
+    )
+    let expr = try SExprParser.parse("(airdropPenalty 2)")
+    let result = try ExpressionEvaluator.eval(expr, context: ctx)
+    #expect(result == .int(2))
+
+    let expr2 = try SExprParser.parse("(airdropPenalty 4)")
+    let result2 = try ExpressionEvaluator.eval(expr2, context: ctx)
+    #expect(result2 == .int(1))
+
+    let expr3 = try SExprParser.parse("(airdropPenalty 6)")
+    let result3 = try ExpressionEvaluator.eval(expr3, context: ctx)
+    #expect(result3 == .int(0))
+  }
 }

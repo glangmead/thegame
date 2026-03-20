@@ -5,6 +5,8 @@ enum PageBuilder {
     let components: ComponentRegistry
     let schema: StateSchema
     let engine: ReduceEngine
+    let actionSchema: ActionSchema
+    let defines: DefineExpander
   }
 
   struct RulesResult {
@@ -96,7 +98,7 @@ enum PageBuilder {
     }
 
     let components = context.components
-    let capturedCondition = conditionExpr
+    let capturedCondition = try conditionExpr.map { try context.defines.expand($0) }
     return GameRule(
       condition: { state in
         guard let cond = capturedCondition else { return true }
@@ -150,7 +152,7 @@ enum PageBuilder {
 
     let components = context.components
     let engine = context.engine
-    let capturedCondition = conditionExpr
+    let capturedCondition = try conditionExpr.map { try context.defines.expand($0) }
     let capturedApply = applyExpr
 
     return AutoRule(
@@ -206,8 +208,9 @@ enum PageBuilder {
 
     let components = context.components
     let engine = context.engine
-    let capturedCondition = conditionExpr
-    let capturedItems = itemsExpr
+    let actionSchema = context.actionSchema
+    let capturedCondition = try conditionExpr.map { try context.defines.expand($0) }
+    let capturedItems = try itemsExpr.map { try context.defines.expand($0) }
     let capturedReducers = reducers
     let transition = ActionValue(transitionName)
 
@@ -231,10 +234,22 @@ enum PageBuilder {
         return result?.asList?.compactMap(\.displayString) ?? []
       },
       actionsFor: { _, item in
-        capturedReducers.keys.map { ActionValue($0, ["item": .string(item)]) }
+        capturedReducers.keys.map { actionName in
+          let paramName = actionSchema.action(actionName)?
+            .parameters.first?.name ?? "item"
+          let value: DSLValue
+          if let enumType = components.isEnumCase(item) {
+            value = .enumCase(type: enumType, value: item)
+          } else {
+            value = .string(item)
+          }
+          return ActionValue(actionName, [paramName: value])
+        }
       },
       itemFrom: { action in
-        action.parameters["item"]?.asString
+        guard capturedReducers.keys.contains(action.name) else { return nil }
+        let val = action.parameters.values.first
+        return val?.asEnumValue ?? val?.asString
       },
       transitionAction: transition,
       isPhaseEntry: { action in
@@ -291,8 +306,9 @@ enum PageBuilder {
 
     let components = context.components
     let engine = context.engine
-    let capturedCondition = conditionExpr
-    let capturedItems = itemsExpr
+    let actionSchema = context.actionSchema
+    let capturedCondition = try conditionExpr.map { try context.defines.expand($0) }
+    let capturedItems = try itemsExpr.map { try context.defines.expand($0) }
     let capturedReducers = reducers
     let transition = ActionValue(transitionName)
     let pass = passName.map { ActionValue($0) }
@@ -319,10 +335,22 @@ enum PageBuilder {
         return result?.asList?.compactMap(\.displayString) ?? []
       },
       actionsFor: { _, item in
-        capturedReducers.keys.map { ActionValue($0, ["item": .string(item)]) }
+        capturedReducers.keys.map { actionName in
+          let paramName = actionSchema.action(actionName)?
+            .parameters.first?.name ?? "item"
+          let value: DSLValue
+          if let enumType = components.isEnumCase(item) {
+            value = .enumCase(type: enumType, value: item)
+          } else {
+            value = .string(item)
+          }
+          return ActionValue(actionName, [paramName: value])
+        }
       },
       itemFrom: { action in
-        action.parameters["item"]?.asString
+        guard capturedReducers.keys.contains(action.name) else { return nil }
+        let val = action.parameters.values.first
+        return val?.asEnumValue ?? val?.asString
       },
       transitionAction: transition,
       passAction: pass,

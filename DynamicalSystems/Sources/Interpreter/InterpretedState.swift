@@ -239,6 +239,33 @@ extension InterpretedState: GameState {
   }
 }
 
+// MARK: - TextTableAble (required by GameRunner)
+
+extension InterpretedState: TextTableAble {
+  func printTable<Target>(
+    to output: inout Target
+  ) where Target: TextOutputStream {
+    output.write("phase: \(phase)  ended: \(ended)  victory: \(victory)\n")
+    for (name, value) in counters.sorted(by: { $0.key < $1.key }) {
+      output.write("  \(name): \(value)\n")
+    }
+    for (name, value) in flags.sorted(by: { $0.key < $1.key }) {
+      output.write("  \(name): \(value)\n")
+    }
+    for (name, value) in fields.sorted(by: { $0.key < $1.key }) {
+      output.write("  \(name): \(value.displayString)\n")
+    }
+    for (name, dict) in dicts.sorted(by: { $0.key < $1.key }) {
+      let entries = dict.map { "\($0.key):\($0.value.displayString)" }
+        .sorted().joined(separator: ", ")
+      output.write("  \(name): {\(entries)}\n")
+    }
+    for (name, set) in sets.sorted(by: { $0.key < $1.key }) {
+      output.write("  \(name): {\(set.sorted().joined(separator: ", "))}\n")
+    }
+  }
+}
+
 // MARK: - Copying (for MCTS rollouts)
 
 extension InterpretedState {

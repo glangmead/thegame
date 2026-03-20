@@ -132,6 +132,7 @@ factor out repeated patterns.
 | Limited-action phases | `(budgetedPage ...)` |
 | Automatic consequences | `(reaction ...)` |
 | Reusable logic | `(define "Name" (params) body)` |
+| Combat results tables | `(crt ...)` in components |
 | Die rolls | `(rollDie sides)` in reduce |
 | Follow-up actions | `(chain actionName)` in reduce |
 

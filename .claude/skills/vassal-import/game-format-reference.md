@@ -100,6 +100,46 @@ Each `(card ...)` produces a `Card` struct with fields: `number` (Int),
 `title` (String), `deck` (String), plus any `key: value` pairs as additional
 fields.
 
+### Combat Results Tables (CRT)
+
+Tabular lookup for combat or similar mechanics. Two forms: 2D (enum row +
+die-roll column) and 1D (die-roll column only).
+
+#### 2D CRT
+
+```scheme
+(crt attackCRT
+  (row Advantage) (col 1 6)
+  (results allyHits germanHits controlGained)
+  (allies  {1 (1 0 false) 2-4 (1 1 true)  5-6 (0 1 true)})
+  (equal   {1 (2 0 false) 2-4 (1 1 false) 5-6 (1 1 true)})
+  (germans {1 (3 0 false) 2-4 (2 1 false) 5-6 (1 0 true)}))
+```
+
+- `(row EnumName)` — the row index type (must be a declared enum)
+- `(col min max)` — the die range (documentation only; not enforced)
+- `(results field1 field2 ...)` — names for each result column
+- Each remaining child is `(caseName {range1 result1 ...})`, one per enum case
+
+Column ranges use notation `N` (single value) or `N-M` (inclusive range).
+Results are tuples `(val1 val2 ...)` matching the results fields.
+
+Called as `(crtName rowValue dieRoll)`. Returns a struct with the declared
+result fields, accessible via `(. result fieldName)`.
+
+#### 1D CRT
+
+```scheme
+(crt airdropPenalty
+  (col 1 6)
+  {1-2 2  3-4 1  5-6 0})
+```
+
+No `(row ...)` or `(results ...)`. A single brace-enclosed list of
+range-value pairs.
+
+Called as `(crtName dieRoll)`. Returns a scalar value directly.
+
 ---
 
 ## State Schema

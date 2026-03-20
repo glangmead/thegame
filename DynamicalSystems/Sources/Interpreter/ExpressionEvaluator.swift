@@ -1,4 +1,7 @@
+// swiftlint:disable file_length
 // MARK: - ExpressionEvaluator
+
+import Foundation
 
 /// Pure evaluator: reads SExpr trees against InterpretedState + ComponentRegistry,
 /// producing DSLValue results. No mutations.
@@ -89,13 +92,17 @@ enum ExpressionEvaluator {
     case ">=": return try intComparison(args, context: context, compare: >=)
     case "<=": return try intComparison(args, context: context, compare: <=)
     case "and":
-      let lhs = try eval(args[0], context: context)
-      guard lhs.asBool == true else { return .bool(false) }
-      return try eval(args[1], context: context)
+      for arg in args {
+        let val = try eval(arg, context: context)
+        guard val.asBool == true else { return .bool(false) }
+      }
+      return .bool(true)
     case "or":
-      let lhs = try eval(args[0], context: context)
-      if lhs.asBool == true { return .bool(true) }
-      return try eval(args[1], context: context)
+      for arg in args {
+        let val = try eval(arg, context: context)
+        if val.asBool == true { return .bool(true) }
+      }
+      return .bool(false)
     case "not":
       let val = try eval(args[0], context: context)
       return .bool(!(val.asBool ?? false))
@@ -119,6 +126,8 @@ enum ExpressionEvaluator {
     case "map": return try evalMap(args, context: context)
     case "randomElement": return try evalRandomElement(args, context: context)
     case "historyCount": return try evalHistoryCount(args, context: context)
+    case _ where context.components.crts[tag] != nil:
+      return try evalCrtCall(tag, args: args, context: context)
     case _ where context.components.functions[tag] != nil:
       return try evalFnCall(tag, args: args, context: context)
     default:
@@ -318,6 +327,43 @@ extension ExpressionEvaluator {
       return result
     }
     throw DSLError.undefinedFunction("\(tag)(\(argKey))")
+  }
+
+  private static func evalCrtCall(
+    _ name: String, args: [SExpr], context: Context
+  ) throws -> DSLValue {
+    guard let crt = context.components.crts[name] else {
+      throw DSLError.undefinedFunction(name)
+    }
+    if crt.rowEnumName != nil {
+      guard args.count >= 2 else {
+        throw DSLError.malformed("2D CRT requires row and die roll")
+      }
+      let rowVal = try eval(args[0], context: context)
+      let dieRoll = try eval(args[1], context: context).asInt ?? 0
+      let rowKey = rowVal.asEnumValue ?? rowVal.displayString
+      guard let values = crt.lookup(row: rowKey, dieRoll: dieRoll) else {
+        throw DSLError.typeError(
+          "CRT lookup failed: \(name)(\(rowKey), \(dieRoll))"
+        )
+      }
+      if !crt.resultFields.isEmpty {
+        var fields: [String: DSLValue] = [:]
+        for (idx, fieldName) in crt.resultFields.enumerated() {
+          fields[fieldName] = idx < values.count ? values[idx] : .nil
+        }
+        return .structValue(type: "\(name)Result", fields: fields)
+      }
+      return values.first ?? .nil
+    }
+    guard !args.isEmpty else {
+      throw DSLError.malformed("1D CRT requires die roll")
+    }
+    let dieRoll = try eval(args[0], context: context).asInt ?? 0
+    guard let values = crt.lookup(row: nil, dieRoll: dieRoll) else {
+      throw DSLError.typeError("CRT lookup failed: \(name)(\(dieRoll))")
+    }
+    return values.first ?? .nil
   }
 }
 
