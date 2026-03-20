@@ -1,7 +1,7 @@
 # Implementing a Board Game from Vassal Module + Rules PDF
 
-A process for turning a physical board game into a working digital implementation
-using TDD, with the DynamicalSystems Swift framework as the target.
+A process for turning a physical board game into a playable `.game` file
+interpreted by the DynamicalSystems app, with MCTS AI.
 
 ## When to Use
 
@@ -12,14 +12,23 @@ When the user wants to implement a new board game and has:
 
 ## Prerequisites
 
-Read the framework code before starting:
-- `Sources/Game.swift` — protocols: `GameComponents`, `GameState`, `PlayableGame`
-- `Sources/Framework/ComposedGame.swift` — `oapply()` composition
-- `Sources/Framework/RulePage.swift` — condition/action rule pages
-- `Sources/Framework/ForEachPage.swift`, `BudgetedPhasePage.swift` — meta-rules
+Read the `.game` format reference before starting:
+- `.claude/skills/vassal-import/game-format-reference.md` — complete syntax reference
 
-Read at least one existing implementation (e.g., `Sources/Legions of Darkness/`)
-to see the Components -> State -> Pages -> ComposedGame -> Graph -> SceneConfig pattern.
+Read at least one existing `.game` file or the test examples in
+`DynamicalSystemsTests/InterpretedGameTests.swift` to see the pattern.
+
+For Vassal module interpretation:
+- `.claude/skills/vassal-import/vassal_reference_manual.md` — XML parsing guide
+
+## Output
+
+The deliverable is a `.game` file (S-expression text) that the app interprets
+at runtime. No Swift code is written for game logic — the interpreter handles
+components, state, actions, pages, reactions, and MCTS integration.
+
+The `.game` file should be placed at a location the user specifies, or
+proposed as inline text for review.
 
 ## Phase 1: Extract Every Sentence
 
@@ -41,7 +50,7 @@ Fields:
 - `sentence`: exact sentence text
 - `category`: `rule` | `flavor` | `formatting` | `example` | `cross_reference`
 - `status`: `not_started` | `implemented` | `partially_implemented` | `not_implemented` | `not_applicable`
-- `evaluation`: which code/tests cover this sentence, or why it's skipped
+- `evaluation`: which `.game` section covers this sentence, or why it's skipped
 
 Roughly 30% of sentences will be non-`rule`. Marking them upfront prevents
 wasted effort during implementation. The remaining `rule` sentences are the
@@ -66,36 +75,65 @@ Read the `buildFile` XML to catalog the physical components:
 - Board layout (tracks, grids, regions)
 - Decks, card counts, setup positions
 
-See `docs/vassal_reference_manual.md` for XML interpretation. The module gives
-nouns (pieces, positions); the rules PDF gives verbs (logic, phases).
+See `.claude/skills/vassal-import/vassal_reference_manual.md` for XML
+interpretation. The module gives nouns (pieces, positions); the rules PDF
+gives verbs (logic, phases).
 
-## Phase 4: Agglutinative Implementation
+## Phase 4: Build the .game File
 
-Work through `rule` sentences with `status: "not_started"`, implementing them
-in small bundles. Each bundle becomes one RulePage or AutoRule.
+Work through `rule` sentences with `status: "not_started"`, building the
+`.game` file incrementally. Each bundle of related sentences maps to DSL
+constructs.
 
 **The process for each bundle:**
 
 1. Find a minimal cluster of related `rule` sentences (often 2-5 sentences
    that describe one mechanic).
-2. Write tests for those sentences (red). Cite rule numbers in comments.
-3. Implement the minimal code to pass (green) — typically one of:
-   - A mutating function on State
-   - A RulePage with condition/actions/reduce
-   - An AutoRule
-4. Run tests to verify.
-5. Update each sentence's `status` to `implemented` and `evaluation` to
-   cite the test names and source files.
-6. Move to the next bundle.
+2. Translate them to the corresponding DSL section:
+   - Nouns (piece types, tracks, enums) → `(components ...)`
+   - Mutable fields → `(state ...)`
+   - Player choices → `(actions ...)`
+   - Board topology → `(graph ...)`
+   - Phase flow, conditions, effects → `(rules ...)` pages and reactions
+   - Reusable patterns → `(define ...)`
+3. Update each sentence's `status` to `implemented` and `evaluation` to
+   cite the DSL section that covers it.
+4. Test by loading the `.game` file with `GameBuilder.buildValidated(from:)`.
 
-**Ordering:** Start with components and state (enums, structs, setup), then
-core mechanics (movement, combat, resources), then card/event logic, then
-victory/defeat, then housekeeping. But follow natural dependencies — if
-sentence A references a concept from sentence B, implement B first.
+**Ordering:** Start with components and state (enums, structs, cards), then
+graph (tracks, sites), then actions, then core mechanics as pages (movement,
+combat, resources), then card/event logic, then victory/defeat priority pages,
+then housekeeping, then reactions.
 
-**Composition:** As pages accumulate, compose them with `oapply()` into a
-`ComposedGame`. Priority pages handle victory/defeat. AutoRules handle
-cross-cutting consequences that fire after any action.
+**Composition:** Pages accumulate in the `(rules ...)` section. Priority pages
+handle victory/defeat. Reactions handle cross-cutting consequences. Defines
+factor out repeated patterns.
+
+### DSL Mapping Guide
+
+| Game concept | DSL construct |
+|--------------|---------------|
+| Piece/counter types | `(enum ...)` in components |
+| Type properties (strength, cost) | `(fn ...)` in components |
+| Card data | `(cards ...)` in components |
+| Record types | `(struct ...)` in components |
+| Bounded numbers (HP, energy) | `(counter name min max)` in state |
+| On/off toggles | `(flag name)` in state |
+| Per-entity state | `(dict name KeyType ValueType)` in state |
+| Collections | `(set name Type)` in state |
+| Card piles | `(deck name CardType)` in state |
+| Nullable values | `(optional name Type)` in state |
+| Army tracks, paths | `(track "name" length: N)` in graph |
+| Named locations | `(site name)` in graph |
+| Player choices | `(action name (param Type))` in actions |
+| Phase flow | `(page ...)` with `(when (== phase X))` |
+| Interrupts, victory/defeat | `(priority ...)` |
+| Process-each-item mechanics | `(forEachPage ...)` |
+| Limited-action phases | `(budgetedPage ...)` |
+| Automatic consequences | `(reaction ...)` |
+| Reusable logic | `(define "Name" (params) body)` |
+| Die rolls | `(rollDie sides)` in reduce |
+| Follow-up actions | `(chain actionName)` in reduce |
 
 ## Phase 5: Audit
 
@@ -104,32 +142,28 @@ Scan the sentence JSON for gaps:
 1. Filter `category: "rule"` with `status: "not_started"` — these are missed
    rules. Implement or mark `not_implemented` with justification.
 2. Filter `status: "implemented"` — re-read each sentence and verify the
-   `evaluation` is accurate. Does the test actually test what the sentence says?
+   `evaluation` is accurate.
 3. Produce `docs/<game>_rules_audit_summary.md`.
 
-## Phase 6: MCTS and CLI Integration
+## Phase 6: AI and Integration
 
-1. Set `endedInVictoryFor` / `endedInDefeatFor` at every `ended = true` site.
-2. Write an MCTS smoke test verifying non-zero reward signal.
-3. Add the game to the `gamer` CLI in `DynamicalSystems/gamer/GamerTool.swift`.
-4. Write integration tests: at least one victory playthrough and one defeat.
-
-## Phase 7: Rendering (later)
-
-SpriteKit rendering using Vassal board/piece images. Uses `SceneConfig`
-(declarative DSL) and `GameScene`. Deferred until game logic is complete.
+1. Add `(metadata (ai (heuristic EXPR)))` for MCTS evaluation. The heuristic
+   should return higher values for better game states.
+2. Add `(rolloutTerminal (field ended))` so MCTS rollouts terminate without
+   simulating the acknowledgment step.
+3. Test with `GameBuilder.buildValidated(from:)` to catch field reference
+   errors at build time.
 
 ## Principles
 
-- **The PDF is the source of truth.** When code and PDF disagree, PDF wins.
+- **The PDF is the source of truth.** When the `.game` file and PDF disagree, PDF wins.
 - **Module gives nouns, rules give verbs.** Don't extract logic from Vassal XML.
 - **Card data requires human verification.** Always have the user verify.
-- **Work autonomously, report at milestones.** Don't confirm each test.
-- **Cite rule numbers in every test.** `// Rule X.Y: ...` comment.
-- **Parameterize randomness.** Die rolls and shuffles must be injectable.
-
-## Xcode Project Notes
-
-File-system-synchronized groups (objectVersion 77). New source files in
-`Sources/` are auto-discovered by the app target. The **test target** requires
-manual `membershipExceptions` edits in `project.pbxproj`.
+- **Work autonomously, report at milestones.** Don't confirm each section.
+- **Cite rule numbers.** Use `;; Rule X.Y: ...` comments in the `.game` file.
+- **Parameterize randomness.** Use `(rollDie N)` — the interpreter handles
+  deterministic injection for testing.
+- **Use defines for repeated patterns.** Factor shared logic into `(define ...)`
+  forms. Keep the page-level reduce clauses readable.
+- **Validate early.** Use `GameBuilder.buildValidated(from:)` after each
+  significant addition to catch undefined field references.
