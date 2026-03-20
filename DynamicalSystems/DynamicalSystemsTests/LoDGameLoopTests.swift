@@ -140,7 +140,7 @@ struct LoDGameLoopTests {
 
     // Forlorn Hope quest appears on cards 3 and 13, each gives +1 time
     let forlornHopeCards = LoD.allCards.filter {
-      $0.quest?.title == "Forlorn Hope"
+      $0.quest?.title == "Estel" || $0.quest?.title == "Amdir"
     }
     #expect(forlornHopeCards.count == 2)
     #expect(totalCardTime + forlornHopeCards.count == 15,

@@ -133,7 +133,7 @@ struct LoDCardAndQuestTests {
     // Card #1: "Over the Walls!" — day card, advances West + East,
     // 3 actions, 1 heroic, event "Catapult Shrapnel", no quest, 0 time.
     let card = LoD.allCards.first { $0.number == 1 }!
-    #expect(card.title == "Over the Walls!")
+    #expect(card.title == "Heads up!")
     #expect(card.deck == .day)
     #expect(card.advances == [.west, .east])
     #expect(card.actions == 3)
@@ -141,7 +141,7 @@ struct LoDCardAndQuestTests {
     #expect(card.actionDRMs.isEmpty)
     #expect(card.heroicDRMs.isEmpty)
     #expect(card.event != nil)
-    #expect(card.event?.title == "Catapult Shrapnel")
+    #expect(card.event?.title == "Catapult")
     #expect(card.quest == nil)
     #expect(card.time == 0)
     #expect(card.bloodyBattle == nil)
@@ -152,7 +152,7 @@ struct LoDCardAndQuestTests {
     // Card #21: "Nightmares" — night card, advances all 5 tracks,
     // 3 actions, 3 heroics, +1 attack DRM on terror, 2 time icons.
     let card = LoD.allCards.first { $0.number == 21 }!
-    #expect(card.title == "Nightmares")
+    #expect(card.title == "Bad dreams")
     #expect(card.deck == .night)
     #expect(card.advances == [.east, .west, .sky, .terror, .gate])
     #expect(card.actions == 3)
@@ -172,7 +172,7 @@ struct LoDCardAndQuestTests {
     // Card #2 has quest "Scrolls of the Dead", target 7.
     let card = LoD.allCards.first { $0.number == 2 }!
     #expect(card.quest != nil)
-    #expect(card.quest?.title == "Scrolls of the Dead")
+    #expect(card.quest?.title == "Ancient Parchment")
     #expect(card.quest?.target == 7)
   }
 
@@ -216,9 +216,9 @@ struct LoDCardAndQuestTests {
   func cardQuestWithPenalty() {
     // Card #15 has quest "Last Ditch Efforts" with a penalty.
     let card = LoD.allCards.first { $0.number == 15 }!
-    #expect(card.quest?.title == "Last Ditch Efforts")
+    #expect(card.quest?.title == "Now or Never")
     #expect(card.quest?.target == 6)
-    #expect(card.quest?.penalty == "Reduce Morale by one")
+    #expect(card.quest?.penalty == "Morale -1")
   }
 
 }

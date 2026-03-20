@@ -28,6 +28,9 @@ struct DynamicalSystemsApp: App {
           NavigationLink(LoD.gameName) {
             LoDView()
           }
+          NavigationLink("Coin Flip (DSL)") {
+            InterpretedGameView(game: InterpretedGameView.sampleGame)
+          }
         }
         .navigationTitle("Games")
       }
