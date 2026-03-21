@@ -123,7 +123,7 @@ enum GameBuilder {
       pages: rulesResult?.pages ?? [],
       priorities: rulesResult?.priorities ?? [],
       makeInitialState: {
-        let state = InterpretedState(schema: schema)
+        var state = InterpretedState(schema: schema)
         if let first = capturedPhases.first {
           state.phase = first
         }

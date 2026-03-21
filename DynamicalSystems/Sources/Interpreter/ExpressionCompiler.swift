@@ -38,7 +38,7 @@ struct ExpressionCompiler {
   /// Lightweight runtime environment for compiled closures.
   /// One allocation per top-level condition/reduce call.
   final class Env {
-    let state: InterpretedState
+    var state: InterpretedState
     let actionParams: [String: DSLValue]
     var bindings: [String: DSLValue]
     let randomSource: RandomSource?

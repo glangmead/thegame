@@ -19,12 +19,12 @@ struct ExpressionCompilerTests {
 
   private func makeEnv(
     schema: StateSchema,
-    setup: (InterpretedState) -> Void = { _ in },
+    setup: (inout InterpretedState) -> Void = { _ in },
     actionParams: [String: DSLValue] = [:],
     randomSource: RandomSource? = nil
   ) -> ExpressionCompiler.Env {
-    let state = InterpretedState(schema: schema)
-    setup(state)
+    var state = InterpretedState(schema: schema)
+    setup(&state)
     return ExpressionCompiler.Env(
       state: state, actionParams: actionParams,
       randomSource: randomSource
@@ -35,7 +35,7 @@ struct ExpressionCompilerTests {
     _ source: String,
     components: String = "(components (enum Track {east west}))",
     state: String = "(state (counter energy 0 6))",
-    setup: (InterpretedState) -> Void = { _ in },
+    setup: (inout InterpretedState) -> Void = { _ in },
     actionParams: [String: DSLValue] = [:],
     randomSource: RandomSource? = nil
   ) throws -> DSLValue {
@@ -55,7 +55,7 @@ struct ExpressionCompilerTests {
     _ source: String,
     components: String = "(components (enum Track {east west}))",
     state: String = "(state (counter energy 0 6))",
-    setup: (InterpretedState) -> Void = { _ in },
+    setup: (inout InterpretedState) -> Void = { _ in },
     actionParams: [String: DSLValue] = [:],
     randomSource: RandomSource? = nil
   ) throws -> (ReduceResult, InterpretedState) {
@@ -64,14 +64,14 @@ struct ExpressionCompilerTests {
     )
     let sexpr = try SExprParser.parse(source)
     let compiled = compiler.stmt(sexpr)
-    let state = InterpretedState(schema: schema)
-    setup(state)
+    var state = InterpretedState(schema: schema)
+    setup(&state)
     let env = ExpressionCompiler.Env(
       state: state, actionParams: actionParams,
       randomSource: randomSource
     )
     let result = try compiled(env)
-    return (result, state)
+    return (result, env.state)
   }
 
   // MARK: - Atom compilation

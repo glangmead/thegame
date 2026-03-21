@@ -75,6 +75,7 @@ enum PageBuilder {
             randomSource: randomSource
           )
           let result = try body(env)
+          state = env.state
           return (result.logs, result.followUps)
         } catch {
           return nil
@@ -182,7 +183,9 @@ enum PageBuilder {
         let env = ExpressionCompiler.Env(
           state: state, randomSource: randomSource
         )
-        return (try? body(env))?.logs ?? []
+        let logs = (try? body(env))?.logs ?? []
+        state = env.state
+        return logs
       }
     )
   }
@@ -283,6 +286,7 @@ enum PageBuilder {
             randomSource: randomSource
           )
           let result = try body(env)
+          state = env.state
           return (result.logs, result.followUps)
         } catch {
           return nil
@@ -393,6 +397,7 @@ enum PageBuilder {
             randomSource: randomSource
           )
           let result = try body(env)
+          state = env.state
           return (result.logs, result.followUps)
         } catch {
           return nil

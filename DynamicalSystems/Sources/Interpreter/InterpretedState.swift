@@ -1,7 +1,4 @@
-import Observation
-
-@Observable
-final class InterpretedState: @unchecked Sendable {
+struct InterpretedState: Sendable {
   let schema: StateSchema
   private(set) var counters: [String: Int] = [:]
   private(set) var flags: [String: Bool] = [:]
@@ -31,7 +28,7 @@ final class InterpretedState: @unchecked Sendable {
   }
 
   @discardableResult
-  private func setFrameworkFlag(_ name: String, _ value: Bool) -> Bool {
+  private mutating func setFrameworkFlag(_ name: String, _ value: Bool) -> Bool {
     switch name {
     case "ended": ended = value; return true
     case "victory": victory = value; return true
@@ -48,7 +45,7 @@ final class InterpretedState: @unchecked Sendable {
   }
 
   @discardableResult
-  private func setFrameworkField(_ name: String, _ value: DSLValue) -> Bool {
+  private mutating func setFrameworkField(_ name: String, _ value: DSLValue) -> Bool {
     switch name {
     case "phase":
       phase = value.asEnumValue ?? value.displayString
@@ -127,75 +124,75 @@ final class InterpretedState: @unchecked Sendable {
 
   // MARK: - Mutators
 
-  func setCounter(_ name: String, _ value: Int) {
+  mutating func setCounter(_ name: String, _ value: Int) {
     guard let field = schema.field(name),
           case .counter(let min, let max) = field.kind else { return }
     counters[name] = Swift.min(Swift.max(value, min), max)
   }
 
-  func incrementCounter(_ name: String, by amount: Int) {
+  mutating func incrementCounter(_ name: String, by amount: Int) {
     let current = counters[name] ?? 0
     setCounter(name, current + amount)
   }
 
-  func decrementCounter(_ name: String, by amount: Int) {
+  mutating func decrementCounter(_ name: String, by amount: Int) {
     let current = counters[name] ?? 0
     setCounter(name, current - amount)
   }
 
-  func setFlag(_ name: String, _ value: Bool) {
+  mutating func setFlag(_ name: String, _ value: Bool) {
     if setFrameworkFlag(name, value) { return }
     flags[name] = value
   }
 
-  func setField(_ name: String, _ value: DSLValue) {
+  mutating func setField(_ name: String, _ value: DSLValue) {
     if setFrameworkField(name, value) { return }
     fields[name] = value
   }
 
-  func setDictEntry(_ dictName: String, key: String, value: DSLValue) {
+  mutating func setDictEntry(_ dictName: String, key: String, value: DSLValue) {
     dicts[dictName, default: [:]][key] = value
   }
 
-  func removeDictEntry(_ dictName: String, key: String) {
+  mutating func removeDictEntry(_ dictName: String, key: String) {
     dicts[dictName]?.removeValue(forKey: key)
   }
 
-  func insertIntoSet(_ name: String, _ element: String) {
+  mutating func insertIntoSet(_ name: String, _ element: String) {
     sets[name, default: []].insert(element)
   }
 
-  func removeFromSet(_ name: String, _ element: String) {
+  mutating func removeFromSet(_ name: String, _ element: String) {
     sets[name]?.remove(element)
   }
 
-  func setOptional(_ name: String, _ value: DSLValue?) {
+  mutating func setOptional(_ name: String, _ value: DSLValue?) {
     optionals[name] = value
   }
 
   // Deck operations
-  func drawFromDeck(_ deckName: String) -> DSLValue? {
+  mutating func drawFromDeck(_ deckName: String) -> DSLValue? {
     guard var deck = decks[deckName], !deck.isEmpty else { return nil }
     let card = deck.removeFirst()
     decks[deckName] = deck
     return card
   }
 
-  func shuffleDeck(_ deckName: String) {
+  mutating func shuffleDeck(_ deckName: String) {
     decks[deckName]?.shuffle()
   }
 
-  func appendToDeck(_ deckName: String, _ card: DSLValue) {
+  mutating func appendToDeck(_ deckName: String, _ card: DSLValue) {
     decks[deckName, default: []].append(card)
   }
 
-  func removeDeckItem(_ deckName: String, at index: Int) {
+  mutating func removeDeckItem(_ deckName: String, at index: Int) {
     guard var deck = decks[deckName], index >= 0, index < deck.count else { return }
     deck.remove(at: index)
     decks[deckName] = deck
   }
 
-  func clearDeck(_ deckName: String) {
+  mutating func clearDeck(_ deckName: String) {
     decks[deckName] = []
   }
 }
@@ -265,7 +262,7 @@ extension InterpretedState: GameState {
   // swiftlint:enable unused_setter_value
 
   func redeterminize() -> InterpretedState {
-    let new = copy()
+    var new = self
     for (name, _) in new.decks {
       new.shuffleDeck(name)
     }
@@ -297,26 +294,5 @@ extension InterpretedState: TextTableAble {
     for (name, set) in sets.sorted(by: { $0.key < $1.key }) {
       output.write("  \(name): {\(set.sorted().joined(separator: ", "))}\n")
     }
-  }
-}
-
-// MARK: - Copying (for MCTS rollouts)
-
-extension InterpretedState {
-  func copy() -> InterpretedState {
-    let new = InterpretedState(schema: schema)
-    new.counters = counters
-    new.flags = flags
-    new.fields = fields
-    new.dicts = dicts
-    new.sets = sets
-    new.decks = decks
-    new.optionals = optionals
-    new.history = history
-    new.phase = phase
-    new.ended = ended
-    new.victory = victory
-    new.gameAcknowledged = gameAcknowledged
-    return new
   }
 }

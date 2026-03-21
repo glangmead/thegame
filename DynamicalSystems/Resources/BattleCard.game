@@ -141,6 +141,8 @@
           (insertInto germansOnBoard germanGrave)
           (insertInto germansOnBoard germanNijmegen)
           (insertInto germansOnBoard germanArnhem)
+          ;; Weather starts foggy
+          (set weather fog)
           (setPhase airdrop))))
 
     ;; ── Airdrop ────────────────────────────────────────────
