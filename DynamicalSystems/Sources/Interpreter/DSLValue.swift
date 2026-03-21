@@ -82,7 +82,7 @@ extension DSLValue {
     case .int(let intVal): return "\(intVal)"
     case .float(let floatVal): return "\(floatVal)"
     case .bool(let boolVal): return boolVal ? "true" : "false"
-    case .string(let strVal): return "\"\(strVal)\""
+    case .string(let strVal): return strVal
     case .enumCase(_, let caseVal): return caseVal
     case .list(let items):
       let inner = items.map(\.displayString).joined(separator: ", ")

@@ -6,10 +6,12 @@ import Testing
 struct BattleCardDotGameTests {
 
   private static func loadGameSource(_ name: String) throws -> String {
-    let testDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-    let projDir = testDir.deletingLastPathComponent()
-    let gameURL = projDir.appendingPathComponent("Resources/\(name).game")
-    return try String(contentsOf: gameURL, encoding: .utf8)
+    guard let url = Bundle.main.url(
+      forResource: name, withExtension: "game"
+    ) else {
+      throw CocoaError(.fileNoSuchFile)
+    }
+    return try String(contentsOf: url, encoding: .utf8)
   }
 
   private static func playOneMCTSGame(

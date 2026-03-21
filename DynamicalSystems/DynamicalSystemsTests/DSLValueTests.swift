@@ -50,7 +50,7 @@ struct DSLValueTests {
     let lst = DSLValue.list([.int(1), .int(2)])
     #expect(lst.displayString == "[1, 2]")
     #expect(DSLValue.bool(true).displayString == "true")
-    #expect(DSLValue.string("hello").displayString == "\"hello\"")
+    #expect(DSLValue.string("hello").displayString == "hello")
     #expect(DSLValue.nil.displayString == "nil")
   }
 }

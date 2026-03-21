@@ -49,8 +49,10 @@ struct CantStop {
         return "Pass"
       case .bust:
         return "Busted: Pass"
-      default:
-        return String(describing: self)
+      case .forceRoll(let dice):
+        return "Roll \(dice)"
+      case .setPhase(let phase):
+        return "Set phase \(phase)"
       }
     }
   }

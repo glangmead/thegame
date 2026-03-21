@@ -18,6 +18,45 @@ final class InterpretedState: @unchecked Sendable {
   var victory: Bool = false
   var gameAcknowledged: Bool = false
 
+  // Centralized framework field access.
+  // Add new framework flags/fields here only.
+
+  private func getFrameworkFlag(_ name: String) -> Bool? {
+    switch name {
+    case "ended": return ended
+    case "victory": return victory
+    case "gameAcknowledged": return gameAcknowledged
+    default: return nil
+    }
+  }
+
+  @discardableResult
+  private func setFrameworkFlag(_ name: String, _ value: Bool) -> Bool {
+    switch name {
+    case "ended": ended = value; return true
+    case "victory": victory = value; return true
+    case "gameAcknowledged": gameAcknowledged = value; return true
+    default: return false
+    }
+  }
+
+  private func getFrameworkField(_ name: String) -> DSLValue? {
+    switch name {
+    case "phase": return .enumCase(type: "Phase", value: phase)
+    default: return nil
+    }
+  }
+
+  @discardableResult
+  private func setFrameworkField(_ name: String, _ value: DSLValue) -> Bool {
+    switch name {
+    case "phase":
+      phase = value.asEnumValue ?? value.displayString
+      return true
+    default: return false
+    }
+  }
+
   init(schema: StateSchema) {
     self.schema = schema
     for (name, field) in schema.fields {
@@ -47,14 +86,12 @@ final class InterpretedState: @unchecked Sendable {
   }
 
   func getFlag(_ name: String) -> Bool {
-    if name == "ended" { return ended }
-    if name == "victory" { return victory }
-    if name == "gameAcknowledged" { return gameAcknowledged }
+    if let fwk = getFrameworkFlag(name) { return fwk }
     return flags[name] ?? false
   }
 
   func getField(_ name: String) -> DSLValue {
-    if name == "phase" { return .enumCase(type: "Phase", value: phase) }
+    if let fwk = getFrameworkField(name) { return fwk }
     return fields[name] ?? .nil
   }
 
@@ -79,10 +116,8 @@ final class InterpretedState: @unchecked Sendable {
   /// Framework fields (ended, victory, gameAcknowledged, phase) are checked
   /// before the schema dicts so that direct property mutations stay visible.
   func get(_ name: String) -> DSLValue {
-    if name == "ended" { return .bool(ended) }
-    if name == "victory" { return .bool(victory) }
-    if name == "gameAcknowledged" { return .bool(gameAcknowledged) }
-    if name == "phase" { return .enumCase(type: "Phase", value: phase) }
+    if let fwk = getFrameworkFlag(name) { return .bool(fwk) }
+    if let fwk = getFrameworkField(name) { return fwk }
     if let value = counters[name] { return .int(value) }
     if let value = flags[name] { return .bool(value) }
     if let value = fields[name] { return value }
@@ -109,13 +144,12 @@ final class InterpretedState: @unchecked Sendable {
   }
 
   func setFlag(_ name: String, _ value: Bool) {
-    if name == "ended" { ended = value; return }
-    if name == "victory" { victory = value; return }
-    if name == "gameAcknowledged" { gameAcknowledged = value; return }
+    if setFrameworkFlag(name, value) { return }
     flags[name] = value
   }
 
   func setField(_ name: String, _ value: DSLValue) {
+    if setFrameworkField(name, value) { return }
     fields[name] = value
   }
 

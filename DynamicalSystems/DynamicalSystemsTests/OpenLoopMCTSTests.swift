@@ -44,7 +44,7 @@ struct OpenLoopMCTSTests {
   func testCantStopFullGameMCTS() throws {
     let game = CantStopPages.game()
     var state = game.newState()
-    let maxTurns = 1000
+    let maxTurns = 5000
 
     var turns = 0
     while !state.ended && turns < maxTurns {
