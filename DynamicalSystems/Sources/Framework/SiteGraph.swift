@@ -8,7 +8,7 @@
 import Foundation
 import CoreGraphics
 
-enum Direction: Codable, Equatable, Hashable {
+enum Direction: Codable, Equatable, Hashable, Sendable {
   case next, previous, top, bottom
   case north, south, east, west
   case northeast, northwest, southeast, southwest
@@ -33,13 +33,13 @@ enum Direction: Codable, Equatable, Hashable {
   }
 }
 
-struct SiteID: Hashable, Codable, Equatable, CustomStringConvertible {
+struct SiteID: Hashable, Codable, Equatable, CustomStringConvertible, Sendable {
   let raw: Int
   init(_ raw: Int) { self.raw = raw }
   var description: String { "site(\(raw))" }
 }
 
-struct Site: Codable, Equatable {
+struct Site: Codable, Equatable, Sendable {
   let id: SiteID
   var position: CGPoint
   var adjacency: [Direction: SiteID] = [:]
@@ -47,10 +47,11 @@ struct Site: Codable, Equatable {
   var label: String?
 }
 
-struct SiteGraph: Codable, Equatable {
+struct SiteGraph: Codable, Equatable, Sendable {
   var sites: [SiteID: Site] = [:]
   var tracks: [String: [SiteID]] = [:]
   var trackTags: [String: Set<String>] = [:]
+  var trackOrder: [String] = []
   private var nextID: Int = 0
 
   @discardableResult
@@ -75,10 +76,13 @@ struct SiteGraph: Codable, Equatable {
   mutating func addTrack(_ name: String, sites trackSites: [SiteID], tags: Set<String> = []) {
     tracks[name] = trackSites
     if !tags.isEmpty { trackTags[name] = tags }
+    if !trackOrder.contains(name) {
+      trackOrder.append(name)
+    }
   }
 }
 
-struct SiteCursor {
+struct SiteCursor: Sendable {
   let graph: SiteGraph
   let id: SiteID
 
@@ -126,7 +130,7 @@ extension SiteGraph {
         graph.sites[last]?.adjacency[.bottom] = first
       }
 
-      graph.tracks["col\(colIndex)"] = trackSites
+      graph.addTrack("col\(colIndex)", sites: trackSites)
     }
 
     return graph
@@ -165,7 +169,7 @@ extension SiteGraph {
         graph.sites[last]?.adjacency[.bottom] = first
       }
 
-      graph.tracks[name] = sites
+      graph.addTrack(name, sites: sites)
       trackSites.append(sites)
     }
 
@@ -182,5 +186,24 @@ extension SiteGraph {
     }
 
     return graph
+  }
+
+  /// Resolve a DSLValue.site to a concrete SiteID.
+  /// Track sites resolve by track name + index; named sites (empty track) resolve by raw SiteID.
+  func resolve(_ value: DSLValue) -> SiteID? {
+    guard case .site(let track, let index) = value else { return nil }
+    if track.isEmpty {
+      let id = SiteID(index)
+      return sites[id] != nil ? id : nil
+    }
+    return tracks[track]?[safe: index]
+  }
+}
+
+// MARK: - Safe array subscript
+
+extension Array {
+  subscript(safe index: Int) -> Element? {
+    indices.contains(index) ? self[index] : nil
   }
 }

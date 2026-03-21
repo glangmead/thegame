@@ -9,6 +9,8 @@ enum GameBuilder {
     var actionsExpr: SExpr?
     var rulesExpr: SExpr?
     var metadataExpr: SExpr?
+    var graphExpr: SExpr?
+    var sceneExpr: SExpr?
   }
 
   // MARK: - Public API
@@ -84,6 +86,8 @@ enum GameBuilder {
       case "state": sections.stateExpr = child
       case "actions": sections.actionsExpr = child
       case "rules": sections.rulesExpr = child
+      case "graph": sections.graphExpr = child
+      case "scene": sections.sceneExpr = child
       default: continue
       }
     }
@@ -93,6 +97,7 @@ enum GameBuilder {
 
   // MARK: - Game assembly
 
+  // swiftlint:disable:next function_body_length
   private static func assembleGame(
     _ sections: GameSections,
     defineExprs: [SExpr]
@@ -104,10 +109,12 @@ enum GameBuilder {
     let actions = try sections.actionsExpr.map { try ActionSchema($0) }
       ?? ActionSchema.empty()
     let defines = try DefineExpander(defineExprs)
+    let graph = try sections.graphExpr.map { try GraphBuilder.build($0) }
+      ?? SiteGraph()
 
     let buildContext = PageBuilder.BuildContext(
       components: components, schema: schema, randomSource: nil,
-      actionSchema: actions, defines: defines
+      actionSchema: actions, defines: defines, graph: graph
     )
     let rulesResult = try sections.rulesExpr.map {
       try PageBuilder.buildRules($0, context: buildContext)
@@ -130,17 +137,24 @@ enum GameBuilder {
         return state
       },
       terminalCheck: makeTerminalCheck(
-        capturedTerminalExpr, components: components, schema: schema
+        capturedTerminalExpr, components: components,
+        schema: schema, graph: graph
       ),
       rolloutTerminalCheck: capturedRolloutExpr.map {
-        makeExprCheck($0, components: components, schema: schema)
+        makeExprCheck(
+          $0, components: components,
+          schema: schema, graph: graph
+        )
       },
       phaseForAction: { action in capturedPhaseMap[action.name] },
       autoRules: rulesResult?.reactions ?? []
     )
+    game.graph = graph
+    game.sceneStyle = sections.sceneExpr.flatMap { parseSceneStyle($0) }
+    game.playerIndex = components.playerIndex
     game.stateEvaluator = sections.metadataExpr.flatMap {
       MetadataBuilder.buildHeuristic(
-        $0, components: components, defines: defines, schema: schema
+        $0, components: components, defines: defines, schema: schema, graph: graph
       )
     }
     return game
@@ -151,26 +165,55 @@ enum GameBuilder {
   private static func makeTerminalCheck(
     _ expr: SExpr?,
     components: ComponentRegistry,
-    schema: StateSchema
+    schema: StateSchema,
+    graph: SiteGraph
   ) -> (InterpretedState) -> Bool {
     guard let expr else {
       return { state in state.gameAcknowledged }
     }
-    return makeExprCheck(expr, components: components, schema: schema)
+    return makeExprCheck(
+      expr, components: components, schema: schema, graph: graph
+    )
   }
 
   private static func makeExprCheck(
     _ expr: SExpr,
     components: ComponentRegistry,
-    schema: StateSchema
+    schema: StateSchema,
+    graph: SiteGraph
   ) -> (InterpretedState) -> Bool {
     let compiler = ExpressionCompiler(
-      components: components, schema: schema
+      components: components, schema: schema, graph: graph
     )
     let compiled = compiler.expr(expr)
     return { state in
       let env = ExpressionCompiler.Env(state: state)
       return (try? compiled(env))?.asBool ?? false
     }
+  }
+
+  // MARK: - Scene style parsing
+
+  private static func parseSceneStyle(_ sexpr: SExpr) -> StyleConfig? {
+    guard let children = sexpr.children,
+          sexpr.tag == "scene" else { return nil }
+    var config = StyleConfig()
+    var idx = 1
+    while idx < children.count {
+      let key = children[idx].atomValue ?? ""
+      guard idx + 1 < children.count else { break }
+      let val = children[idx + 1]
+      switch key {
+      case "stroke:":
+        config.stroke = val.stringValue ?? val.atomValue
+      case "lineWidth:":
+        config.lineWidth = val.intValue.map { Float($0) }
+      case "fill:":
+        config.fill = val.stringValue ?? val.atomValue
+      default: break
+      }
+      idx += 2
+    }
+    return config
   }
 }

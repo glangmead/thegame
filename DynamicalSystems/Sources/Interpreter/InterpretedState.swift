@@ -7,6 +7,8 @@ struct InterpretedState: Sendable {
   private(set) var sets: [String: Set<String>] = [:]
   private(set) var decks: [String: [DSLValue]] = [:]
   private(set) var optionals: [String: DSLValue?] = [:]
+  private(set) var positions: [String: DSLValue] = [:]
+  private(set) var pieceTypes: [String: String] = [:]
   var history: [ActionValue] = []
   var phase: String = ""
 
@@ -195,6 +197,22 @@ struct InterpretedState: Sendable {
   mutating func clearDeck(_ deckName: String) {
     decks[deckName] = []
   }
+
+  // MARK: - Positions
+
+  mutating func place(_ pieceName: String, at site: DSLValue, enumType: String) {
+    positions[pieceName] = site
+    pieceTypes[pieceName] = enumType
+  }
+
+  mutating func removePiece(_ pieceName: String) {
+    positions.removeValue(forKey: pieceName)
+    pieceTypes.removeValue(forKey: pieceName)
+  }
+
+  func getPosition(_ pieceName: String) -> DSLValue {
+    positions[pieceName] ?? .nil
+  }
 }
 
 // MARK: - HistoryTracking
@@ -218,7 +236,9 @@ extension InterpretedState: Equatable {
     lhs.history == rhs.history &&
     lhs.phase == rhs.phase &&
     lhs.ended == rhs.ended &&
-    lhs.victory == rhs.victory
+    lhs.victory == rhs.victory &&
+    lhs.positions == rhs.positions &&
+    lhs.pieceTypes == rhs.pieceTypes
   }
 }
 
@@ -256,7 +276,13 @@ extension InterpretedState: GameState {
     set { }
   }
   var position: [String: String] {
-    get { [:] }
+    get {
+      var result: [String: String] = [:]
+      for (name, value) in positions {
+        result[name] = value.displayString
+      }
+      return result
+    }
     set { }
   }
   // swiftlint:enable unused_setter_value

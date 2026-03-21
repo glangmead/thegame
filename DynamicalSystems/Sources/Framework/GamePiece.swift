@@ -10,11 +10,12 @@ import Foundation
 /// A game piece — element of the base space of the state bundle.
 /// Named `GamePiece` to avoid collision with existing game-specific `Piece` types
 /// during the migration period.
-struct GamePiece: Hashable, Codable, Equatable, Identifiable {
+struct GamePiece: Codable, Identifiable {
   let id: Int
   var kind: PieceKind
   var owner: PlayerID?
   var label: String?
+  var displayValues: [String: Int] = [:]
 
   enum PieceKind: Codable, Equatable, Hashable {
     case token
@@ -28,6 +29,18 @@ struct GamePiece: Hashable, Codable, Equatable, Identifiable {
       case .card: "card"
       }
     }
+  }
+}
+
+extension GamePiece: Hashable {
+  func hash(into hasher: inout Hasher) {
+    hasher.combine(id)
+  }
+}
+
+extension GamePiece: Equatable {
+  static func == (lhs: GamePiece, rhs: GamePiece) -> Bool {
+    lhs.id == rhs.id
   }
 }
 

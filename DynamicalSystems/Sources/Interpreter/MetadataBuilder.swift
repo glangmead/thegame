@@ -3,11 +3,12 @@ enum MetadataBuilder {
     _ sexpr: SExpr,
     components: ComponentRegistry,
     defines: DefineExpander,
-    schema: StateSchema
+    schema: StateSchema,
+    graph: SiteGraph = SiteGraph()
   ) -> ((InterpretedState) -> Float)? {
     guard let children = sexpr.children, sexpr.tag == "metadata" else { return nil }
     let compiler = ExpressionCompiler(
-      components: components, schema: schema
+      components: components, schema: schema, graph: graph
     )
     for child in children.dropFirst() {
       guard child.tag == "ai", let aiParts = child.children else { continue }

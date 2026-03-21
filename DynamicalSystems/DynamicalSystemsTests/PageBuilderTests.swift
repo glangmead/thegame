@@ -11,7 +11,8 @@ struct PageBuilderTests {
     return PageBuilder.BuildContext(
       components: registry, schema: schema, randomSource: nil,
       actionSchema: ActionSchema.empty(),
-      defines: try DefineExpander([])
+      defines: try DefineExpander([]),
+      graph: SiteGraph()
     )
   }
 
@@ -70,7 +71,8 @@ struct PageBuilderTests {
     let ctx = PageBuilder.BuildContext(
       components: registry, schema: schema, randomSource: nil,
       actionSchema: ActionSchema.empty(),
-      defines: try DefineExpander([])
+      defines: try DefineExpander([]),
+      graph: SiteGraph()
     )
     let input = try SExprParser.parse("""
     (rules

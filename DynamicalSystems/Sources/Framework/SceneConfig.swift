@@ -141,7 +141,7 @@ enum ColorRule: Codable, Equatable {
   case byTag(String)
 }
 
-struct StyleConfig: Codable, Equatable {
+struct StyleConfig: Codable, Equatable, Sendable {
   var fill: String?
   var stroke: String?
   var lineWidth: Float?

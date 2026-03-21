@@ -27,6 +27,17 @@ struct ExpressionCompiler {
 
   let components: ComponentRegistry
   let schema: StateSchema
+  let graph: SiteGraph
+
+  init(
+    components: ComponentRegistry,
+    schema: StateSchema,
+    graph: SiteGraph = SiteGraph()
+  ) {
+    self.components = components
+    self.schema = schema
+    self.graph = graph
+  }
 
   // MARK: - Closure types
 
@@ -248,6 +259,16 @@ extension ExpressionCompiler {
     case "map": return compileMap(args)
     case "randomElement": return compileRandomElement(args)
     case "historyCount": return compileHistoryCount(args)
+
+    // Site operations
+    case "site": return compileSiteExpr(args)
+    case "pos": return compilePos(args)
+    case "advance": return compileAdvance(args)
+    case "trackOf": return compileTrackOf(args)
+    case "indexOf": return compileIndexOf(args)
+    case "adjacent": return compileAdjacent(args)
+    case "parallel": return compileParallel(args)
+    case "pieceAt": return compilePieceAt(args)
 
     default:
       if components.crts[tag] != nil {
@@ -511,6 +532,166 @@ extension ExpressionCompiler {
     }
   }
 
+  // MARK: - Site operations
+
+  private func compileSiteExpr(_ args: [SExpr]) -> Expr {
+    let trackExpr = args[0]
+    let trackName = trackExpr.stringValue ?? trackExpr.atomValue ?? ""
+
+    if args.count == 1 {
+      // Named site: (site "reserves")
+      if let site = graph.sites.values.first(where: {
+        $0.label == trackName
+      }) {
+        let val = DSLValue.site(track: "", index: site.id.raw)
+        return { _ in val }
+      }
+      return { _ in .nil }
+    }
+
+    let indexArg = args[1]
+
+    // 1. Integer literal: (site "road" 0)
+    if let intVal = indexArg.intValue {
+      let val = DSLValue.site(track: trackName, index: intVal)
+      return { _ in val }
+    }
+
+    // 2. Quoted string label: (site "road" "Belgium")
+    if let label = indexArg.stringValue {
+      if let trackSites = graph.tracks[trackName] {
+        for (idx, siteID) in trackSites.enumerated()
+        where graph.sites[siteID]?.label == label {
+          let val = DSLValue.site(track: trackName, index: idx)
+          return { _ in val }
+        }
+      }
+      return { _ in .nil }
+    }
+
+    // 3. Runtime expression
+    let idxExpr = expr(indexArg)
+    return { env in
+      let idx = try idxExpr(env).asInt ?? 0
+      return .site(track: trackName, index: idx)
+    }
+  }
+
+  private func compilePos(_ args: [SExpr]) -> Expr {
+    let pieceExpr = expr(args[0])
+    return { env in
+      let piece = try pieceExpr(env)
+      let name = piece.asEnumValue ?? piece.displayString
+      return env.state.getPosition(name)
+    }
+  }
+
+  private func compileAdvance(_ args: [SExpr]) -> Expr {
+    let siteExpr = expr(args[0])
+    let trackNameExpr = args[1]
+    let trackName =
+      trackNameExpr.stringValue ?? trackNameExpr.atomValue ?? ""
+    let nExpr = expr(args[2])
+    let capturedGraph = graph
+    return { env in
+      let siteVal = try siteExpr(env)
+      guard case .site(let curTrack, let curIndex) = siteVal else {
+        return .nil
+      }
+      let steps = try nExpr(env).asInt ?? 0
+      let effectiveTrack = trackName.isEmpty ? curTrack : trackName
+      guard let trackSites = capturedGraph.tracks[effectiveTrack] else {
+        return .nil
+      }
+      let startIdx = (effectiveTrack == curTrack) ? curIndex : 0
+      let newIdx = max(0, min(startIdx + steps, trackSites.count - 1))
+      return .site(track: effectiveTrack, index: newIdx)
+    }
+  }
+
+  private func compileTrackOf(_ args: [SExpr]) -> Expr {
+    let siteExpr = expr(args[0])
+    return { env in
+      guard case .site(let track, _) = try siteExpr(env) else {
+        return .nil
+      }
+      return .string(track)
+    }
+  }
+
+  private func compileIndexOf(_ args: [SExpr]) -> Expr {
+    let siteExpr = expr(args[0])
+    return { env in
+      guard case .site(_, let index) = try siteExpr(env) else {
+        return .nil
+      }
+      return .int(index)
+    }
+  }
+
+  private func compileAdjacent(_ args: [SExpr]) -> Expr {
+    let siteExpr = expr(args[0])
+    let dirName = args[1].stringValue ?? args[1].atomValue ?? ""
+    let capturedGraph = graph
+    return { env in
+      let siteVal = try siteExpr(env)
+      guard let siteID = capturedGraph.resolve(siteVal),
+            let dest = capturedGraph.sites[siteID]?
+              .adjacency[.custom(dirName)] else {
+        return .nil
+      }
+      for (trackName, trackSites) in capturedGraph.tracks {
+        if let idx = trackSites.firstIndex(of: dest) {
+          return .site(track: trackName, index: idx)
+        }
+      }
+      return .site(track: "", index: dest.raw)
+    }
+  }
+
+  private func compileParallel(_ args: [SExpr]) -> Expr {
+    let siteExpr = expr(args[0])
+    let otherTrack =
+      args[1].stringValue ?? args[1].atomValue ?? ""
+    let capturedGraph = graph
+    return { env in
+      let siteVal = try siteExpr(env)
+      guard case .site(let curTrack, let curIndex) = siteVal else {
+        return .nil
+      }
+      if let siteID = capturedGraph.resolve(siteVal),
+         let dest = capturedGraph.sites[siteID]?
+           .adjacency[.custom(otherTrack)] {
+        for (trackName, trackSites) in capturedGraph.tracks
+        where trackName == otherTrack {
+          if let idx = trackSites.firstIndex(of: dest) {
+            return .site(track: otherTrack, index: idx)
+          }
+        }
+      }
+      guard let otherSites = capturedGraph.tracks[otherTrack],
+            curIndex >= 0, curIndex < otherSites.count else {
+        return .nil
+      }
+      return .site(track: otherTrack, index: curIndex)
+    }
+  }
+
+  private func compilePieceAt(_ args: [SExpr]) -> Expr {
+    let siteExpr = expr(args[0])
+    return { env in
+      let targetSite = try siteExpr(env)
+      if targetSite.isNil { return .nil }
+      for (name, pos) in env.state.positions where pos == targetSite {
+        if let enumType = env.state.pieceTypes[name] {
+          return .enumCase(type: enumType, value: name)
+        }
+        return .string(name)
+      }
+      return .nil
+    }
+  }
+
   private func compileFnCall(_ tag: String, args: [SExpr]) -> Expr {
     let argExpr = expr(args[0])
     let capturedComponents = components
@@ -601,8 +782,51 @@ extension ExpressionCompiler {
     case "log": return compileLog(args)
     case "let": return compileStmtLet(args)
     case "forEach": return compileForEach(args)
+    case "place": return compilePlace(args)
+    case "move": return compileMove(args)
+    case "remove": return compileRemove(args)
     default:
       return { _ in throw DSLError.unknownForm(tag) }
+    }
+  }
+
+  // MARK: - Place / Move / Remove
+
+  private func compilePlace(_ args: [SExpr]) -> Stmt {
+    let pieceExpr = expr(args[0])
+    let siteExpr = expr(args[1])
+    let staticEnumType = args[0].atomValue.flatMap { components.isEnumCase($0) }
+    return { env in
+      let piece = try pieceExpr(env)
+      let site = try siteExpr(env)
+      let name = piece.asEnumValue ?? piece.displayString
+      let enumType = staticEnumType ?? piece.asEnumType ?? ""
+      env.state.place(name, at: site, enumType: enumType)
+      return ReduceResult(logs: [], followUps: [])
+    }
+  }
+
+  private func compileMove(_ args: [SExpr]) -> Stmt {
+    let pieceExpr = expr(args[0])
+    let siteExpr = expr(args[1])
+    let staticEnumType = args[0].atomValue.flatMap { components.isEnumCase($0) }
+    return { env in
+      let piece = try pieceExpr(env)
+      let site = try siteExpr(env)
+      let name = piece.asEnumValue ?? piece.displayString
+      let enumType = staticEnumType ?? piece.asEnumType ?? ""
+      env.state.place(name, at: site, enumType: enumType)
+      return ReduceResult(logs: [], followUps: [])
+    }
+  }
+
+  private func compileRemove(_ args: [SExpr]) -> Stmt {
+    let pieceExpr = expr(args[0])
+    return { env in
+      let piece = try pieceExpr(env)
+      let name = piece.asEnumValue ?? piece.displayString
+      env.state.removePiece(name)
+      return ReduceResult(logs: [], followUps: [])
     }
   }
 }

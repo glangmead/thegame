@@ -7,6 +7,7 @@ enum PageBuilder {
     let randomSource: RandomSource?
     let actionSchema: ActionSchema
     let defines: DefineExpander
+    let graph: SiteGraph
   }
 
   struct RulesResult {
@@ -55,7 +56,7 @@ enum PageBuilder {
     }
 
     let compiler = ExpressionCompiler(
-      components: context.components, schema: context.schema
+      components: context.components, schema: context.schema, graph: context.graph
     )
     let randomSource = context.randomSource
     var compiledReducers: [String: ExpressionCompiler.Stmt] = [:]
@@ -109,7 +110,7 @@ enum PageBuilder {
     }
 
     let compiler = ExpressionCompiler(
-      components: context.components, schema: context.schema
+      components: context.components, schema: context.schema, graph: context.graph
     )
     let compiledCondition: ExpressionCompiler.Expr? = try conditionExpr.map {
       compiler.expr(try context.defines.expand($0))
@@ -161,7 +162,7 @@ enum PageBuilder {
     }
 
     let compiler = ExpressionCompiler(
-      components: context.components, schema: context.schema
+      components: context.components, schema: context.schema, graph: context.graph
     )
     let randomSource = context.randomSource
     let compiledCondition: ExpressionCompiler.Expr? = try conditionExpr.map {
@@ -224,7 +225,7 @@ enum PageBuilder {
     }
 
     let compiler = ExpressionCompiler(
-      components: context.components, schema: context.schema
+      components: context.components, schema: context.schema, graph: context.graph
     )
     let randomSource = context.randomSource
     let actionSchema = context.actionSchema
@@ -331,7 +332,7 @@ enum PageBuilder {
     }
 
     let compiler = ExpressionCompiler(
-      components: context.components, schema: context.schema
+      components: context.components, schema: context.schema, graph: context.graph
     )
     let randomSource = context.randomSource
     let actionSchema = context.actionSchema

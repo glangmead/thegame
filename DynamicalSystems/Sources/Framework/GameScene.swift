@@ -303,6 +303,15 @@ class GameScene<
         labelNode.name = "pieceLabel"
         node.addChild(labelNode)
       }
+      if let (_, value) = piece.displayValues
+        .sorted(by: { $0.key < $1.key }).first {
+        let dvLabel = SKLabelNode(text: "\(value)")
+        dvLabel.applySystemFont(
+          size: cellSize * 0.4, weight: .bold, color: .white)
+        dvLabel.verticalAlignmentMode = .center
+        dvLabel.horizontalAlignmentMode = .center
+        node.addChild(dvLabel)
+      }
       return node
     case .die:
       let node = makeDieNode(label: piece.label, owner: piece.owner, scale: scale)

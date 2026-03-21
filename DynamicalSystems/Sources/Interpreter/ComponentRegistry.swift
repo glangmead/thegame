@@ -49,6 +49,7 @@ struct ComponentRegistry: Sendable {
   private(set) var functions: [String: EnumFunction] = [:]
   private(set) var cards: [DSLValue] = []
   private(set) var crts: [String: CRTDefinition] = [:]
+  private(set) var playerIndex: [String: Int] = [:]
 
   init(_ sexpr: SExpr) throws {
     guard let children = sexpr.children, sexpr.tag == "components" else {
@@ -105,32 +106,61 @@ extension ComponentRegistry {
     }
     let rest = Array(children.dropFirst(2))
 
-    // Simple enum: (enum Name {case1 case2 ...})
-    // A single list child whose elements are all atoms -> brace-enclosed cases.
-    if rest.count == 1,
-       let inner = rest[0].children,
+    // Simple enum: (enum Name {case1 case2 ...} [player: N])
+    // Must have exactly one list child and no bare non-keyword atoms.
+    let listChildren = rest.enumerated().filter { $0.element.children != nil }
+    let bareAtoms = rest.filter {
+      guard let atom = $0.atomValue else { return false }
+      return !atom.hasSuffix(":")
+    }
+    if listChildren.count == 1, bareAtoms.isEmpty,
+       let inner = listChildren[0].element.children,
        inner.allSatisfy({ $0.atomValue != nil }) {
+      let braceIdx = listChildren[0].offset
       let cases = inner.compactMap(\.atomValue)
       enums[name] = EnumDefinition(
         name: name, cases: cases, associatedTypes: [:]
       )
+      scanPlayerKeyword(name: name, rest: rest, skipIndex: braceIdx)
       return
     }
 
     // Sum type: (enum Name simple (onTrack Track) ...)
     var cases: [String] = []
     var associated: [String: [String]] = [:]
-    for child in rest {
+    var idx = 0
+    while idx < rest.count {
+      let child = rest[idx]
+      // Skip player: keyword and its value
+      if child.atomValue == "player:" {
+        idx += 2
+        continue
+      }
       if let caseName = child.atomValue {
         cases.append(caseName)
       } else if let parts = child.children, let caseName = parts.first?.atomValue {
         cases.append(caseName)
         associated[caseName] = parts.dropFirst().compactMap(\.atomValue)
       }
+      idx += 1
     }
     enums[name] = EnumDefinition(
       name: name, cases: cases, associatedTypes: associated
     )
+    scanPlayerKeyword(name: name, rest: rest)
+  }
+
+  private mutating func scanPlayerKeyword(
+    name: String, rest: [SExpr], skipIndex: Int? = nil
+  ) {
+    for (idx, child) in rest.enumerated() {
+      if idx == skipIndex { continue }
+      if child.atomValue == "player:", idx + 1 < rest.count,
+         let val = rest[idx + 1].intValue {
+        playerIndex[name] = val
+        return
+      }
+    }
   }
 
   // MARK: Struct

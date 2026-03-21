@@ -5,6 +5,14 @@ enum GraphBuilder {
     let name: String
     let length: Int
     let isWall: Bool
+    let labels: [String]
+    let tags: Set<String>
+  }
+
+  struct CrossConnect {
+    let trackA: String
+    let trackB: String
+    let offset: Int
   }
 
   static func build(_ sexpr: SExpr) throws -> SiteGraph {
@@ -13,6 +21,8 @@ enum GraphBuilder {
     }
     var graph = SiteGraph()
     var tracks: [TrackInfo] = []
+    var crossConnects: [CrossConnect] = []
+    var namedSiteNames: [String] = []
 
     for child in children.dropFirst() {
       guard let tag = child.tag, let parts = child.children else { continue }
@@ -20,13 +30,18 @@ enum GraphBuilder {
       case "track":
         tracks.append(parseTrack(parts))
       case "site":
-        addNamedSite(parts, to: &graph)
+        let name = parts[1].stringValue ?? parts[1].atomValue ?? ""
+        namedSiteNames.append(name)
+      case "crossConnect":
+        crossConnects.append(parseCrossConnect(parts))
       default:
         continue
       }
     }
 
     materializeTracks(tracks, into: &graph)
+    applyCrossConnects(crossConnects, in: &graph)
+    addNamedSites(namedSiteNames, to: &graph)
     return graph
   }
 
@@ -36,6 +51,8 @@ enum GraphBuilder {
     let name = parts[1].stringValue ?? parts[1].atomValue ?? ""
     var length = 6
     var isWall = false
+    var labels: [String] = []
+    var tags: Set<String> = []
     var idx = 2
     while idx < parts.count {
       let atomKey = parts[idx].atomValue ?? ""
@@ -45,37 +62,85 @@ enum GraphBuilder {
       } else if atomKey == "wall:" && idx + 1 < parts.count {
         isWall = parts[idx + 1].atomValue == "true"
         idx += 2
+      } else if atomKey == "labels:" && idx + 1 < parts.count,
+                let list = parts[idx + 1].children {
+        labels = list.compactMap { $0.stringValue ?? $0.atomValue }
+        idx += 2
+      } else if atomKey == "tags:" && idx + 1 < parts.count,
+                let list = parts[idx + 1].children {
+        tags = Set(list.compactMap { $0.stringValue ?? $0.atomValue })
+        idx += 2
       } else {
         idx += 1
       }
     }
-    return TrackInfo(name: name, length: length, isWall: isWall)
-  }
-
-  private static func addNamedSite(_ parts: [SExpr], to graph: inout SiteGraph) {
-    let name = parts[1].stringValue ?? parts[1].atomValue ?? ""
-    graph.addSite(
-      position: .zero,
-      tags: ["named:\(name)"],
-      label: name
+    return TrackInfo(
+      name: name, length: length, isWall: isWall,
+      labels: labels, tags: tags
     )
   }
 
-  private static func materializeTracks(_ tracks: [TrackInfo], into graph: inout SiteGraph) {
-    for (row, track) in tracks.enumerated() {
+  private static func parseCrossConnect(_ parts: [SExpr]) -> CrossConnect {
+    let trackA = parts[1].stringValue ?? parts[1].atomValue ?? ""
+    let trackB = parts[2].stringValue ?? parts[2].atomValue ?? ""
+    var offset = 0
+    var idx = 3
+    while idx < parts.count {
+      let atomKey = parts[idx].atomValue ?? ""
+      if atomKey == "offset:" && idx + 1 < parts.count {
+        offset = parts[idx + 1].intValue ?? 0
+        idx += 2
+      } else {
+        idx += 1
+      }
+    }
+    return CrossConnect(trackA: trackA, trackB: trackB, offset: offset)
+  }
+
+  private static func addNamedSites(
+    _ names: [String],
+    to graph: inout SiteGraph
+  ) {
+    let spacing: CGFloat = 40
+    let maxY = graph.sites.values.map(\.position.y).max() ?? 0
+    let baseY = maxY + 2 * spacing
+    for (index, name) in names.enumerated() {
+      graph.addSite(
+        position: CGPoint(x: CGFloat(index) * spacing, y: baseY),
+        tags: ["named:\(name)"],
+        label: name
+      )
+    }
+  }
+
+  private static func materializeTracks(
+    _ tracks: [TrackInfo],
+    into graph: inout SiteGraph
+  ) {
+    let spacing: CGFloat = 40
+    for (trackIndex, track) in tracks.enumerated() {
       var siteIDs: [SiteID] = []
       var prevID: SiteID?
-      for space in 1...track.length {
-        var tags: Set<String> = ["track:\(track.name)", "space:\(space)"]
+      for siteIndex in 0..<track.length {
+        var tags: Set<String> = [
+          "track:\(track.name)", "space:\(siteIndex + 1)"
+        ]
         if track.isWall { tags.insert("wall") }
+        tags.formUnion(track.tags)
         let position = CGPoint(
-          x: CGFloat(space * 40),
-          y: CGFloat(row * 40)
+          x: CGFloat(trackIndex) * spacing,
+          y: CGFloat(siteIndex) * spacing
         )
+        let label: String
+        if siteIndex < track.labels.count {
+          label = track.labels[siteIndex]
+        } else {
+          label = "\(track.name)_\(siteIndex + 1)"
+        }
         let siteID = graph.addSite(
           position: position,
           tags: tags,
-          label: "\(track.name)_\(space)"
+          label: label
         )
         siteIDs.append(siteID)
         if let prev = prevID {
@@ -83,9 +148,25 @@ enum GraphBuilder {
         }
         prevID = siteID
       }
-      var trackTags: Set<String> = []
+      var trackTags = track.tags
       if track.isWall { trackTags.insert("wall") }
       graph.addTrack(track.name, sites: siteIDs, tags: trackTags)
+    }
+  }
+
+  private static func applyCrossConnects(
+    _ crossConnects: [CrossConnect],
+    in graph: inout SiteGraph
+  ) {
+    for conn in crossConnects {
+      guard let sitesA = graph.tracks[conn.trackA],
+            let sitesB = graph.tracks[conn.trackB] else { continue }
+      for idx in sitesA.indices {
+        let target = idx + conn.offset
+        guard target >= 0, target < sitesB.count else { continue }
+        graph.sites[sitesA[idx]]?.adjacency[.custom(conn.trackB)] = sitesB[target]
+        graph.sites[sitesB[target]]?.adjacency[.custom(conn.trackA)] = sitesA[idx]
+      }
     }
   }
 }

@@ -27,7 +27,7 @@ struct BCGraph {
       roadSites.append(siteID)
     }
     connectTrack(&graph, sites: roadSites)
-    graph.tracks["road"] = roadSites
+    graph.addTrack("road", sites: roadSites)
 
     // Allied track (4 cities, no Belgium)
     var alliedSites: [SiteID] = []
@@ -37,7 +37,7 @@ struct BCGraph {
       alliedSites.append(id)
     }
     connectTrack(&graph, sites: alliedSites)
-    graph.tracks["allied"] = alliedSites
+    graph.addTrack("allied", sites: alliedSites)
 
     // German track (4 cities, no Belgium)
     var germanSites: [SiteID] = []
@@ -47,7 +47,7 @@ struct BCGraph {
       germanSites.append(id)
     }
     connectTrack(&graph, sites: germanSites)
-    graph.tracks["german"] = germanSites
+    graph.addTrack("german", sites: germanSites)
 
     // Cross-track adjacency at each shared city (Eindhoven, Grave, Nijmegen, Arnhem)
     for cityIndex in 0..<4 {
@@ -148,12 +148,5 @@ struct BCPieceAdapter {
       }
     }
     return highlights
-  }
-}
-
-// Safe array subscript
-extension Array {
-  subscript(safe index: Int) -> Element? {
-    indices.contains(index) ? self[index] : nil
   }
 }

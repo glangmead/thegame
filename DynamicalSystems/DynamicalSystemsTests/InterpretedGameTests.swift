@@ -155,6 +155,20 @@ struct InterpretedGameTests {
     #expect(state.phase == "alpha")
   }
 
+  @Test func parseEnumWithPlayer() throws {
+    let input = """
+    (components
+      (enum AllyPiece {allied101st allied82nd} player: 0)
+      (enum GermanPiece {germanEindhoven germanGrave} player: 1)
+      (enum Phase {setup play}))
+    """
+    let sexpr = try SExprParser.parse(input)
+    let registry = try ComponentRegistry(sexpr)
+    #expect(registry.playerIndex["AllyPiece"] == 0)
+    #expect(registry.playerIndex["GermanPiece"] == 1)
+    #expect(registry.playerIndex["Phase"] == nil)
+  }
+
   @Test func sampleGameLoadsAndPlays() throws {
     let source = """
     (game "Coin Collector"

@@ -25,6 +25,9 @@ where State.Action: Hashable {
   var stateEvaluator: ((State) -> Float)?
   var rolloutPolicy: (([State.Action]) -> State.Action)?
   let autoRules: [AutoRule<State>]
+  var graph: SiteGraph = SiteGraph()
+  var sceneStyle: StyleConfig?
+  var playerIndex: [String: Int] = [:]
 
   func isTerminal(state: State) -> Bool { terminalCheck(state) }
   func isRolloutTerminal(state: State) -> Bool {

@@ -9,6 +9,7 @@ enum DSLValue: Hashable, Sendable {
   case enumCase(type: String, value: String)
   case list([DSLValue])
   case structValue(type: String, fields: [String: DSLValue])
+  case site(track: String, index: Int)
   case `nil`
 }
 
@@ -70,6 +71,12 @@ extension DSLValue {
     return (type: typeName, fields: fields)
   }
 
+  /// Extract site track and index.
+  var asSite: (track: String, index: Int)? {
+    guard case .site(let track, let index) = self else { return nil }
+    return (track, index)
+  }
+
   /// True only for the `.nil` case.
   var isNil: Bool {
     if case .nil = self { return true }
@@ -92,6 +99,8 @@ extension DSLValue {
         .sorted()
         .joined(separator: ", ")
       return "\(typeName){\(inner)}"
+    case .site(let track, let index):
+      return track.isEmpty ? ":\(index)" : "\(track):\(index)"
     case .nil:
       return "nil"
     }
