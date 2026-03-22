@@ -40,9 +40,10 @@ struct OpenLoopMCTSTests {
     #expect(results.isEmpty)
   }
 
-  @Test
+  @Test(.timeLimit(.minutes(1)))
   func testCantStopFullGameMCTS() throws {
     let game = CantStopPages.game()
+    #expect(!game.newState().ended)
     var state = game.newState()
     let maxTurns = 5000
 

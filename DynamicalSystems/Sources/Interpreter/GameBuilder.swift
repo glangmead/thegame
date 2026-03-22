@@ -1,132 +1,79 @@
 enum GameBuilder {
 
-  // MARK: - Extracted sections from the (game ...) form
-
-  private struct GameSections {
-    let gameName: String
-    var componentsExpr: SExpr?
-    var stateExpr: SExpr?
-    var actionsExpr: SExpr?
-    var rulesExpr: SExpr?
-    var metadataExpr: SExpr?
-    var graphExpr: SExpr?
-    var sceneExpr: SExpr?
-  }
-
   // MARK: - Public API
 
-  static func build(from source: String) throws -> ComposedGame<InterpretedState> {
-    let forms = try SExprParser.parseMultiple(source)
-    let (sections, defineExprs) = try extractSections(forms)
-    return try assembleGame(sections, defineExprs: defineExprs)
+  static func build(
+    fromJSONC source: String
+  ) throws -> ComposedGame<InterpretedState> {
+    let json = try JSONGameParser.parse(source)
+    return try assembleGameFromJSON(json)
   }
 
-  /// Build with static validation: checks field references before assembly.
-  static func buildValidated(
-    from source: String
+  // MARK: - Assembly
+
+  // swiftlint:disable:next function_body_length
+  private static func assembleGameFromJSON(
+    _ json: JSONValue
   ) throws -> ComposedGame<InterpretedState> {
-    let forms = try SExprParser.parseMultiple(source)
-    let (sections, defineExprs) = try extractSections(forms)
+    guard case .object(let root) = json else {
+      throw DSLError.expectedForm("root object")
+    }
+    let gameName = root["game"]?.stringValue ?? "Untitled"
+    let components = try root["components"].map {
+      try JSONComponentRegistry.build($0)
+    } ?? ComponentRegistry.empty()
+    let schema = try root["state"].map {
+      try JSONStateSchema.build($0)
+    } ?? StateSchema.empty()
+    let actions = try root["actions"].map {
+      try JSONActionSchema.build($0)
+    } ?? ActionSchema.empty()
+    let defines = try JSONDefineExpander(root["defines"] ?? .array([]))
+    let graph = try root["graph"].map {
+      try JSONGraphBuilder.build($0)
+    } ?? SiteGraph()
 
-    let components = try sections.componentsExpr.map { try ComponentRegistry($0) }
-      ?? ComponentRegistry.empty()
-    let schema = try sections.stateExpr.map { try StateSchema($0) }
-      ?? StateSchema.empty()
-    let actions = try sections.actionsExpr.map { try ActionSchema($0) }
-      ?? ActionSchema.empty()
-
-    if let rulesExpr = sections.rulesExpr {
-      try Validator.validate(
-        components: components, schema: schema,
-        actions: actions, rulesExpr: rulesExpr
+    let compiler = JSONExpressionCompiler(
+      components: components, schema: schema,
+      graph: graph, defines: defines
+    )
+    let rulesResult = try root["rules"].map {
+      try JSONPageBuilder.buildRules(
+        $0, components: components, schema: schema,
+        actionSchema: actions, defines: defines,
+        graph: graph, compiler: compiler
       )
     }
 
-    return try assembleGame(sections, defineExprs: defineExprs)
-  }
-
-  // MARK: - Top-level form classification
-
-  private static func classifyForms(
-    _ forms: [SExpr]
-  ) -> (gameForm: SExpr?, defines: [SExpr], metadataForm: SExpr?) { // swiftlint:disable:this large_tuple
-    var gameForm: SExpr?
-    var defineExprs: [SExpr] = []
-    var metadataForm: SExpr?
-    for form in forms {
-      switch form.tag {
-      case "game": gameForm = form
-      case "define": defineExprs.append(form)
-      case "metadata": metadataForm = form
-      default: continue
-      }
-    }
-    return (gameForm, defineExprs, metadataForm)
-  }
-
-  // MARK: - Section extraction
-
-  private static func extractSections(
-    _ forms: [SExpr]
-  ) throws -> (GameSections, [SExpr]) {
-    let (gameForm, defineExprs, metadataForm) = classifyForms(forms)
-
-    guard let game = gameForm, let children = game.children else {
-      throw DSLError.expectedForm("game")
-    }
-
-    let name = children[1].stringValue
-      ?? children[1].atomValue ?? "Untitled"
-    var sections = GameSections(gameName: name)
-    sections.metadataExpr = metadataForm
-
-    for child in children.dropFirst(2) {
-      switch child.tag {
-      case "components": sections.componentsExpr = child
-      case "state": sections.stateExpr = child
-      case "actions": sections.actionsExpr = child
-      case "rules": sections.rulesExpr = child
-      case "graph": sections.graphExpr = child
-      case "scene": sections.sceneExpr = child
-      default: continue
-      }
-    }
-
-    return (sections, defineExprs)
-  }
-
-  // MARK: - Game assembly
-
-  // swiftlint:disable:next function_body_length
-  private static func assembleGame(
-    _ sections: GameSections,
-    defineExprs: [SExpr]
-  ) throws -> ComposedGame<InterpretedState> {
-    let components = try sections.componentsExpr.map { try ComponentRegistry($0) }
-      ?? ComponentRegistry.empty()
-    let schema = try sections.stateExpr.map { try StateSchema($0) }
-      ?? StateSchema.empty()
-    let actions = try sections.actionsExpr.map { try ActionSchema($0) }
-      ?? ActionSchema.empty()
-    let defines = try DefineExpander(defineExprs)
-    let graph = try sections.graphExpr.map { try GraphBuilder.build($0) }
-      ?? SiteGraph()
-
-    let buildContext = PageBuilder.BuildContext(
-      components: components, schema: schema, randomSource: nil,
-      actionSchema: actions, defines: defines, graph: graph
-    )
-    let rulesResult = try sections.rulesExpr.map {
-      try PageBuilder.buildRules($0, context: buildContext)
-    }
-
     let capturedPhaseMap = rulesResult?.phaseMap ?? [:]
-    let capturedTerminalExpr = rulesResult?.terminalExpr
-    let capturedRolloutExpr = rulesResult?.rolloutTerminalExpr
     let capturedPhases = rulesResult?.phases ?? []
 
+    // Terminal check
+    let terminalCheck: (InterpretedState) -> Bool
+    if let rulesJSON = root["rules"]?.objectValue,
+       let termField = rulesJSON["terminal"]?.stringValue {
+      let compiled = compiler.expr(.string(termField))
+      terminalCheck = { state in
+        let env = ExpressionCompiler.Env(state: state)
+        return (try? compiled(env))?.asBool ?? false
+      }
+    } else {
+      terminalCheck = { $0.gameAcknowledged }
+    }
+
+    let rolloutCheck: ((InterpretedState) -> Bool)? = {
+      guard let rulesJSON = root["rules"]?.objectValue,
+            let rolloutField = rulesJSON["rolloutTerminal"]?.stringValue
+      else { return nil }
+      let compiled = compiler.expr(.string(rolloutField))
+      return { state in
+        let env = ExpressionCompiler.Env(state: state)
+        return (try? compiled(env))?.asBool ?? false
+      }
+    }()
+
     var game = ComposedGame(
-      gameName: sections.gameName,
+      gameName: gameName,
       pages: rulesResult?.pages ?? [],
       priorities: rulesResult?.priorities ?? [],
       makeInitialState: {
@@ -136,21 +83,24 @@ enum GameBuilder {
         }
         return state
       },
-      terminalCheck: makeTerminalCheck(
-        capturedTerminalExpr, components: components,
-        schema: schema, graph: graph
-      ),
-      rolloutTerminalCheck: capturedRolloutExpr.map {
-        makeExprCheck(
-          $0, components: components,
-          schema: schema, graph: graph
-        )
-      },
+      terminalCheck: terminalCheck,
+      rolloutTerminalCheck: rolloutCheck,
       phaseForAction: { action in capturedPhaseMap[action.name] },
       autoRules: rulesResult?.reactions ?? []
     )
     game.graph = graph
-    game.sceneStyle = sections.sceneExpr.flatMap { parseSceneStyle($0) }
+
+    // Scene style
+    if let sceneJSON = root["scene"],
+       case .object(let sceneDict) = sceneJSON {
+      var config = StyleConfig()
+      config.stroke = sceneDict["stroke"]?.stringValue
+      config.lineWidth = sceneDict["lineWidth"]?.intValue
+        .map { Float($0) }
+      config.fill = sceneDict["fill"]?.stringValue
+      game.sceneStyle = config
+    }
+
     game.playerIndex = components.playerIndex
     var pieceNames: [String: String] = [:]
     for def in components.enums.values {
@@ -159,68 +109,12 @@ enum GameBuilder {
       }
     }
     game.pieceDisplayNames = pieceNames
-    game.stateEvaluator = sections.metadataExpr.flatMap {
-      MetadataBuilder.buildHeuristic(
-        $0, components: components, defines: defines, schema: schema, graph: graph
+    game.stateEvaluator = root["metadata"].flatMap {
+      JSONMetadataBuilder.buildHeuristic(
+        $0, components: components, defines: defines,
+        schema: schema, graph: graph
       )
     }
     return game
-  }
-
-  // MARK: - Terminal check helpers
-
-  private static func makeTerminalCheck(
-    _ expr: SExpr?,
-    components: ComponentRegistry,
-    schema: StateSchema,
-    graph: SiteGraph
-  ) -> (InterpretedState) -> Bool {
-    guard let expr else {
-      return { state in state.gameAcknowledged }
-    }
-    return makeExprCheck(
-      expr, components: components, schema: schema, graph: graph
-    )
-  }
-
-  private static func makeExprCheck(
-    _ expr: SExpr,
-    components: ComponentRegistry,
-    schema: StateSchema,
-    graph: SiteGraph
-  ) -> (InterpretedState) -> Bool {
-    let compiler = ExpressionCompiler(
-      components: components, schema: schema, graph: graph
-    )
-    let compiled = compiler.expr(expr)
-    return { state in
-      let env = ExpressionCompiler.Env(state: state)
-      return (try? compiled(env))?.asBool ?? false
-    }
-  }
-
-  // MARK: - Scene style parsing
-
-  private static func parseSceneStyle(_ sexpr: SExpr) -> StyleConfig? {
-    guard let children = sexpr.children,
-          sexpr.tag == "scene" else { return nil }
-    var config = StyleConfig()
-    var idx = 1
-    while idx < children.count {
-      let key = children[idx].atomValue ?? ""
-      guard idx + 1 < children.count else { break }
-      let val = children[idx + 1]
-      switch key {
-      case "stroke:":
-        config.stroke = val.stringValue ?? val.atomValue
-      case "lineWidth:":
-        config.lineWidth = val.intValue.map { Float($0) }
-      case "fill:":
-        config.fill = val.stringValue ?? val.atomValue
-      default: break
-      }
-      idx += 2
-    }
-    return config
   }
 }

@@ -3,31 +3,37 @@ import CoreGraphics
 @testable import DynamicalSystems
 
 @Suite("Site Operations")
+// swiftlint:disable:next type_body_length
 struct SiteOperationsTests {
 
   private func makeCompiler(
     graph: SiteGraph = SiteGraph()
-  ) -> (ExpressionCompiler, StateSchema) {
-    // swiftlint:disable:next force_try
-    let registry = try! ComponentRegistry(try! SExprParser.parse(
-      "(components (enum Phase {play}))"
-    ))
-    // swiftlint:disable:next force_try
-    let schema = try! StateSchema(try! SExprParser.parse(
-      "(state (counter x 0 10))"
-    ))
+  ) throws -> (JSONExpressionCompiler, StateSchema) {
+    let registry = ComponentRegistry(
+      enums: ["Phase": EnumDefinition(
+        name: "Phase", cases: ["play"],
+        associatedTypes: [:], displayNames: [:]
+      )],
+      structs: [:], functions: [:], cards: [],
+      crts: [:], playerIndex: [:]
+    )
+    let schema = StateSchema(fields: [
+      "x": FieldDefinition(name: "x", kind: .counter(min: 0, max: 10))
+    ])
+    let defines = try JSONDefineExpander(.array([]))
     return (
-      ExpressionCompiler(
-        components: registry, schema: schema, graph: graph
+      JSONExpressionCompiler(
+        components: registry, schema: schema,
+        graph: graph, defines: defines
       ),
       schema
     )
   }
 
   @Test func siteConstruction() throws {
-    let (compiler, schema) = makeCompiler()
-    let sexpr = try SExprParser.parse("(site \"road\" 0)")
-    let compiled = compiler.expr(sexpr)
+    let (compiler, schema) = try makeCompiler()
+    let json: JSONValue = .object(["site": .array([.string("road"), .int(0)])])
+    let compiled = compiler.expr(json)
     let env = ExpressionCompiler.Env(
       state: InterpretedState(schema: schema)
     )
@@ -42,10 +48,12 @@ struct SiteOperationsTests {
       position: CGPoint(x: 0, y: 40), displayName: "Eindhoven"
     )
     graph.addTrack("road", sites: [site0, site1])
-    let (compiler, schema) = makeCompiler(graph: graph)
+    let (compiler, schema) = try makeCompiler(graph: graph)
 
-    let sexpr = try SExprParser.parse("(site \"road\" \"Eindhoven\")")
-    let compiled = compiler.expr(sexpr)
+    let json: JSONValue = .object([
+      "site": .array([.string("road"), .string("Eindhoven")])
+    ])
+    let compiled = compiler.expr(json)
     let env = ExpressionCompiler.Env(
       state: InterpretedState(schema: schema)
     )
@@ -53,6 +61,7 @@ struct SiteOperationsTests {
     #expect(result == .site(track: "road", index: 1))
   }
 
+  // swiftlint:disable:next function_body_length
   @Test func posAndAdvance() throws {
     var graph = SiteGraph()
     let site0 = graph.addSite(position: .zero)
@@ -62,14 +71,21 @@ struct SiteOperationsTests {
     graph.connect(site1, to: site2, direction: .next)
     graph.addTrack("road", sites: [site0, site1, site2])
 
-    let compSrc = "(components (enum Piece {corps}))"
-    let stateSrc = "(state (counter x 0 10))"
-    let registry = try ComponentRegistry(
-      try SExprParser.parse(compSrc)
+    let registry = ComponentRegistry(
+      enums: ["Piece": EnumDefinition(
+        name: "Piece", cases: ["corps", "tank"],
+        associatedTypes: [:], displayNames: [:]
+      )],
+      structs: [:], functions: [:], cards: [],
+      crts: [:], playerIndex: [:]
     )
-    let schema = try StateSchema(try SExprParser.parse(stateSrc))
-    let compiler = ExpressionCompiler(
-      components: registry, schema: schema, graph: graph
+    let schema = StateSchema(fields: [
+      "x": FieldDefinition(name: "x", kind: .counter(min: 0, max: 10))
+    ])
+    let defines = try JSONDefineExpander(.array([]))
+    let compiler = JSONExpressionCompiler(
+      components: registry, schema: schema,
+      graph: graph, defines: defines
     )
 
     var state = InterpretedState(schema: schema)
@@ -78,47 +94,61 @@ struct SiteOperationsTests {
     )
     let env = ExpressionCompiler.Env(state: state)
 
-    // (pos corps) returns its site
+    // {"pos": ["corps"]} returns its site
     let posExpr = compiler.expr(
-      try SExprParser.parse("(pos corps)")
+      .object(["pos": .array([.string("corps")])])
     )
     let pos = try posExpr(env)
     #expect(pos == .site(track: "road", index: 0))
 
-    // (advance (pos corps) "road" 1) moves one step
-    let advExpr = compiler.expr(try SExprParser.parse(
-      "(advance (pos corps) \"road\" 1)"
-    ))
+    // {"advance": [{"pos": ["corps"]}, "road", 1]} moves one step
+    let advExpr = compiler.expr(.object([
+      "advance": .array([
+        .object(["pos": .array([.string("corps")])]),
+        .string("road"),
+        .int(1)
+      ])
+    ]))
     let adv = try advExpr(env)
     #expect(adv == .site(track: "road", index: 1))
 
     // Advance clamps at end
-    let advFar = compiler.expr(try SExprParser.parse(
-      "(advance (pos corps) \"road\" 10)"
-    ))
+    let advFar = compiler.expr(.object([
+      "advance": .array([
+        .object(["pos": .array([.string("corps")])]),
+        .string("road"),
+        .int(10)
+      ])
+    ]))
     let far = try advFar(env)
     #expect(far == .site(track: "road", index: 2)) // clamped to last
 
     // pieceAt
-    let pieceAtExpr = compiler.expr(try SExprParser.parse(
-      "(pieceAt (site \"road\" 0))"
-    ))
+    let pieceAtExpr = compiler.expr(.object([
+      "pieceAt": .array([
+        .object(["site": .array([.string("road"), .int(0)])])
+      ])
+    ]))
     let found = try pieceAtExpr(env)
     #expect(found.asEnumValue == "corps")
   }
 
   @Test func trackOfAndIndexOf() throws {
-    let (compiler, schema) = makeCompiler()
+    let (compiler, schema) = try makeCompiler()
     let env = ExpressionCompiler.Env(
       state: InterpretedState(schema: schema)
     )
-    let trackExpr = compiler.expr(try SExprParser.parse(
-      "(trackOf (site \"road\" 2))"
-    ))
+    let trackExpr = compiler.expr(.object([
+      "trackOf": .array([
+        .object(["site": .array([.string("road"), .int(2)])])
+      ])
+    ]))
     #expect(try trackExpr(env) == .string("road"))
-    let idxExpr = compiler.expr(try SExprParser.parse(
-      "(indexOf (site \"road\" 2))"
-    ))
+    let idxExpr = compiler.expr(.object([
+      "indexOf": .array([
+        .object(["site": .array([.string("road"), .int(2)])])
+      ])
+    ]))
     #expect(try idxExpr(env) == .int(2))
   }
 
@@ -131,18 +161,23 @@ struct SiteOperationsTests {
     graph.sites[alliedSite]?.adjacency[.custom("road")] = roadSite
     graph.sites[roadSite]?.adjacency[.custom("allied")] = alliedSite
 
-    let compSrc = "(components (enum Piece {ally}))"
-    let stateSrc = "(state (counter x 0 10))"
-    let registry = try ComponentRegistry(
-      try SExprParser.parse(compSrc)
+    let registry = ComponentRegistry(
+      enums: ["Piece": EnumDefinition(
+        name: "Piece", cases: ["ally"],
+        associatedTypes: [:], displayNames: [:]
+      )],
+      structs: [:], functions: [:], cards: [],
+      crts: [:], playerIndex: [:]
     )
-    let schemaParsed = try StateSchema(
-      try SExprParser.parse(stateSrc)
+    let schema = StateSchema(fields: [
+      "x": FieldDefinition(name: "x", kind: .counter(min: 0, max: 10))
+    ])
+    let defines = try JSONDefineExpander(.array([]))
+    let compiler = JSONExpressionCompiler(
+      components: registry, schema: schema,
+      graph: graph, defines: defines
     )
-    let compiler = ExpressionCompiler(
-      components: registry, schema: schemaParsed, graph: graph
-    )
-    var state = InterpretedState(schema: schemaParsed)
+    var state = InterpretedState(schema: schema)
     state.place(
       "ally",
       at: .site(track: "allied", index: 0),
@@ -150,9 +185,12 @@ struct SiteOperationsTests {
     )
     let env = ExpressionCompiler.Env(state: state)
 
-    let adj = compiler.expr(try SExprParser.parse(
-      "(adjacent (pos ally) \"road\")"
-    ))
+    let adj = compiler.expr(.object([
+      "adjacent": .array([
+        .object(["pos": .array([.string("ally")])]),
+        .string("road")
+      ])
+    ]))
     let result = try adj(env)
     #expect(result == .site(track: "road", index: 0))
   }
@@ -160,29 +198,44 @@ struct SiteOperationsTests {
   @Test func namedSiteConstruction() throws {
     var graph = SiteGraph()
     let resID = graph.addSite(position: .zero, displayName: "reserves")
-    let (compiler, schema) = makeCompiler(graph: graph)
+    let (compiler, schema) = try makeCompiler(graph: graph)
     let env = ExpressionCompiler.Env(
       state: InterpretedState(schema: schema)
     )
 
-    let sexpr = try SExprParser.parse("(site \"reserves\")")
-    let result = try compiler.expr(sexpr)(env)
+    let json: JSONValue = .object([
+      "site": .array([.string("reserves")])
+    ])
+    let result = try compiler.expr(json)(env)
     #expect(result == .site(track: "", index: resID.raw))
   }
 
+  // swiftlint:disable:next function_body_length
   @Test func pieceAdapterTransposes() throws {
-    let compSrc = """
-    (components
-      (enum Piece {corps tank} player: 0)
-      (enum Phase {play}))
-    """
-    let stateSrc = """
-    (state
-      (dict strength Piece Int)
-      (field phase Phase))
-    """
-    let registry = try ComponentRegistry(try SExprParser.parse(compSrc))
-    let schema = try StateSchema(try SExprParser.parse(stateSrc))
+    let registry = ComponentRegistry(
+      enums: [
+        "Piece": EnumDefinition(
+          name: "Piece", cases: ["corps", "tank"],
+          associatedTypes: [:], displayNames: [:]
+        ),
+        "Phase": EnumDefinition(
+          name: "Phase", cases: ["play"],
+          associatedTypes: [:], displayNames: [:]
+        )
+      ],
+      structs: [:], functions: [:], cards: [],
+      crts: [:], playerIndex: ["Piece": 0]
+    )
+    let schema = StateSchema(fields: [
+      "strength": FieldDefinition(
+        name: "strength",
+        kind: .dict(keyType: "Piece", valueType: "Int")
+      ),
+      "phase": FieldDefinition(
+        name: "phase",
+        kind: .field(type: "Phase")
+      )
+    ])
 
     var graph = SiteGraph()
     let site0 = graph.addSite(position: .zero)
@@ -221,41 +274,56 @@ struct SiteOperationsTests {
   }
 
   @Test func placeAndMoveStatements() throws {
-    let compSrc = "(components (enum Piece {corps tank}))"
-    let stateSrc = "(state (counter x 0 10))"
-    let registry = try ComponentRegistry(try SExprParser.parse(compSrc))
-    let schema = try StateSchema(try SExprParser.parse(stateSrc))
+    let registry = ComponentRegistry(
+      enums: ["Piece": EnumDefinition(
+        name: "Piece", cases: ["corps", "tank"],
+        associatedTypes: [:], displayNames: [:]
+      )],
+      structs: [:], functions: [:], cards: [],
+      crts: [:], playerIndex: [:]
+    )
+    let schema = StateSchema(fields: [
+      "x": FieldDefinition(name: "x", kind: .counter(min: 0, max: 10))
+    ])
     var graph = SiteGraph()
-    let s0 = graph.addSite(position: .zero)
-    let s1 = graph.addSite(position: CGPoint(x: 0, y: 40))
-    graph.connect(s0, to: s1, direction: .next)
-    graph.addTrack("road", sites: [s0, s1])
-    let compiler = ExpressionCompiler(
-      components: registry, schema: schema, graph: graph
+    let siteA = graph.addSite(position: .zero)
+    let siteB = graph.addSite(position: CGPoint(x: 0, y: 40))
+    graph.connect(siteA, to: siteB, direction: .next)
+    graph.addTrack("road", sites: [siteA, siteB])
+    let defines = try JSONDefineExpander(.array([]))
+    let compiler = JSONExpressionCompiler(
+      components: registry, schema: schema,
+      graph: graph, defines: defines
     )
 
     let state = InterpretedState(schema: schema)
     let env = ExpressionCompiler.Env(state: state)
 
     // place
-    let placeStmt = compiler.stmt(try SExprParser.parse(
-      "(place corps (site \"road\" 0))"
-    ))
+    let placeStmt = compiler.stmt(.object([
+      "place": .array([
+        .string("corps"),
+        .object(["site": .array([.string("road"), .int(0)])])
+      ])
+    ]))
     _ = try placeStmt(env)
     #expect(env.state.positions["corps"] == .site(track: "road", index: 0))
     #expect(env.state.pieceTypes["corps"] == "Piece")
 
     // move
-    let moveStmt = compiler.stmt(try SExprParser.parse(
-      "(move corps (site \"road\" 1))"
-    ))
+    let moveStmt = compiler.stmt(.object([
+      "move": .array([
+        .string("corps"),
+        .object(["site": .array([.string("road"), .int(1)])])
+      ])
+    ]))
     _ = try moveStmt(env)
     #expect(env.state.positions["corps"] == .site(track: "road", index: 1))
 
     // remove
-    let removeStmt = compiler.stmt(try SExprParser.parse(
-      "(remove corps)"
-    ))
+    let removeStmt = compiler.stmt(.object([
+      "remove": .array([.string("corps")])
+    ]))
     _ = try removeStmt(env)
     #expect(env.state.positions["corps"] == nil)
   }

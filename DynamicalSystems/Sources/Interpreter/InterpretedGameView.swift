@@ -180,56 +180,83 @@ struct InterpretedGameView: View {
     _ name: String
   ) -> ComposedGame<InterpretedState> {
     guard let url = Bundle.main.url(
-      forResource: name, withExtension: "game"
+      forResource: "\(name).game", withExtension: "jsonc"
     ) else {
-      fatalError("Missing resource: \(name).game")
+      fatalError("Missing resource: \(name).game.jsonc")
     }
-    // swiftlint:disable:next force_try
-    let source = try! String(contentsOf: url)
-    // swiftlint:disable:next force_try
-    return try! GameBuilder.build(from: source)
+    do {
+      let source = try String(contentsOf: url, encoding: .utf8)
+      return try GameBuilder.build(fromJSONC: source)
+    } catch {
+      fatalError("Failed to load \(name).game.jsonc: \(error)")
+    }
   }
 
   // MARK: - Sample game for the main menu
 
   static let sampleGameSource = """
-  (game "Coin Flip"
-    (players 1)
-    (components
-      (enum Phase {play done}))
-    (state
-      (counter score 0 10)
-      (flag ended)
-      (flag victory)
-      (flag gameAcknowledged)
-      (field phase Phase))
-    (graph)
-    (actions
-      (action flipHeads)
-      (action flipTails)
-      (action acknowledge))
-    (rules
-      (phases {play done})
-      (terminal (field gameAcknowledged))
-      (page "Play"
-        (rule (when (== phase play))
-              (offer flipHeads flipTails))
-        (reduce flipHeads
-          (seq (increment score 1)
-               (if (>= score 3)
-                 (seq (endGame victory) (setPhase done))
-                 (log "Tails, no points"))))
-        (reduce flipTails
-          (log "Tails, no points")))
-      (priority "Victory"
-        (rule (when (and victory (not gameAcknowledged)))
-              (offer acknowledge))
-        (reduce acknowledge
-          (set gameAcknowledged true)))))
+  {
+    "game": "Coin Flip",
+    "players": 1,
+    "components": {
+      "enums": [
+        {"name": "Phase", "values": ["play", "done"]}
+      ]
+    },
+    "state": {
+      "fields": [{"name": "phase", "type": "Phase"}],
+      "counters": [{"name": "score", "min": 0, "max": 10}],
+      "flags": ["ended", "victory", "gameAcknowledged"]
+    },
+    "graph": {"tracks": [], "connections": []},
+    "actions": {
+      "actions": [
+        {"name": "flipHeads"},
+        {"name": "flipTails"},
+        {"name": "acknowledge"}
+      ]
+    },
+    "rules": {
+      "terminal": "gameAcknowledged",
+      "pages": [
+        {
+          "page": "Play",
+          "rules": [
+            {"when": {"==": ["phase", ".play"]},
+             "offer": ["flipHeads", "flipTails"]}
+          ],
+          "reduce": {
+            "flipHeads": {"seq": [
+              {"increment": ["score", 1]},
+              {"if": [{">=": ["score", 3]},
+                {"seq": [{"endGame": ["victory"]},
+                         {"setPhase": [".done"]}]},
+                {"log": ["Tails, no points"]}]}
+            ]},
+            "flipTails": {"log": ["tails, no points"]}
+          }
+        }
+      ],
+      "priorities": [
+        {
+          "priority": "Victory",
+          "rules": [
+            {"when": {"and": ["victory", {"not": ["gameAcknowledged"]}]},
+             "offer": ["acknowledge"]}
+          ],
+          "reduce": {
+            "acknowledge": {"set": ["gameAcknowledged", true]}
+          }
+        }
+      ]
+    },
+    "defines": [],
+    "metadata": {}
+  }
   """
 
   // swiftlint:disable:next force_try
-  static let sampleGame = try! GameBuilder.build(from: sampleGameSource)
+  static let sampleGame = try! GameBuilder.build(fromJSONC: sampleGameSource)
 }
 
 #Preview("Interpreted Game") {

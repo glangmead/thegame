@@ -1,0 +1,568 @@
+// Battle Card: Market Garden
+// Solo wargame — advance 30 Corps from Belgium to Arnhem
+// Three tracks: allied (airborne), road (30 Corps), german (garrisons)
+// Victory: 30 Corps reaches Arnhem. Defeat: turn 7 or any ally destroyed.
+{
+  "game": "Battle Card: Market Garden",
+  "players": 1,
+
+  "components": {
+    "enums": [
+      {"name": "Phase", "values": ["setup", "airdrop", "battle",
+                                    "reinforceGermans", "advance",
+                                    "rollForWeather", "reinforce1st"]},
+      {"name": "AllyPiece", "values": ["allied101st", "allied82nd", "allied1st"],
+       "player": 0, "displayNames": ["101st", "82nd", "1st"]},
+      {"name": "GermanPiece", "values": ["germanEindhoven", "germanGrave",
+                                          "germanNijmegen", "germanArnhem"],
+       "player": 1,
+       "displayNames": ["Eindhoven", "Grave", "Nijmegen", "Arnhem"]},
+      {"name": "CorpsPiece", "values": ["corps"], "player": 0,
+       "displayNames": ["XXX Corps"]},
+      {"name": "Weather", "values": ["fog", "clear"]},
+      {"name": "Control", "values": ["allies", "germans"]},
+      {"name": "Advantage", "values": ["allies", "equal", "germans"]}
+    ],
+    "crts": [
+      // Attack CRT: ally initiates
+      // Results are (damage-to-ally, damage-to-german, allied-control-gained?)
+      {"name": "attackCRT",
+       "row": "Advantage", "col": [1, 6],
+       "results": ["allyHits", "germanHits", "controlGained"],
+       "entries": {
+         "allies":  [{"dice": [1], "values": [1, 0, false]},
+                     {"dice": [2, 3, 4], "values": [1, 1, true]},
+                     {"dice": [5, 6], "values": [0, 1, true]}],
+         "equal":   [{"dice": [1], "values": [2, 0, false]},
+                     {"dice": [2, 3, 4], "values": [1, 1, false]},
+                     {"dice": [5, 6], "values": [1, 1, true]}],
+         "germans": [{"dice": [1], "values": [3, 0, false]},
+                     {"dice": [2, 3, 4], "values": [2, 1, false]},
+                     {"dice": [5, 6], "values": [1, 0, true]}]
+       }},
+      // Defend CRT: ally defends
+      // Results are (damage-to-ally, damage-to-german)
+      {"name": "defendCRT",
+       "row": "Advantage", "col": [1, 6],
+       "results": ["allyHits", "germanHits"],
+       "entries": {
+         "allies":  [{"dice": [1], "values": [1, 1]},
+                     {"dice": [2, 3, 4, 5, 6], "values": [0, 0]}],
+         "equal":   [{"dice": [1], "values": [1, 0]},
+                     {"dice": [2, 3, 4], "values": [1, 1]},
+                     {"dice": [5, 6], "values": [0, 0]}],
+         "germans": [{"dice": [1], "values": [2, 0]},
+                     {"dice": [2, 3, 4], "values": [1, 0]},
+                     {"dice": [5, 6], "values": [0, 0]}]
+       }},
+      // Airdrop penalty: strength reduction on landing
+      {"name": "airdropPenalty",
+       "col": [1, 6],
+       "entries": [
+         {"dice": [1, 2], "values": [2]},
+         {"dice": [3, 4], "values": [1]},
+         {"dice": [5, 6], "values": [0]}
+       ]}
+    ]
+  },
+
+  "state": {
+    "fields": [
+      {"name": "phase", "type": "Phase"},
+      {"name": "weather", "type": "Weather"}
+    ],
+    "counters": [{"name": "turnNumber", "min": 1, "max": 7}],
+    "flags": ["weatherCleared", "reinforced1st", "ended", "victory",
+              "gameAcknowledged"],
+    "dicts": [
+      {"name": "allyStrength", "key": "AllyPiece", "value": "Int"},
+      {"name": "germanStrength", "key": "GermanPiece", "value": "Int"},
+      {"name": "control", "key": "Site", "value": "Control"}
+    ]
+  },
+
+  "graph": {
+    "tracks": [
+      {"name": "alliedTrack", "length": 4, "tags": ["allied"]},
+      {"name": "road", "length": 5,
+       "displayNames": ["Belgium", "Eindhoven", "Grave", "Nijmegen", "Arnhem"],
+       "tags": ["road"]},
+      {"name": "germanTrack", "length": 4, "tags": ["german"]}
+    ],
+    "connections": [
+      {"type": "crossConnect", "from": "alliedTrack", "to": "road", "offset": 1},
+      {"type": "crossConnect", "from": "alliedTrack", "to": "germanTrack"},
+      {"type": "crossConnect", "from": "germanTrack", "to": "road", "offset": 1}
+    ]
+  },
+
+  "actions": {
+    "actions": [
+      {"name": "initialize"},
+      {"name": "airdrop", "params": [{"name": "piece", "type": "AllyPiece"}]},
+      {"name": "rollForAttack", "params": [{"name": "piece", "type": "AllyPiece"}]},
+      {"name": "rollForDefend", "params": [{"name": "piece", "type": "AllyPiece"}]},
+      {"name": "reinforceGerman", "params": [{"name": "piece", "type": "GermanPiece"}]},
+      {"name": "advance30Corps"},
+      {"name": "advanceAllies101st"},
+      {"name": "advanceAllies82nd"},
+      {"name": "advanceAllies1st"},
+      {"name": "skipAdvance"},
+      {"name": "rollWeather"},
+      {"name": "reinforce1stAirborne"},
+      {"name": "skipReinforce1st"},
+      {"name": "advanceTurn"},
+      {"name": "enterBattle"},
+      {"name": "enterReinforceGermans"},
+      {"name": "enterAdvance"},
+      {"name": "claimVictory"},
+      {"name": "declareLoss"}
+    ],
+    "groups": [
+      {"name": "Battle", "actions": ["rollForAttack", "rollForDefend"]},
+      {"name": "Advance", "actions": ["advance30Corps", "advanceAllies101st",
+                                       "advanceAllies82nd", "advanceAllies1st",
+                                       "skipAdvance"]}
+    ]
+  },
+
+  "rules": {
+    "terminal": "ended",
+    "rolloutTerminal": "ended",
+
+    "pages": [
+      // ── Setup ──────────────────────────────────────────
+      {
+        "page": "Setup",
+        "rules": [
+          {"when": {"==": ["phase", ".setup"]},
+           "offer": ["initialize"]}
+        ],
+        "reduce": {
+          "initialize": {"seq": [
+            // Place allied airborne units
+            {"place": ["allied101st", {"site": ["alliedTrack", 0]}]},
+            {"place": ["allied82nd", {"site": ["alliedTrack", 1]}]},
+            {"place": ["allied1st", {"site": ["alliedTrack", 3]}]},
+            // Place 30 Corps at Belgium
+            {"place": ["corps", {"site": ["road", 0]}]},
+            // Place German garrisons
+            {"place": ["germanEindhoven", {"site": ["germanTrack", 0]}]},
+            {"place": ["germanGrave", {"site": ["germanTrack", 1]}]},
+            {"place": ["germanNijmegen", {"site": ["germanTrack", 2]}]},
+            {"place": ["germanArnhem", {"site": ["germanTrack", 3]}]},
+            // Allied strengths
+            {"setEntry": ["allyStrength", "allied101st", 6]},
+            {"setEntry": ["allyStrength", "allied82nd", 6]},
+            {"setEntry": ["allyStrength", "allied1st", 5]},
+            // German strengths
+            {"setEntry": ["germanStrength", "germanEindhoven", 2]},
+            {"setEntry": ["germanStrength", "germanGrave", 2]},
+            {"setEntry": ["germanStrength", "germanNijmegen", 1]},
+            {"setEntry": ["germanStrength", "germanArnhem", 2]},
+            // All road cities start German-controlled
+            {"setEntry": ["control", {"site": ["road", 1]}, ".germans"]},
+            {"setEntry": ["control", {"site": ["road", 2]}, ".germans"]},
+            {"setEntry": ["control", {"site": ["road", 3]}, ".germans"]},
+            {"setEntry": ["control", {"site": ["road", 4]}, ".germans"]},
+            // Weather starts foggy
+            {"set": ["weather", ".fog"]},
+            {"setPhase": [".airdrop"]}
+          ]}
+        }
+      },
+
+      // ── Airdrop ────────────────────────────────────────
+      // Each allied piece rolls for landing penalty.
+      {
+        "forEachPage": "Airdrop",
+        "when": {"==": ["phase", ".airdrop"]},
+        "items": {"list": ["allied101st", "allied82nd", "allied1st"]},
+        "transition": "enterBattle",
+        "reduce": {
+          "airdrop": {"let": ["roll", {"rollDie": [6]},
+                       "penalty", {"airdropPenalty": ["$roll"]},
+                       {"seq": [
+                         {"setEntry": ["allyStrength", "$piece",
+                           {"max": [0, {"-": [{"lookup": ["allyStrength", "$piece"]}, "$penalty"]}]}]},
+                         {"log": [{"format": ["Airdrop for {}: rolled {}, -{} strength",
+                           "$piece", "$roll", "$penalty"]}]}
+                       ]}
+          ]}
+        }
+      },
+
+      // ── Battle ─────────────────────────────────────────
+      // Each ally facing a german chooses attack or defend.
+      {
+        "forEachPage": "Battle",
+        "when": {"==": ["phase", ".battle"]},
+        "items": {"filter": [{"list": ["allied101st", "allied82nd", "allied1st"]},
+          {"fn": ["ally", {"and": [{"!=": [{"pos": ["$ally"]}, null]},
+                                    {"hasFacingGerman": ["$ally"]}]}]}]},
+        "transition": "enterReinforceGermans",
+        "reduce": {
+          "rollForAttack": {"let": [
+            "opponent", {"pieceAt": [{"adjacent": [{"pos": ["$piece"]}, "germanTrack"]}]},
+            "roll", {"rollDie": [6]},
+            "result", {"attackCRT": [
+              {"compareStrength": [
+                {"lookup": ["allyStrength", "$piece"]},
+                {"lookup": ["germanStrength", "$opponent"]}]},
+              "$roll"]},
+            {"seq": [
+              {"setEntry": ["allyStrength", "$piece",
+                {"max": [0, {"-": [{"lookup": ["allyStrength", "$piece"]},
+                                    {"get": ["$result", "allyHits"]}]}]}]},
+              {"setEntry": ["germanStrength", "$opponent",
+                {"max": [1, {"-": [{"lookup": ["germanStrength", "$opponent"]},
+                                    {"get": ["$result", "germanHits"]}]}]}]},
+              {"if": [{"get": ["$result", "controlGained"]},
+                {"setEntry": ["control",
+                  {"adjacent": [{"pos": ["$piece"]}, "road"]},
+                  ".allies"]},
+                {"log": ["No control change"]}]},
+              {"log": [{"format": ["Attack {}: rolled {}, ally -{}, german -{}",
+                "$piece", "$roll",
+                {"get": ["$result", "allyHits"]},
+                {"get": ["$result", "germanHits"]}]}]}
+            ]}
+          ]},
+
+          "rollForDefend": {"let": [
+            "opponent", {"pieceAt": [{"adjacent": [{"pos": ["$piece"]}, "germanTrack"]}]},
+            "roll", {"rollDie": [6]},
+            "result", {"defendCRT": [
+              {"compareStrength": [
+                {"lookup": ["allyStrength", "$piece"]},
+                {"lookup": ["germanStrength", "$opponent"]}]},
+              "$roll"]},
+            "newAllyStr", {"max": [0, {"-": [{"lookup": ["allyStrength", "$piece"]},
+                                              {"get": ["$result", "allyHits"]}]}]},
+            "newGermanStr", {"max": [1, {"-": [{"lookup": ["germanStrength", "$opponent"]},
+                                                {"get": ["$result", "germanHits"]}]}]},
+            {"seq": [
+              {"setEntry": ["allyStrength", "$piece", "$newAllyStr"]},
+              {"setEntry": ["germanStrength", "$opponent", "$newGermanStr"]},
+              {"if": [{">": ["$newGermanStr", "$newAllyStr"]},
+                {"setEntry": ["control",
+                  {"adjacent": [{"pos": ["$piece"]}, "road"]},
+                  ".germans"]},
+                {"log": ["Control unchanged"]}]},
+              {"log": [{"format": ["Defend {}: rolled {}, ally -{}, german -{}",
+                "$piece", "$roll",
+                {"get": ["$result", "allyHits"]},
+                {"get": ["$result", "germanHits"]}]}]}
+            ]}
+          ]}
+        }
+      },
+
+      // ── Reinforce Germans ──────────────────────────────
+      // Each german on board gets +1 strength.
+      {
+        "forEachPage": "Reinforce Germans",
+        "when": {"==": ["phase", ".reinforceGermans"]},
+        "items": {"filter": [{"list": ["germanEindhoven", "germanGrave",
+                                        "germanNijmegen", "germanArnhem"]},
+          {"fn": ["g", {"!=": [{"pos": ["$g"]}, null]}]}]},
+        "transition": "enterAdvance",
+        "reduce": {
+          "reinforceGerman": {"seq": [
+            // Reinforce strength
+            {"if": [{"==": ["$piece", "germanNijmegen"]},
+              {"if": [{"==": [{"lookup": ["control", {"site": ["road", 4]}]}, ".germans"]},
+                {"seq": [
+                  {"setEntry": ["germanStrength", "$piece",
+                    {"min": [6, {"+": [{"lookup": ["germanStrength", "$piece"]}, 1]}]}]},
+                  {"log": [{"format": ["+1 to {}", "$piece"]}]}
+                ]},
+                {"log": [{"format": ["+0 to {} (Allies control Arnhem)", "$piece"]}]}
+              ]},
+              {"seq": [
+                {"setEntry": ["germanStrength", "$piece",
+                  {"min": [6, {"+": [{"lookup": ["germanStrength", "$piece"]}, 1]}]}]},
+                {"log": [{"format": ["+1 to {}", "$piece"]}]}
+              ]}
+            ]},
+            // Control check: if no opponent or german stronger, german control
+            {"let": ["allyHere", {"pieceAt": [{"adjacent": [{"pos": ["$piece"]}, "alliedTrack"]}]},
+              {"if": [{"==": ["$allyHere", null]},
+                {"setEntry": ["control", {"adjacent": [{"pos": ["$piece"]}, "road"]}, ".germans"]},
+                {"if": [{">": [{"lookup": ["germanStrength", "$piece"]},
+                               {"lookup": ["allyStrength", "$allyHere"]}]},
+                  {"setEntry": ["control", {"adjacent": [{"pos": ["$piece"]}, "road"]}, ".germans"]},
+                  {"log": ["Control unchanged"]}]}
+              ]}
+            ]}
+          ]}
+        }
+      },
+
+      // ── Advance ────────────────────────────────────────
+      // 30 Corps advances if next city is allied-controlled.
+      {
+        "page": "Advance",
+        "rules": [
+          // 30 Corps advances, removing german at destination
+          {"when": {"and": [{"==": ["phase", ".advance"]},
+                             {"<": [{"indexOf": [{"pos": ["corps"]}]}, 4]},
+                             {"==": [{"lookup": ["control",
+                               {"advance": [{"pos": ["corps"]}, "road", 1]}]},
+                               ".allies"]}]},
+           "offer": ["advance30Corps"]},
+          // Ally at 30 Corps' position advances
+          {"when": {"and": [{"==": ["phase", ".advance"]},
+                             {"!=": [{"pos": ["allied101st"]}, null]},
+                             {"==": [{"adjacent": [{"pos": ["allied101st"]}, "road"]},
+                                     {"pos": ["corps"]}]}]},
+           "offer": ["advanceAllies101st"]},
+          {"when": {"and": [{"==": ["phase", ".advance"]},
+                             {"!=": [{"pos": ["allied82nd"]}, null]},
+                             {"==": [{"adjacent": [{"pos": ["allied82nd"]}, "road"]},
+                                     {"pos": ["corps"]}]}]},
+           "offer": ["advanceAllies82nd"]},
+          {"when": {"and": [{"==": ["phase", ".advance"]},
+                             {"!=": [{"pos": ["allied1st"]}, null]},
+                             {"==": [{"adjacent": [{"pos": ["allied1st"]}, "road"]},
+                                     {"pos": ["corps"]}]}]},
+           "offer": ["advanceAllies1st"]},
+          // Can't advance — next city is German-controlled
+          {"when": {"and": [{"==": ["phase", ".advance"]},
+                             {"<": [{"indexOf": [{"pos": ["corps"]}]}, 4]},
+                             {"==": [{"lookup": ["control",
+                               {"advance": [{"pos": ["corps"]}, "road", 1]}]},
+                               ".germans"]}]},
+           "offer": ["skipAdvance"]}
+        ],
+        "reduce": {
+          "advance30Corps": {"let": [
+            "dest", {"advance": [{"pos": ["corps"]}, "road", 1]},
+            "german", {"pieceAt": [{"adjacent": ["$dest", "germanTrack"]}]},
+            {"seq": [
+              {"move": ["corps", "$dest"]},
+              {"if": [{"!=": ["$german", null]},
+                {"removeGerman": ["$german"]},
+                {"log": ["No german at destination"]}]},
+              {"log": [{"format": ["30 Corps advances to position {}",
+                {"indexOf": ["$dest"]}]}]},
+              {"setPhase": [".rollForWeather"]}
+            ]}
+          ]},
+          "advanceAllies101st": {"seq": [
+            {"AdvanceAlly": ["allied101st"]},
+            {"setPhase": [".rollForWeather"]}
+          ]},
+          "advanceAllies82nd": {"seq": [
+            {"AdvanceAlly": ["allied82nd"]},
+            {"setPhase": [".rollForWeather"]}
+          ]},
+          "advanceAllies1st": {"seq": [
+            {"AdvanceAlly": ["allied1st"]},
+            {"setPhase": [".rollForWeather"]}
+          ]},
+          "skipAdvance": {"seq": [
+            {"log": ["Cannot advance into German control"]},
+            {"setPhase": [".rollForWeather"]}
+          ]}
+        }
+      },
+
+      // ── Check Weather ──────────────────────────────────
+      // If fog: roll d6, clear if roll <= turn number.
+      {
+        "page": "Check Weather",
+        "rules": [
+          {"when": {"==": ["phase", ".rollForWeather"]},
+           "offer": ["rollWeather"]}
+        ],
+        "reduce": {
+          "rollWeather": {"seq": [
+            {"if": [{"==": ["weather", ".fog"]},
+              {"let": ["roll", {"rollDie": [6]},
+                {"if": [{"<=": ["$roll", "turnNumber"]},
+                  {"seq": [
+                    {"set": ["weather", ".clear"]},
+                    {"set": ["weatherCleared", true]},
+                    {"log": [{"format": ["Rolled {} vs turn {}: weather clears",
+                      "$roll", "turnNumber"]}]}
+                  ]},
+                  {"log": [{"format": ["Rolled {} vs turn {}: still foggy",
+                    "$roll", "turnNumber"]}]}
+                ]}
+              ]},
+              {"log": ["Already clear"]}
+            ]},
+            {"setPhase": [".reinforce1st"]}
+          ]}
+        }
+      },
+
+      // ── Reinforce 1st Airborne ─────────────────────────
+      {
+        "page": "Reinforce 1st",
+        "rules": [
+          {"when": {"and": [{"==": ["phase", ".reinforce1st"]},
+                             "weatherCleared",
+                             {"not": ["reinforced1st"]}]},
+           "offer": ["reinforce1stAirborne"]},
+          {"when": {"and": [{"==": ["phase", ".reinforce1st"]},
+                             {"or": [{"not": ["weatherCleared"]},
+                                     "reinforced1st"]}]},
+           "offer": ["skipReinforce1st"]}
+        ],
+        "reduce": {
+          "reinforce1stAirborne": {"seq": [
+            {"setEntry": ["allyStrength", "allied1st",
+              {"min": [6, {"+": [{"lookup": ["allyStrength", "allied1st"]}, 1]}]}]},
+            {"set": ["reinforced1st", true]},
+            {"log": ["Reinforcements reach 1st Airborne: +1 strength"]},
+            {"chain": ["advanceTurn"]}
+          ]},
+          "skipReinforce1st": {"seq": [
+            {"log": ["Unable to reinforce 1st Airborne"]},
+            {"chain": ["advanceTurn"]}
+          ]},
+          "advanceTurn": {"seq": [
+            {"increment": ["turnNumber", 1]},
+            {"log": [{"format": ["Turn {}", "turnNumber"]}]},
+            {"setPhase": [".battle"]}
+          ]}
+        }
+      },
+
+      // ── ForEachPage Transitions ────────────────────────
+      {
+        "page": "Phase Transitions",
+        "rules": [],
+        "reduce": {
+          "enterBattle": {"setPhase": [".battle"]},
+          "enterReinforceGermans": {"setPhase": [".reinforceGermans"]},
+          "enterAdvance": {"setPhase": [".advance"]}
+        }
+      }
+    ],
+
+    "priorities": [
+      // ── Victory ────────────────────────────────────────
+      {
+        "priority": "Victory",
+        "rules": [
+          {"when": {"and": [{"==": [{"indexOf": [{"pos": ["corps"]}]}, 4]},
+                             {"not": ["ended"]}]},
+           "offer": ["claimVictory"]}
+        ],
+        "reduce": {
+          "claimVictory": {"seq": [
+            {"endGame": ["victory"]},
+            {"log": ["30 Corps reaches Arnhem — Victory!"]}
+          ]}
+        }
+      },
+      // ── Defeat ─────────────────────────────────────────
+      {
+        "priority": "Defeat",
+        "rules": [
+          {"when": {"and": [{"not": ["ended"]},
+                             {"or": [{">=": ["turnNumber", 7]},
+                                     {"allyDestroyed": []}]}]},
+           "offer": ["declareLoss"]}
+        ],
+        "reduce": {
+          "declareLoss": {"seq": [
+            {"endGame": ["defeat"]},
+            {"log": ["Defeat"]}
+          ]}
+        }
+      }
+    ]
+  },
+
+  "defines": [
+    // Does this ally face a living german at the same city?
+    {"name": "hasFacingGerman",
+     "params": ["ally"],
+     "body": {"!=": [{"pieceAt": [{"adjacent": [{"pos": ["$ally"]}, "germanTrack"]}]}, null]}},
+
+    // Compare two strength values -> Advantage enum
+    {"name": "compareStrength",
+     "params": ["allyStr", "germanStr"],
+     "body": {"if": [{">": ["$allyStr", "$germanStr"]}, ".allies",
+               {"if": [{"<": ["$allyStr", "$germanStr"]}, ".germans", ".equal"]}]}},
+
+    // Remove an allied piece from all state
+    {"name": "removeAlly",
+     "params": ["piece"],
+     "body": {"seq": [
+       {"remove": ["$piece"]},
+       {"removeEntry": ["allyStrength", "$piece"]}
+     ]}},
+
+    // Remove a german piece from all state
+    {"name": "removeGerman",
+     "params": ["piece"],
+     "body": {"seq": [
+       {"remove": ["$piece"]},
+       {"removeEntry": ["germanStrength", "$piece"]}
+     ]}},
+
+    // Advance an allied piece one position forward.
+    // If another ally is already at the destination, merge strengths.
+    {"name": "AdvanceAlly",
+     "params": ["piece"],
+     "body": {"let": ["dest", {"advance": [{"pos": ["$piece"]}, "alliedTrack", 1]},
+                       "existing", {"pieceAt": ["$dest"]},
+       {"if": [{"!=": ["$existing", null]},
+         {"seq": [
+           {"setEntry": ["allyStrength", "$existing",
+             {"min": [6, {"+": [{"lookup": ["allyStrength", "$piece"]},
+                                {"lookup": ["allyStrength", "$existing"]}]}]}]},
+           {"removeAlly": ["$piece"]},
+           {"log": [{"format": ["{} merges into {}", "$piece", "$existing"]}]}
+         ]},
+         {"seq": [
+           {"move": ["$piece", "$dest"]},
+           {"log": [{"format": ["{} advances", "$piece"]}]}
+         ]}
+       ]}
+     ]}},
+
+    // Is any on-board ally at 0 strength?
+    {"name": "allyDestroyed",
+     "params": [],
+     "body": {"or": [
+       {"and": [{"!=": [{"pos": ["allied101st"]}, null]},
+                {"==": [{"lookup": ["allyStrength", "allied101st"]}, 0]}]},
+       {"or": [
+         {"and": [{"!=": [{"pos": ["allied82nd"]}, null]},
+                  {"==": [{"lookup": ["allyStrength", "allied82nd"]}, 0]}]},
+         {"and": [{"!=": [{"pos": ["allied1st"]}, null]},
+                  {"==": [{"lookup": ["allyStrength", "allied1st"]}, 0]}]}
+       ]}
+     ]}},
+
+    // Count allied-controlled cities (for heuristic)
+    {"name": "alliedCityCount",
+     "params": [],
+     "body": {"+": [
+       {"+": [{"if": [{"==": [{"lookup": ["control", {"site": ["road", 1]}]}, ".allies"]}, 1, 0]},
+              {"if": [{"==": [{"lookup": ["control", {"site": ["road", 2]}]}, ".allies"]}, 1, 0]}]},
+       {"+": [{"if": [{"==": [{"lookup": ["control", {"site": ["road", 3]}]}, ".allies"]}, 1, 0]},
+              {"if": [{"==": [{"lookup": ["control", {"site": ["road", 4]}]}, ".allies"]}, 1, 0]}]}
+     ]}}
+  ],
+
+  "metadata": {
+    "ai": {
+      "heuristic": {"if": ["ended",
+        {"if": ["victory", 1.0,
+          {"*": [0.5, {"/": [{"indexOf": [{"pos": ["corps"]}]}, 4.0]}]}]},
+        {"if": [{"==": [{"indexOf": [{"pos": ["corps"]}]}, 0]},
+          0.0,
+          {"+": [{"*": [0.5, {"/": [{"indexOf": [{"pos": ["corps"]}]}, 4.0]}]},
+                 {"*": [0.25, {"/": [{"alliedCityCount": []}, 4.0]}]}]}
+        ]}
+      ]}
+    }
+  }
+}

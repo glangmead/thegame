@@ -31,7 +31,7 @@ struct DynamicalSystemsApp: App {
           NavigationLink("Coin Flip (DSL)") {
             InterpretedGameView(game: InterpretedGameView.sampleGame)
           }
-          NavigationLink("Battle Card (.game version)") {
+          NavigationLink("Battle Card (JSONC)") {
             InterpretedGameView(
               game: InterpretedGameView.loadBundleGame("BattleCard")
             )

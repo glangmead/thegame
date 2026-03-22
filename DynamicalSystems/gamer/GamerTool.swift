@@ -334,12 +334,12 @@ where Reducer.State: GameState & TextTableAble & Sendable & CustomStringConverti
   )
 }
 
-/// Load a .game file from the Resources directory, located relative to this source file.
+/// Load a .game.jsonc file from the Resources directory, located relative to this source file.
 private func loadDotGame(_ name: String) throws -> ComposedGame<InterpretedState> {
   let sourceDir = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent() // gamer/
     .deletingLastPathComponent() // DynamicalSystems/
-  let gameURL = sourceDir.appendingPathComponent("Resources/\(name).game")
+  let gameURL = sourceDir.appendingPathComponent("Resources/\(name).game.jsonc")
   let source = try String(contentsOf: gameURL, encoding: .utf8)
-  return try GameBuilder.build(from: source)
+  return try GameBuilder.build(fromJSONC: source)
 }

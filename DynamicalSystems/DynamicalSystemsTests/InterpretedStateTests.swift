@@ -5,13 +5,11 @@ import CoreGraphics
 @Suite("InterpretedState")
 struct InterpretedStateTests {
   @Test func constructFromSchema() throws {
-    let input = """
-    (state
-      (counter energy 0 6)
-      (flag ended)
-      (set breaches Track))
-    """
-    let schema = try StateSchema(try SExprParser.parse(input))
+    let schema = StateSchema(fields: [
+      "energy": FieldDefinition(name: "energy", kind: .counter(min: 0, max: 6)),
+      "ended": FieldDefinition(name: "ended", kind: .flag),
+      "breaches": FieldDefinition(name: "breaches", kind: .set(elementType: "Track"))
+    ])
     let state = InterpretedState(schema: schema)
     #expect(state.getCounter("energy") == 0)
     #expect(state.getFlag("ended") == false)
@@ -19,8 +17,9 @@ struct InterpretedStateTests {
   }
 
   @Test func counterClamping() throws {
-    let input = "(state (counter energy 0 6))"
-    let schema = try StateSchema(try SExprParser.parse(input))
+    let schema = StateSchema(fields: [
+      "energy": FieldDefinition(name: "energy", kind: .counter(min: 0, max: 6))
+    ])
     var state = InterpretedState(schema: schema)
     state.setCounter("energy", 10)
     #expect(state.getCounter("energy") == 6)
@@ -29,8 +28,9 @@ struct InterpretedStateTests {
   }
 
   @Test func setOperations() throws {
-    let input = "(state (set breaches Track))"
-    let schema = try StateSchema(try SExprParser.parse(input))
+    let schema = StateSchema(fields: [
+      "breaches": FieldDefinition(name: "breaches", kind: .set(elementType: "Track"))
+    ])
     var state = InterpretedState(schema: schema)
     state.insertIntoSet("breaches", "east")
     #expect(state.getSet("breaches").contains("east"))
@@ -39,8 +39,12 @@ struct InterpretedStateTests {
   }
 
   @Test func dictOperations() throws {
-    let input = "(state (dict armyPosition ArmySlot Int))"
-    let schema = try StateSchema(try SExprParser.parse(input))
+    let schema = StateSchema(fields: [
+      "armyPosition": FieldDefinition(
+        name: "armyPosition",
+        kind: .dict(keyType: "ArmySlot", valueType: "Int")
+      )
+    ])
     var state = InterpretedState(schema: schema)
     state.setDictEntry("armyPosition", key: "east", value: .int(5))
     #expect(state.getDict("armyPosition")["east"] == .int(5))
@@ -49,8 +53,9 @@ struct InterpretedStateTests {
   }
 
   @Test func historyTracking() throws {
-    let input = "(state (counter energy 0 6))"
-    let schema = try StateSchema(try SExprParser.parse(input))
+    let schema = StateSchema(fields: [
+      "energy": FieldDefinition(name: "energy", kind: .counter(min: 0, max: 6))
+    ])
     var state = InterpretedState(schema: schema)
     state.history.append(ActionValue("drawCard"))
     state.phase = "card"
@@ -59,8 +64,9 @@ struct InterpretedStateTests {
   }
 
   @Test func positionOperations() throws {
-    let input = "(state (counter energy 0 6))"
-    let schema = try StateSchema(try SExprParser.parse(input))
+    let schema = StateSchema(fields: [
+      "energy": FieldDefinition(name: "energy", kind: .counter(min: 0, max: 6))
+    ])
     var state = InterpretedState(schema: schema)
 
     // Initially no positions
@@ -111,7 +117,9 @@ struct InterpretedStateTests {
     #expect(graph.resolve(.site(track: "road", index: 5)) == nil)
 
     // Named site resolves by raw SiteID
-    let namedID = graph.addSite(position: CGPoint(x: 100, y: 0), displayName: "reserves")
+    let namedID = graph.addSite(
+      position: CGPoint(x: 100, y: 0), displayName: "reserves"
+    )
     let namedResolved = graph.resolve(.site(track: "", index: namedID.raw))
     #expect(namedResolved == namedID)
 

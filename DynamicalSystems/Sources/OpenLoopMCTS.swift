@@ -131,8 +131,9 @@ class OpenLoopMCTS<
   }
 
   // use the explore-exploit tradeoff to select one next action
-  func selectAction(for node: ActionNode<Action, State.Player>, in state: State) -> Action {
+  func selectAction(for node: ActionNode<Action, State.Player>, in state: State) -> Action? {
     let legalActions = reducer.allowedActions(state: state)
+    guard !legalActions.isEmpty else { return nil }
     // update the node with each action: make sure it has a child, and a visitable-count stat
     for legalAction in legalActions {
       var child = node.children[legalAction]
@@ -152,19 +153,18 @@ class OpenLoopMCTS<
   }
 
   // pick an unexpanded action
-  func expandAction(from parent: ActionNode<Action, State.Player>, in state: State) -> Action {
+  func expandAction(from parent: ActionNode<Action, State.Player>, in state: State) -> Action? {
     let legalActions = reducer.allowedActions(state: state)
-    // by assumption one of these actions has no visit count
-    return legalActions.filter({
+    guard !legalActions.isEmpty else { return nil }
+    let unvisited = legalActions.filter {
       (parent.children[$0]?.visitCount ?? 0) == 0
-    }).randomElement()!
+    }
+    return unvisited.randomElement() ?? legalActions.randomElement()!
   }
 
-  func rolloutAction(from: ActionNode<Action, State.Player>, in state: State) throws -> Action {
+  func rolloutAction(from: ActionNode<Action, State.Player>, in state: State) -> Action? {
     let actions = reducer.allowedActions(state: state)
-    if actions.isEmpty {
-      fatalError("Empty action list")
-    }
+    guard !actions.isEmpty else { return nil }
     return rolloutPolicy?(actions) ?? actions.randomElement()!
   }
 
@@ -207,19 +207,17 @@ class OpenLoopMCTS<
         // Since we jump from player to player, we need to somehow know
         // whether to do selection, expansion, or rollout at this moment.
         let currentNode = currentNodes[player]!
-        var nextAction: Action
+        let nextAction: Action?
         switch currentSearchPhase[player]! {
         case .select:
-          // as a side effect this will create all children
-          // and update visitableCount for them
           nextAction = selectAction(for: currentNode, in: state)
         case .expand:
-          // let _ = selectAction(for: currentNode, in: state) // as a side effect this will create all
           nextAction = expandAction(from: currentNode, in: state)
         case .rollout:
-          nextAction = try rolloutAction(from: currentNode, in: state)
+          nextAction = rolloutAction(from: currentNode, in: state)
           rolloutDepth += 1
         }
+        guard let nextAction else { break }
 
         // apply action
         _ = reducer.reduce(into: &state, action: nextAction)

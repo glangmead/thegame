@@ -2,17 +2,53 @@ import Foundation
 import Testing
 @testable import DynamicalSystems
 
-@Suite("BattleCard .game")
+@Suite("BattleCard JSONC")
 struct BattleCardDotGameTests {
+
+  private struct ExpectedPiece {
+    let name: String
+    let player: Int
+    let dvKey: String
+    let dvVal: Int
+  }
 
   /// Compute piece ID the same way InterpretedPieceAdapter does.
   private static func pieceID(_ name: String) -> Int {
     name.hashValue & 0x7FFFFFFF
   }
 
+  private static let expectedPieces: [ExpectedPiece] = [
+    .init(name: "corps", player: 0, dvKey: "", dvVal: 0),
+    .init(name: "allied101st", player: 0, dvKey: "allyStrength", dvVal: 6),
+    .init(name: "allied82nd", player: 0, dvKey: "allyStrength", dvVal: 6),
+    .init(name: "allied1st", player: 0, dvKey: "allyStrength", dvVal: 5),
+    .init(name: "germanEindhoven", player: 1, dvKey: "germanStrength", dvVal: 2),
+    .init(name: "germanGrave", player: 1, dvKey: "germanStrength", dvVal: 2),
+    .init(name: "germanNijmegen", player: 1, dvKey: "germanStrength", dvVal: 1),
+    .init(name: "germanArnhem", player: 1, dvKey: "germanStrength", dvVal: 2)
+  ]
+
+  private static func verifyPieces(_ adapter: InterpretedPieceAdapter) {
+    for expected in expectedPieces {
+      let id = pieceID(expected.name)
+      let piece = adapter.pieces.first { $0.id == id }
+      #expect(piece != nil,
+              Comment(rawValue: "Missing piece: \(expected.name)"))
+      #expect(piece?.owner == PlayerID(expected.player),
+              Comment(rawValue: "\(expected.name) owner=\(String(describing: piece?.owner))"))
+      if !expected.dvKey.isEmpty {
+        #expect(piece?.displayValues[expected.dvKey] == expected.dvVal,
+                Comment(rawValue: "\(expected.name) dv=\(piece?.displayValues.description ?? "nil")"))
+      }
+    }
+    let ids = adapter.pieces.map(\.id)
+    #expect(Set(ids).count == ids.count,
+            Comment(rawValue: "Hash collision! ids=\(ids)"))
+  }
+
   private static func loadGameSource(_ name: String) throws -> String {
     guard let url = Bundle.main.url(
-      forResource: name, withExtension: "game"
+      forResource: "\(name).game", withExtension: "jsonc"
     ) else {
       throw CocoaError(.fileNoSuchFile)
     }
@@ -49,7 +85,7 @@ struct BattleCardDotGameTests {
 
   @Test func loadsAndValidates() throws {
     let source = try Self.loadGameSource("BattleCard")
-    let game = try GameBuilder.buildValidated(from: source)
+    let game = try GameBuilder.build(fromJSONC: source)
     let state = game.newState()
     #expect(state.phase == "setup")
     let actions = game.allowedActions(state: state)
@@ -59,7 +95,7 @@ struct BattleCardDotGameTests {
 
   @Test func pieceAdapterAfterInitialize() throws {
     let source = try Self.loadGameSource("BattleCard")
-    let game = try GameBuilder.buildValidated(from: source)
+    let game = try GameBuilder.build(fromJSONC: source)
     var state = game.newState()
     let actions = game.allowedActions(state: state)
     _ = game.reduce(into: &state, action: actions[0]) // initialize
@@ -90,38 +126,12 @@ struct BattleCardDotGameTests {
       .map { "id=\($0.id)" }
     #expect(nilOwnerPieces.isEmpty,
             Comment(rawValue: "Nil-owner pieces: \(nilOwnerPieces)"))
-    // Check every piece has correct owner and display values
-    let expected: [(String, Int, String, Int)] = [
-      ("corps", 0, "", 0),
-      ("allied101st", 0, "allyStrength", 6),
-      ("allied82nd", 0, "allyStrength", 6),
-      ("allied1st", 0, "allyStrength", 5),
-      ("germanEindhoven", 1, "germanStrength", 2),
-      ("germanGrave", 1, "germanStrength", 2),
-      ("germanNijmegen", 1, "germanStrength", 1),
-      ("germanArnhem", 1, "germanStrength", 2)
-    ]
-    for (name, player, dvKey, dvVal) in expected {
-      let id = Self.pieceID(name)
-      let piece = adapter.pieces.first { $0.id == id }
-      #expect(piece != nil,
-              Comment(rawValue: "Missing piece: \(name)"))
-      #expect(piece?.owner == PlayerID(player),
-              Comment(rawValue: "\(name) owner=\(String(describing: piece?.owner))"))
-      if !dvKey.isEmpty {
-        #expect(piece?.displayValues[dvKey] == dvVal,
-                Comment(rawValue: "\(name) dv=\(piece?.displayValues.description ?? "nil")"))
-      }
-    }
-    // Check for hash collisions in piece IDs
-    let ids = adapter.pieces.map(\.id)
-    #expect(Set(ids).count == ids.count,
-            Comment(rawValue: "Hash collision! ids=\(ids)"))
+    Self.verifyPieces(adapter)
   }
 
   @Test func existentialReducePreservesPieceTypes() throws {
     let source = try Self.loadGameSource("BattleCard")
-    let game = try GameBuilder.buildValidated(from: source)
+    let game = try GameBuilder.build(fromJSONC: source)
     let anyGame: any PlayableGame<InterpretedState, ActionValue> = game
     var state = anyGame.newState()
     let actions = anyGame.allowedActions(state: state)
@@ -138,7 +148,7 @@ struct BattleCardDotGameTests {
   @MainActor
   @Test func gameModelReducePreservesPieceTypes() throws {
     let source = try Self.loadGameSource("BattleCard")
-    let game = try GameBuilder.buildValidated(from: source)
+    let game = try GameBuilder.build(fromJSONC: source)
     let graph = game.graph
     let model = GameModel(game: game, graph: graph)
     let actions = model.allowedActions
@@ -158,7 +168,7 @@ struct BattleCardDotGameTests {
   @MainActor
   @Test func gameModelWithBuildPreservesPieceTypes() throws {
     let source = try Self.loadGameSource("BattleCard")
-    let game = try GameBuilder.build(from: source)
+    let game = try GameBuilder.build(fromJSONC: source)
     let graph = game.graph
     let model = GameModel(game: game, graph: graph)
     let actions = model.allowedActions
@@ -182,7 +192,7 @@ struct BattleCardDotGameTests {
 
   @Test func battlePhaseHasActions() throws {
     let source = try Self.loadGameSource("BattleCard")
-    let game = try GameBuilder.buildValidated(from: source)
+    let game = try GameBuilder.build(fromJSONC: source)
     var state = game.newState()
     // Setup
     let setupActions = game.allowedActions(state: state)
@@ -206,7 +216,7 @@ struct BattleCardDotGameTests {
 
   @Test func randomPlaythrough() throws {
     let source = try Self.loadGameSource("BattleCard")
-    let game = try GameBuilder.buildValidated(from: source)
+    let game = try GameBuilder.build(fromJSONC: source)
     for _ in 0..<20 {
       var state = game.newState()
       var turns = 0
@@ -223,7 +233,7 @@ struct BattleCardDotGameTests {
 
   @Test func mctsPlaythrough() throws {
     let source = try Self.loadGameSource("BattleCard")
-    let game = try GameBuilder.buildValidated(from: source)
+    let game = try GameBuilder.build(fromJSONC: source)
     var wins = 0
     var ended = 0
     let trials = 5
