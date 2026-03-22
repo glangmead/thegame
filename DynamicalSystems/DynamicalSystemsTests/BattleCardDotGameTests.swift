@@ -52,6 +52,129 @@ struct BattleCardDotGameTests {
     #expect(actions.first?.name == "initialize")
   }
 
+  @Test func pieceAdapterAfterInitialize() throws {
+    let source = try Self.loadGameSource("BattleCard")
+    let game = try GameBuilder.buildValidated(from: source)
+    var state = game.newState()
+    let actions = game.allowedActions(state: state)
+    _ = game.reduce(into: &state, action: actions[0]) // initialize
+
+    // Verify pieceTypes are set
+    #expect(state.pieceTypes["corps"] == "CorpsPiece",
+            "corps type: \(state.pieceTypes["corps"] ?? "nil")")
+    #expect(state.pieceTypes["germanGrave"] == "GermanPiece",
+            "germanGrave type: \(state.pieceTypes["germanGrave"] ?? "nil")")
+    #expect(state.pieceTypes["allied82nd"] == "AllyPiece",
+            "allied82nd type: \(state.pieceTypes["allied82nd"] ?? "nil")")
+
+    // Verify playerIndex
+    #expect(game.playerIndex["CorpsPiece"] == 0,
+            "playerIndex: \(game.playerIndex)")
+    #expect(game.playerIndex["AllyPiece"] == 0)
+    #expect(game.playerIndex["GermanPiece"] == 1)
+
+    // Build adapter and verify owners
+    let adapter = InterpretedPieceAdapter(
+      state: state,
+      schema: state.schema,
+      graph: game.graph,
+      playerIndex: game.playerIndex
+    )
+    let nilOwnerPieces = adapter.pieces
+      .filter { $0.owner == nil }
+      .map { "\($0.label ?? "?") (type=\(state.pieceTypes[$0.label ?? ""] ?? "nil"))" }
+    #expect(nilOwnerPieces.isEmpty,
+            Comment(rawValue: "Nil-owner pieces: \(nilOwnerPieces)"))
+    // Check every piece has correct owner and display values
+    let expected: [(String, Int, String, Int)] = [
+      ("corps", 0, "", 0),
+      ("allied101st", 0, "allyStrength", 6),
+      ("allied82nd", 0, "allyStrength", 6),
+      ("allied1st", 0, "allyStrength", 5),
+      ("germanEindhoven", 1, "germanStrength", 2),
+      ("germanGrave", 1, "germanStrength", 2),
+      ("germanNijmegen", 1, "germanStrength", 1),
+      ("germanArnhem", 1, "germanStrength", 2)
+    ]
+    for (name, player, dvKey, dvVal) in expected {
+      let piece = adapter.pieces.first { $0.label == name }
+      #expect(piece != nil,
+              Comment(rawValue: "Missing piece: \(name)"))
+      #expect(piece?.owner == PlayerID(player),
+              Comment(rawValue: "\(name) owner=\(String(describing: piece?.owner))"))
+      if !dvKey.isEmpty {
+        #expect(piece?.displayValues[dvKey] == dvVal,
+                Comment(rawValue: "\(name) dv=\(piece?.displayValues.description ?? "nil")"))
+      }
+    }
+    // Check for hash collisions in piece IDs
+    let ids = adapter.pieces.map(\.id)
+    let labels = adapter.pieces.map { "\($0.label ?? "?")=\($0.id)" }
+    #expect(Set(ids).count == ids.count,
+            Comment(rawValue: "Hash collision! \(labels)"))
+  }
+
+  @Test func existentialReducePreservesPieceTypes() throws {
+    let source = try Self.loadGameSource("BattleCard")
+    let game = try GameBuilder.buildValidated(from: source)
+    let anyGame: any PlayableGame<InterpretedState, ActionValue> = game
+    var state = anyGame.newState()
+    let actions = anyGame.allowedActions(state: state)
+    _ = anyGame.reduce(into: &state, action: actions[0])
+    #expect(state.pieceTypes.count == 8,
+            Comment(rawValue: "Expected 8, got \(state.pieceTypes.count): \(state.pieceTypes)"))
+    for name in ["allied101st", "allied82nd", "allied1st", "corps",
+                  "germanEindhoven", "germanGrave", "germanNijmegen", "germanArnhem"] {
+      #expect(state.pieceTypes[name] != nil && !state.pieceTypes[name]!.isEmpty,
+              Comment(rawValue: "\(name) type=\(state.pieceTypes[name] ?? "nil")"))
+    }
+  }
+
+  @MainActor
+  @Test func gameModelReducePreservesPieceTypes() throws {
+    let source = try Self.loadGameSource("BattleCard")
+    let game = try GameBuilder.buildValidated(from: source)
+    let graph = game.graph
+    let model = GameModel(game: game, graph: graph)
+    let actions = model.allowedActions
+    model.perform(actions[0]) // initialize
+    let state = model.state
+    #expect(state.pieceTypes.count == 8,
+            Comment(rawValue: "Expected 8, got \(state.pieceTypes.count): \(state.pieceTypes)"))
+    for name in ["allied101st", "allied82nd", "allied1st", "corps",
+                  "germanEindhoven", "germanGrave", "germanNijmegen", "germanArnhem"] {
+      #expect(state.pieceTypes[name] != nil && !state.pieceTypes[name]!.isEmpty,
+              Comment(rawValue: "\(name) type=\(state.pieceTypes[name] ?? "nil")"))
+    }
+  }
+
+  /// Same as gameModelReducePreservesPieceTypes but uses GameBuilder.build
+  /// (the same function the app uses, not buildValidated)
+  @MainActor
+  @Test func gameModelWithBuildPreservesPieceTypes() throws {
+    let source = try Self.loadGameSource("BattleCard")
+    let game = try GameBuilder.build(from: source)
+    let graph = game.graph
+    let model = GameModel(game: game, graph: graph)
+    let actions = model.allowedActions
+    model.perform(actions[0]) // initialize
+    let state = model.state
+    #expect(state.pieceTypes.count == 8,
+            Comment(rawValue: "build(): Expected 8, got \(state.pieceTypes.count): \(state.pieceTypes)"))
+    // Also build the adapter exactly like InterpretedGameView.syncScene does
+    let adapter = InterpretedPieceAdapter(
+      state: state,
+      schema: state.schema,
+      graph: graph,
+      playerIndex: game.playerIndex
+    )
+    let nilOwnerPieces = adapter.pieces
+      .filter { $0.owner == nil }
+      .map { "\($0.label ?? "?") (type=\(state.pieceTypes[$0.label ?? ""] ?? "nil"))" }
+    #expect(nilOwnerPieces.isEmpty,
+            Comment(rawValue: "build() nil-owner pieces: \(nilOwnerPieces)"))
+  }
+
   @Test func battlePhaseHasActions() throws {
     let source = try Self.loadGameSource("BattleCard")
     let game = try GameBuilder.buildValidated(from: source)

@@ -61,15 +61,12 @@ extension GameScene {
       let layout = pieceLayouts[piece.kind.layoutKey]
       let scale = layout?.scale ?? 1
 
-      if pieceNodes[piece.id] == nil {
-        let node = makePieceNode(for: piece)
-        let parent = layout?.parent ?? self
-        parent.addChild(node)
-        pieceNodes[piece.id] = node
-      }
+      ensurePieceNode(for: piece, layout: layout)
 
       guard let node = pieceNodes[piece.id],
          let value = section[piece] else { continue }
+
+      syncDisplayValues(on: node, piece: piece)
 
       if node.alpha < 1 {
         node.run(SKAction.fadeIn(withDuration: animDuration))
@@ -219,5 +216,25 @@ extension GameScene {
 
   private func removeBadge(from node: SKNode) {
     node.childNode(withName: "stackBadge")?.removeFromParent()
+  }
+
+  private func ensurePieceNode(
+    for piece: GamePiece, layout: PieceLayout?
+  ) {
+    if pieceNodes[piece.id] == nil {
+      let node = makePieceNode(for: piece)
+      let parent = layout?.parent ?? self
+      parent.addChild(node)
+      pieceNodes[piece.id] = node
+    }
+  }
+
+  private func syncDisplayValues(on node: SKNode, piece: GamePiece) {
+    guard piece.kind == .token, !piece.displayValues.isEmpty else { return }
+    for (key, value) in piece.displayValues {
+      if let label = node.childNode(withName: ".//dv_\(key)") as? SKLabelNode {
+        label.updateSystemText("\(value)")
+      }
+    }
   }
 }

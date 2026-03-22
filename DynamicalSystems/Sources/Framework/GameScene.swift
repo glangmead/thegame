@@ -222,17 +222,20 @@ class GameScene<
         // Site label
         if let label = site.label {
           let labelStyle = resolved.labelStyle
-          let fontSize = cellSize * (labelStyle?.size ?? 0.35)
-          let weight = labelStyle?.weight?.uiWeight ?? .regular
+          let fontSize = cellSize * (labelStyle?.size ?? 0.18)
+          let weight = labelStyle?.weight?.uiWeight ?? .semibold
           let color = colorFromString(labelStyle?.color) ?? .darkGray
           let alignment = labelStyle?.alignment ?? .top
           let labelNode = SKLabelNode(text: label)
           labelNode.applySystemFont(size: fontSize, weight: weight, color: color)
           labelNode.horizontalAlignmentMode = .center
-          labelNode.verticalAlignmentMode = alignment == .center ? .center : .top
-          labelNode.position = alignment == .center
-            ? CGPoint(x: cellSize / 2, y: cellSize / 2)
-            : CGPoint(x: cellSize / 2, y: cellSize - 2)
+          if alignment == .center {
+            labelNode.verticalAlignmentMode = .center
+            labelNode.position = CGPoint(x: cellSize / 2, y: cellSize / 2)
+          } else {
+            labelNode.verticalAlignmentMode = .bottom
+            labelNode.position = CGPoint(x: cellSize / 2, y: cellSize + 2)
+          }
           labelNode.name = "siteLabel_\(siteID.raw)"
           node.addChild(labelNode)
         }
@@ -285,34 +288,54 @@ class GameScene<
 
   // MARK: - Piece node creation
 
+  // swiftlint:disable:next function_body_length
   func makePieceNode(for piece: GamePiece) -> SKNode {
     let scale = pieceLayouts[piece.kind.layoutKey]?.scale ?? 1
 
     switch piece.kind {
     case .token:
       let radius = cellSize / 2.5 * scale
-      let node = SKShapeNode(circleOfRadius: radius)
-      node.fillColor = colorForOwner(piece.owner)
-      node.name = "piece_\(piece.id)"
-      if let label = piece.label {
-        let labelNode = SKLabelNode(text: label)
-        labelNode.applySystemFont(
-          size: radius * 0.8, weight: .bold, color: .white)
-        labelNode.horizontalAlignmentMode = .center
-        labelNode.verticalAlignmentMode = .center
-        labelNode.name = "pieceLabel"
-        node.addChild(labelNode)
-      }
-      if let (_, value) = piece.displayValues
-        .sorted(by: { $0.key < $1.key }).first {
+      let hasDisplayValue = !piece.displayValues.isEmpty
+      let container = SKNode()
+      container.name = "piece_\(piece.id)"
+      let circle = SKShapeNode(circleOfRadius: radius)
+      circle.fillColor = colorForOwner(piece.owner)
+      circle.strokeColor = colorForOwner(piece.owner)
+      circle.lineWidth = 1
+      container.zPosition = 10
+      container.addChild(circle)
+      if hasDisplayValue,
+         let (key, value) = piece.displayValues
+          .sorted(by: { $0.key < $1.key }).first {
         let dvLabel = SKLabelNode(text: "\(value)")
+        dvLabel.name = "dv_\(key)"
         dvLabel.applySystemFont(
-          size: cellSize * 0.4, weight: .bold, color: .white)
+          size: radius * 0.9, weight: .bold, color: .white)
         dvLabel.verticalAlignmentMode = .center
         dvLabel.horizontalAlignmentMode = .center
-        node.addChild(dvLabel)
+        circle.addChild(dvLabel)
       }
-      return node
+      if let label = piece.label {
+        if hasDisplayValue {
+          let subtitle = SKLabelNode(text: label)
+          subtitle.applySystemFont(
+            size: cellSize * 0.14, weight: .semibold, color: .black)
+          subtitle.horizontalAlignmentMode = .center
+          subtitle.verticalAlignmentMode = .top
+          subtitle.position = CGPoint(x: 0, y: -radius - 2)
+          subtitle.name = "pieceLabel"
+          container.addChild(subtitle)
+        } else {
+          let labelNode = SKLabelNode(text: label)
+          labelNode.applySystemFont(
+            size: radius * 0.8, weight: .bold, color: .white)
+          labelNode.horizontalAlignmentMode = .center
+          labelNode.verticalAlignmentMode = .center
+          labelNode.name = "pieceLabel"
+          circle.addChild(labelNode)
+        }
+      }
+      return container
     case .die:
       let node = makeDieNode(label: piece.label, owner: piece.owner, scale: scale)
       node.name = "die_\(piece.id)"

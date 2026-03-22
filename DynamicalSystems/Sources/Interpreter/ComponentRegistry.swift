@@ -109,9 +109,14 @@ extension ComponentRegistry {
     // Simple enum: (enum Name {case1 case2 ...} [player: N])
     // Must have exactly one list child and no bare non-keyword atoms.
     let listChildren = rest.enumerated().filter { $0.element.children != nil }
-    let bareAtoms = rest.filter {
-      guard let atom = $0.atomValue else { return false }
-      return !atom.hasSuffix(":")
+    let bareAtoms = rest.enumerated().filter { (offset, element) in
+      guard let atom = element.atomValue else { return false }
+      if atom.hasSuffix(":") { return false }
+      // Skip values that follow a keyword atom (e.g. "0" after "player:")
+      if offset > 0,
+         let prev = rest[offset - 1].atomValue,
+         prev.hasSuffix(":") { return false }
+      return true
     }
     if listChildren.count == 1, bareAtoms.isEmpty,
        let inner = listChildren[0].element.children,

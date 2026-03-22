@@ -36,11 +36,16 @@ struct InterpretedGameView: View {
           )),
         .piece(.circle, color: .byPlayer)
       ])
+      let numTracks = trackHeights.count
+      let maxHeight = trackHeights.max() ?? 1
+      let cellSize: CGFloat = 80
+      let sceneW = CGFloat(numTracks) * cellSize + cellSize
+      let sceneH = CGFloat(maxHeight) * cellSize + cellSize
       let scene = GameScene(
         model: model,
         config: config,
-        size: CGSize(width: 300, height: 400),
-        cellSize: 40
+        size: CGSize(width: sceneW, height: sceneH),
+        cellSize: cellSize
       )
       scene.scaleMode = .aspectFit
       self._scene = State(initialValue: scene)
@@ -94,7 +99,7 @@ struct InterpretedGameView: View {
             }
           )
           .frame(maxWidth: .infinity)
-          .aspectRatio(300.0 / 400.0, contentMode: .fit)
+          .aspectRatio(scene.size.width / scene.size.height, contentMode: .fit)
       }
       List {
         if model.isTerminal {
@@ -114,6 +119,7 @@ struct InterpretedGameView: View {
             actions: model.allowedActions,
             onAction: { action in
               model.perform(action)
+              syncScene()
             }
           )
         }

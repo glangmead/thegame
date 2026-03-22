@@ -101,7 +101,7 @@ enum GraphBuilder {
     _ names: [String],
     to graph: inout SiteGraph
   ) {
-    let spacing: CGFloat = 40
+    let spacing: CGFloat = 80
     let maxY = graph.sites.values.map(\.position.y).max() ?? 0
     let baseY = maxY + 2 * spacing
     for (index, name) in names.enumerated() {
@@ -117,10 +117,12 @@ enum GraphBuilder {
     _ tracks: [TrackInfo],
     into graph: inout SiteGraph
   ) {
-    let spacing: CGFloat = 40
+    let spacing: CGFloat = 80
+    let maxHeight = tracks.map(\.length).max() ?? 0
     for (trackIndex, track) in tracks.enumerated() {
       var siteIDs: [SiteID] = []
       var prevID: SiteID?
+      let yOffset = maxHeight - track.length
       for siteIndex in 0..<track.length {
         var tags: Set<String> = [
           "track:\(track.name)", "space:\(siteIndex + 1)"
@@ -129,7 +131,7 @@ enum GraphBuilder {
         tags.formUnion(track.tags)
         let position = CGPoint(
           x: CGFloat(trackIndex) * spacing,
-          y: CGFloat(siteIndex) * spacing
+          y: CGFloat(siteIndex + yOffset) * spacing
         )
         let label: String
         if siteIndex < track.labels.count {
