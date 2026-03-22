@@ -36,7 +36,7 @@ struct CantStopGraph {
         let tags: Set<String> = row == height
           ? ["col\(colNum)", "board", "crown"]
           : ["col\(colNum)", "board"]
-        let id = graph.addSite(position: pos, tags: tags, label: row == height ? "\(colNum)" : nil)
+        let id = graph.addSite(position: pos, tags: tags, displayName: row == height ? "\(colNum)" : nil)
         trackSites.append(id)
       }
 

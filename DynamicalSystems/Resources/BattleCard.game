@@ -9,10 +9,12 @@
   (components
     (enum Phase {setup airdrop battle reinforceGermans
                  advance rollForWeather reinforce1st})
-    (enum AllyPiece {allied101st allied82nd allied1st} player: 0)
+    (enum AllyPiece {allied101st allied82nd allied1st} player: 0
+      displayNames: {"101st" "82nd" "1st"})
     (enum GermanPiece {germanEindhoven germanGrave
                        germanNijmegen germanArnhem} player: 1)
-    (enum CorpsPiece {corps} player: 0)
+    (enum CorpsPiece {corps} player: 0
+      displayNames: {"XXX Corps"})
     (enum Weather {fog clear})
     (enum Control {allies germans})
     (enum Advantage {allies equal germans})
@@ -55,13 +57,11 @@
 
   (graph
     (track "allied" length: 4
-      labels: {"Eindhoven" "Grave" "Nijmegen" "Arnhem"}
       tags: {"allied"})
     (track "road" length: 5
-      labels: {"Belgium" "Eindhoven" "Grave" "Nijmegen" "Arnhem"}
+      displayNames: {"Belgium" "Eindhoven" "Grave" "Nijmegen" "Arnhem"}
       tags: {"road"})
     (track "german" length: 4
-      labels: {"Eindhoven" "Grave" "Nijmegen" "Arnhem"}
       tags: {"german"})
     (crossConnect "allied" "road" offset: 1)
     (crossConnect "allied" "german")

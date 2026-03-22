@@ -5,7 +5,7 @@ enum GraphBuilder {
     let name: String
     let length: Int
     let isWall: Bool
-    let labels: [String]
+    let displayNames: [String]
     let tags: Set<String>
   }
 
@@ -51,7 +51,7 @@ enum GraphBuilder {
     let name = parts[1].stringValue ?? parts[1].atomValue ?? ""
     var length = 6
     var isWall = false
-    var labels: [String] = []
+    var displayNames: [String] = []
     var tags: Set<String> = []
     var idx = 2
     while idx < parts.count {
@@ -62,9 +62,9 @@ enum GraphBuilder {
       } else if atomKey == "wall:" && idx + 1 < parts.count {
         isWall = parts[idx + 1].atomValue == "true"
         idx += 2
-      } else if atomKey == "labels:" && idx + 1 < parts.count,
+      } else if atomKey == "displayNames:" && idx + 1 < parts.count,
                 let list = parts[idx + 1].children {
-        labels = list.compactMap { $0.stringValue ?? $0.atomValue }
+        displayNames = list.compactMap { $0.stringValue ?? $0.atomValue }
         idx += 2
       } else if atomKey == "tags:" && idx + 1 < parts.count,
                 let list = parts[idx + 1].children {
@@ -76,7 +76,7 @@ enum GraphBuilder {
     }
     return TrackInfo(
       name: name, length: length, isWall: isWall,
-      labels: labels, tags: tags
+      displayNames: displayNames, tags: tags
     )
   }
 
@@ -108,7 +108,7 @@ enum GraphBuilder {
       graph.addSite(
         position: CGPoint(x: CGFloat(index) * spacing, y: baseY),
         tags: ["named:\(name)"],
-        label: name
+        displayName: name
       )
     }
   }
@@ -133,16 +133,16 @@ enum GraphBuilder {
           x: CGFloat(trackIndex) * spacing,
           y: CGFloat(siteIndex + yOffset) * spacing
         )
-        let label: String
-        if siteIndex < track.labels.count {
-          label = track.labels[siteIndex]
+        let displayName: String?
+        if siteIndex < track.displayNames.count {
+          displayName = track.displayNames[siteIndex]
         } else {
-          label = "\(track.name)_\(siteIndex + 1)"
+          displayName = nil
         }
         let siteID = graph.addSite(
           position: position,
           tags: tags,
-          label: label
+          displayName: displayName
         )
         siteIDs.append(siteID)
         if let prev = prevID {

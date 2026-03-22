@@ -541,7 +541,7 @@ extension ExpressionCompiler {
     if args.count == 1 {
       // Named site: (site "reserves")
       if let site = graph.sites.values.first(where: {
-        $0.label == trackName
+        $0.displayName == trackName
       }) {
         let val = DSLValue.site(track: "", index: site.id.raw)
         return { _ in val }
@@ -561,7 +561,7 @@ extension ExpressionCompiler {
     if let label = indexArg.stringValue {
       if let trackSites = graph.tracks[trackName] {
         for (idx, siteID) in trackSites.enumerated()
-        where graph.sites[siteID]?.label == label {
+        where graph.sites[siteID]?.displayName == label {
           let val = DSLValue.site(track: trackName, index: idx)
           return { _ in val }
         }

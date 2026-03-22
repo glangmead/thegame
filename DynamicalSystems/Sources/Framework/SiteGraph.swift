@@ -44,7 +44,7 @@ struct Site: Codable, Equatable, Sendable {
   var position: CGPoint
   var adjacency: [Direction: SiteID] = [:]
   var tags: Set<String> = []
-  var label: String?
+  var displayName: String?
 }
 
 struct SiteGraph: Codable, Equatable, Sendable {
@@ -59,10 +59,10 @@ struct SiteGraph: Codable, Equatable, Sendable {
     id: SiteID? = nil,
     position: CGPoint,
     tags: Set<String> = [],
-    label: String? = nil
+    displayName: String? = nil
   ) -> SiteID {
     let siteID = id ?? SiteID(nextID)
-    sites[siteID] = Site(id: siteID, position: position, tags: tags, label: label)
+    sites[siteID] = Site(id: siteID, position: position, tags: tags, displayName: displayName)
     nextID = max(nextID, siteID.raw + 1)
     return siteID
   }

@@ -59,7 +59,8 @@ struct InterpretedGameView: View {
         state: model.state,
         schema: model.state.schema,
         graph: graph,
-        playerIndex: game.playerIndex
+        playerIndex: game.playerIndex,
+        pieceDisplayNames: game.pieceDisplayNames
       )
       scene.syncState(
         pieces: adapter.pieces, section: adapter.section
@@ -165,7 +166,8 @@ struct InterpretedGameView: View {
       state: model.state,
       schema: model.state.schema,
       graph: game.graph,
-      playerIndex: game.playerIndex
+      playerIndex: game.playerIndex,
+      pieceDisplayNames: game.pieceDisplayNames
     )
     scene.syncState(pieces: adapter.pieces, section: adapter.section)
   }

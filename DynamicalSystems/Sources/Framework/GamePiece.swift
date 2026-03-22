@@ -14,7 +14,7 @@ struct GamePiece: Codable, Identifiable {
   let id: Int
   var kind: PieceKind
   var owner: PlayerID?
-  var label: String?
+  var displayName: String?
   var displayValues: [String: Int] = [:]
 
   enum PieceKind: Codable, Equatable, Hashable {

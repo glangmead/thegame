@@ -84,7 +84,7 @@ struct LoDGraph {
       (dayDiscard, "D Dis"), (nightDiscard, "N Dis"),
       (sword, "Sword"), (bow, "Bow"), (reserves, "Rsv")
     ]
-    for (siteID, label) in labels { graph.sites[siteID]?.label = label }
+    for (siteID, label) in labels { graph.sites[siteID]?.displayName = label }
   }
 
   private static func addArmyTracks(
@@ -177,7 +177,7 @@ struct LoDGraph {
         position: CGPoint(x: CGFloat(xStart + idx) * cell, y: yVal),
         tags: [tag]
       )
-      graph.sites[id]?.label = label
+      graph.sites[id]?.displayName = label
       sites.append(id)
     }
     return sites
@@ -199,7 +199,7 @@ struct LoDGraph {
         position: CGPoint(x: CGFloat(xStart + idx) * cell, y: yVal),
         tags: [tag]
       )
-      graph.sites[id]?.label = "\(prefix)\(idx)"
+      graph.sites[id]?.displayName = "\(prefix)\(idx)"
       sites.append(id)
     }
     return sites
@@ -221,7 +221,7 @@ struct LoDGraph {
         position: CGPoint(x: CGFloat(space + 1) * cell, y: yPos(row)),
         tags: [key]
       )
-      graph.sites[id]?.label = "\(prefix)\(space)"
+      graph.sites[id]?.displayName = "\(prefix)\(space)"
       sites.append(id)
     }
     connectTrack(&graph, sites: sites)
@@ -261,7 +261,7 @@ struct LoDGraph {
         position: CGPoint(x: header.col * cell, y: yPos(header.row)),
         tags: ["header"]
       )
-      graph.sites[id]?.label = header.name
+      graph.sites[id]?.displayName = header.name
     }
   }
 

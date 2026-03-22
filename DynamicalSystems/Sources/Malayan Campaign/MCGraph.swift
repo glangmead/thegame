@@ -50,7 +50,7 @@ struct MCGraph {
     for (row, loc) in locations.enumerated() {
       let pos = CGPoint(x: column * cellSize, y: CGFloat(row) * cellSize)
       let siteID = graph.addSite(position: pos, tags: [tag, loc.description.lowercased()])
-      graph.sites[siteID]?.label = loc.description
+      graph.sites[siteID]?.displayName = loc.description
       sites.append(siteID)
     }
     connectTrack(&graph, sites: sites)
@@ -108,7 +108,7 @@ struct MCPieceAdapter {
       } else {
         owner = PlayerID(1) // japanese
       }
-      return GamePiece(id: piece.rawValue, kind: .die(sides: 6), owner: owner, label: piece.shortName)
+      return GamePiece(id: piece.rawValue, kind: .die(sides: 6), owner: owner, displayName: piece.shortName)
     }
   }
 

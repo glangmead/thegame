@@ -23,7 +23,7 @@ struct BCGraph {
     for (cityIndex, city) in roadCities.enumerated() {
       let pos = CGPoint(x: 1 * cellSize, y: CGFloat(cityIndex) * cellSize)
       let siteID = graph.addSite(position: pos, tags: ["road", city.lowercased()])
-      graph.sites[siteID]?.label = city
+      graph.sites[siteID]?.displayName = city
       roadSites.append(siteID)
     }
     connectTrack(&graph, sites: roadSites)
@@ -90,7 +90,7 @@ struct BCPieceAdapter {
         owner = PlayerID(1)  // germans
       }
       let kind: GamePiece.PieceKind = piece == .thirtycorps ? .token : .die(sides: 6)
-      return GamePiece(id: piece.rawValue, kind: kind, owner: owner, label: piece.shortName)
+      return GamePiece(id: piece.rawValue, kind: kind, owner: owner, displayName: piece.shortName)
     }
   }
 

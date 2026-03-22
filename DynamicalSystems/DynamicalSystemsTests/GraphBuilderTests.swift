@@ -17,18 +17,18 @@ struct GraphBuilderTests {
     // Track "east" should be registered
     #expect(graph.tracks["east"]?.count == 6)
     // Named site "reserves" should exist
-    let reservesSite = graph.sites.values.first { $0.label == "reserves" }
+    let reservesSite = graph.sites.values.first { $0.displayName == "reserves" }
     #expect(reservesSite != nil)
   }
 
-  @Test func verticalLayoutWithLabels() throws {
+  @Test func verticalLayoutWithDisplayNames() throws {
     let input = """
     (graph
       (track "allied" length: 4
-        labels: {"Eindhoven" "Grave" "Nijmegen" "Arnhem"}
+        displayNames: {"Eindhoven" "Grave" "Nijmegen" "Arnhem"}
         tags: {"allied"})
       (track "road" length: 5
-        labels: {"Belgium" "Eindhoven" "Grave" "Nijmegen" "Arnhem"}
+        displayNames: {"Belgium" "Eindhoven" "Grave" "Nijmegen" "Arnhem"}
         tags: {"road"}))
     """
     let sexpr = try SExprParser.parse(input)
@@ -43,7 +43,7 @@ struct GraphBuilderTests {
 
     // Labels applied
     let alliedFirst = graph.tracks["allied"]![0]
-    #expect(graph.sites[alliedFirst]?.label == "Eindhoven")
+    #expect(graph.sites[alliedFirst]?.displayName == "Eindhoven")
 
     // Tags applied to sites
     #expect(graph.sites[alliedFirst]?.tags.contains("allied") == true)
@@ -92,7 +92,7 @@ struct GraphBuilderTests {
     let graph = try GraphBuilder.build(sexpr)
 
     #expect(graph.sites.count == 5) // 3 track + 2 named
-    let reserves = graph.sites.values.first { $0.label == "reserves" }
+    let reserves = graph.sites.values.first { $0.displayName == "reserves" }
     #expect(reserves != nil)
     // Named sites should be above the tallest track
     let maxTrackY = graph.tracks["road"]!.compactMap { graph.sites[$0]?.position.y }.max() ?? 0

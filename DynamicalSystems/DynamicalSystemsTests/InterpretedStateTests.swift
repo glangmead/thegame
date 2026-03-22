@@ -111,7 +111,7 @@ struct InterpretedStateTests {
     #expect(graph.resolve(.site(track: "road", index: 5)) == nil)
 
     // Named site resolves by raw SiteID
-    let namedID = graph.addSite(position: CGPoint(x: 100, y: 0), label: "reserves")
+    let namedID = graph.addSite(position: CGPoint(x: 100, y: 0), displayName: "reserves")
     let namedResolved = graph.resolve(.site(track: "", index: namedID.raw))
     #expect(namedResolved == namedID)
 

@@ -152,6 +152,13 @@ enum GameBuilder {
     game.graph = graph
     game.sceneStyle = sections.sceneExpr.flatMap { parseSceneStyle($0) }
     game.playerIndex = components.playerIndex
+    var pieceNames: [String: String] = [:]
+    for def in components.enums.values {
+      for (caseName, displayName) in def.displayNames {
+        pieceNames[caseName] = displayName
+      }
+    }
+    game.pieceDisplayNames = pieceNames
     game.stateEvaluator = sections.metadataExpr.flatMap {
       MetadataBuilder.buildHeuristic(
         $0, components: components, defines: defines, schema: schema, graph: graph

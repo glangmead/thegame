@@ -56,7 +56,7 @@ struct BoardSummarySections: View {
       for (index, siteID) in siteIDs.enumerated() {
         let piecesHere = section.piecesAt(siteID)
         guard !piecesHere.isEmpty else { continue }
-        let siteName = graph.sites[siteID]?.label ?? "Space \(index + 1)"
+        let siteName = graph.sites[siteID]?.displayName ?? "Space \(index + 1)"
         for piece in piecesHere.sorted(by: { $0.id < $1.id }) {
           let pieceName = pieceDescription(piece)
           entries.append(PieceEntry(
@@ -73,7 +73,7 @@ struct BoardSummarySections: View {
     var entries: [PieceEntry] = []
     for (piece, value) in section.sorted(by: { $0.key.id < $1.key.id }) {
       guard let site = value.site, !trackedSites.contains(site) else { continue }
-      let siteName = graph.sites[site]?.label ?? site.description
+      let siteName = graph.sites[site]?.displayName ?? site.description
       let pieceName = pieceDescription(piece)
       entries.append(PieceEntry(
         id: piece.id,
@@ -84,7 +84,7 @@ struct BoardSummarySections: View {
 
   private func pieceDescription(_ piece: GamePiece) -> String {
     var parts: [String] = []
-    if let label = piece.label {
+    if let label = piece.displayName {
       parts.append(label)
     }
     switch piece.kind {

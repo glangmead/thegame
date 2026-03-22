@@ -26,7 +26,7 @@ struct HeartsPieceAdapter {
 
   static func pieces() -> [GamePiece] {
     Hearts.fullDeck.enumerated().map { index, card in
-      GamePiece(id: index, kind: .card, label: card.description)
+      GamePiece(id: index, kind: .card, displayName: card.description)
     }
   }
 
@@ -60,7 +60,7 @@ struct HeartsPieceAdapter {
       let isFaceUp = seat == state.config.humanSeat
       for card in state.hands[seat] ?? [] {
         guard let pieceID = cardIDs[card] else { continue }
-        let piece = GamePiece(id: pieceID, kind: .card, label: card.description)
+        let piece = GamePiece(id: pieceID, kind: .card, displayName: card.description)
         result[piece] = .cardState(
           name: card.description, faceUp: isFaceUp, isRed: card.suit.isRed,
           rotation: seatRotation[seat] ?? 0, at: siteID)
@@ -71,7 +71,7 @@ struct HeartsPieceAdapter {
     for play in state.currentTrick {
       let siteID = seatToTrick[play.seat]!
       guard let pieceID = cardIDs[play.card] else { continue }
-      let piece = GamePiece(id: pieceID, kind: .card, label: play.card.description)
+      let piece = GamePiece(id: pieceID, kind: .card, displayName: play.card.description)
       result[piece] = .cardState(
         name: play.card.description, faceUp: true, isRed: play.card.suit.isRed,
         rotation: 0, at: siteID)
@@ -85,7 +85,7 @@ struct HeartsPieceAdapter {
         let siteID = seatToPile[seat]!
         guard let pieceID = cardIDs[firstCard] else { continue }
         let piece = GamePiece(
-          id: pieceID, kind: .card, label: "\(totalCards) cards")
+          id: pieceID, kind: .card, displayName: "\(totalCards) cards")
         result[piece] = .cardState(
           name: "\(totalCards)", faceUp: false, isRed: false,
           rotation: seatRotation[seat] ?? 0, at: siteID)

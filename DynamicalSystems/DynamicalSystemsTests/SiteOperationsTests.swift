@@ -37,9 +37,9 @@ struct SiteOperationsTests {
 
   @Test func siteLabelConstruction() throws {
     var graph = SiteGraph()
-    let site0 = graph.addSite(position: .zero, label: "Belgium")
+    let site0 = graph.addSite(position: .zero, displayName: "Belgium")
     let site1 = graph.addSite(
-      position: CGPoint(x: 0, y: 40), label: "Eindhoven"
+      position: CGPoint(x: 0, y: 40), displayName: "Eindhoven"
     )
     graph.addTrack("road", sites: [site0, site1])
     let (compiler, schema) = makeCompiler(graph: graph)
@@ -159,7 +159,7 @@ struct SiteOperationsTests {
 
   @Test func namedSiteConstruction() throws {
     var graph = SiteGraph()
-    let resID = graph.addSite(position: .zero, label: "reserves")
+    let resID = graph.addSite(position: .zero, displayName: "reserves")
     let (compiler, schema) = makeCompiler(graph: graph)
     let env = ExpressionCompiler.Env(
       state: InterpretedState(schema: schema)
@@ -208,7 +208,8 @@ struct SiteOperationsTests {
 
     #expect(adapter.pieces.count == 2)
 
-    let corpsPiece = adapter.pieces.first { $0.label == "corps" }
+    let corpsID = "corps".hashValue & 0x7FFFFFFF
+    let corpsPiece = adapter.pieces.first { $0.id == corpsID }
     #expect(corpsPiece != nil)
     #expect(corpsPiece?.owner == PlayerID(0))
     #expect(corpsPiece?.displayValues["strength"] == 6)

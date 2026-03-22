@@ -4,6 +4,7 @@ struct EnumDefinition: Sendable {
   let name: String
   let cases: [String]
   let associatedTypes: [String: [String]] // case name -> [type names], for sum types
+  let displayNames: [String: String] // case name -> human-readable name
 }
 
 struct StructDefinition: Sendable {
@@ -89,6 +90,15 @@ struct ComponentRegistry: Sendable {
     }
     return nil
   }
+
+  func displayName(forCase caseName: String) -> String? {
+    for def in enums.values {
+      if let name = def.displayNames[caseName] {
+        return name
+      }
+    }
+    return nil
+  }
 }
 
 // MARK: - Parsing
@@ -118,13 +128,15 @@ extension ComponentRegistry {
          prev.hasSuffix(":") { return false }
       return true
     }
-    if listChildren.count == 1, bareAtoms.isEmpty,
+    if listChildren.count >= 1, bareAtoms.isEmpty,
        let inner = listChildren[0].element.children,
        inner.allSatisfy({ $0.atomValue != nil }) {
       let braceIdx = listChildren[0].offset
       let cases = inner.compactMap(\.atomValue)
+      let displayNames = scanDisplayNames(cases: cases, rest: rest)
       enums[name] = EnumDefinition(
-        name: name, cases: cases, associatedTypes: [:]
+        name: name, cases: cases, associatedTypes: [:],
+        displayNames: displayNames
       )
       scanPlayerKeyword(name: name, rest: rest, skipIndex: braceIdx)
       return
@@ -149,8 +161,10 @@ extension ComponentRegistry {
       }
       idx += 1
     }
+    let displayNames = scanDisplayNames(cases: cases, rest: rest)
     enums[name] = EnumDefinition(
-      name: name, cases: cases, associatedTypes: associated
+      name: name, cases: cases, associatedTypes: associated,
+      displayNames: displayNames
     )
     scanPlayerKeyword(name: name, rest: rest)
   }
@@ -166,6 +180,23 @@ extension ComponentRegistry {
         return
       }
     }
+  }
+
+  private func scanDisplayNames(
+    cases: [String], rest: [SExpr]
+  ) -> [String: String] {
+    for (idx, child) in rest.enumerated() {
+      if child.atomValue == "displayNames:", idx + 1 < rest.count,
+         let list = rest[idx + 1].children {
+        let names = list.compactMap { $0.stringValue ?? $0.atomValue }
+        var result: [String: String] = [:]
+        for (idx, caseName) in cases.enumerated() where idx < names.count {
+          result[caseName] = names[idx]
+        }
+        return result
+      }
+    }
+    return [:]
   }
 
   // MARK: Struct

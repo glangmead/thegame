@@ -79,7 +79,7 @@ struct LoDRenderingTests {
     // 6 armies + 3 heroes (greenskin default) + morale + time + 3 defenders + 2 energy + 1 card
     // Actually: 6 armies, up to 6 heroes, morale, time, 3 defenders, 2 energy = 18+
     let armyLabels: Set = ["G2", "O3", "G2", "G2", "D4", "T4"]
-    let armyPieces = pieces.filter { armyLabels.contains($0.label ?? "") }
+    let armyPieces = pieces.filter { armyLabels.contains($0.displayName ?? "") }
     #expect(armyPieces.count == 6)
   }
 
@@ -89,7 +89,7 @@ struct LoDRenderingTests {
     let graph = LoDGraph.board()
     let section = LoDPieceAdapter.section(from: state, graph: graph)
     // East army at space 6 → east track index 5
-    let eastPiece = LoDPieceAdapter.pieces().first { $0.label == "G2" }!
+    let eastPiece = LoDPieceAdapter.pieces().first { $0.displayName == "G2" }!
     let eastValue = section[eastPiece]
     let expectedSite = graph.tracks["east"]![5]  // index 5 = space 6
     #expect(eastValue?.site == expectedSite)
@@ -100,7 +100,7 @@ struct LoDRenderingTests {
     let state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     let graph = LoDGraph.board()
     let section = LoDPieceAdapter.section(from: state, graph: graph)
-    let moralePiece = LoDPieceAdapter.pieces().first { $0.label == "Mor" }!
+    let moralePiece = LoDPieceAdapter.pieces().first { $0.displayName == "Mor" }!
     let moraleValue = section[moralePiece]
     let normalSite = graph.tracks["morale"]![1]  // index 1 = normal
     #expect(moraleValue?.site == normalSite)
@@ -111,7 +111,7 @@ struct LoDRenderingTests {
     let state = LoD.greenskinSetup(windsOfMagicArcane: 3)
     let graph = LoDGraph.board()
     let section = LoDPieceAdapter.section(from: state, graph: graph)
-    let timePiece = LoDPieceAdapter.pieces().first { $0.label == "T" }!
+    let timePiece = LoDPieceAdapter.pieces().first { $0.displayName == "T" }!
     let timeValue = section[timePiece]
     let startSite = graph.tracks["time"]![0]  // position 0
     #expect(timeValue?.site == startSite)

@@ -79,7 +79,7 @@ class LoDVassalScene: SKScene {
       let pos = pixelToScene(entry)
       let siteID = SiteID(entry.siteID!)
       graph.addSite(id: siteID, position: pos)
-      graph.sites[siteID]?.label = entry.label
+      graph.sites[siteID]?.displayName = entry.label
       siteSizes[siteID] = CGSize(width: entry.width, height: entry.height)
     }
 
@@ -101,7 +101,7 @@ class LoDVassalScene: SKScene {
       for (_, entry) in sorted {
         let pos = pixelToScene(entry)
         let siteID = graph.addSite(position: pos)
-        graph.sites[siteID]?.label = entry.label
+        graph.sites[siteID]?.displayName = entry.label
         siteSizes[siteID] = CGSize(width: entry.width, height: entry.height)
         trackIDs.append(siteID)
       }
@@ -182,7 +182,7 @@ class LoDVassalScene: SKScene {
     node.strokeColor = .white
     node.lineWidth = 2
     node.name = "piece_\(piece.id)"
-    if let label = piece.label {
+    if let label = piece.displayName {
       let labelNode = SKLabelNode(text: label)
       labelNode.applySystemFont(
         size: radius * 0.7, weight: .bold, color: .white)

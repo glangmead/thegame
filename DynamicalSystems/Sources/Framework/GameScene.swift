@@ -165,7 +165,7 @@ class GameScene<
 
       case .label:
         let labelStyle = resolved.labelStyle
-        let labelNode = SKLabelNode(text: site.label ?? "")
+        let labelNode = SKLabelNode(text: site.displayName ?? "")
         labelNode.applySystemFont(
           size: cellSize * (labelStyle?.size ?? 0.4),
           weight: labelStyle?.weight?.uiWeight ?? .bold,
@@ -220,7 +220,7 @@ class GameScene<
         }
 
         // Site label
-        if let label = site.label {
+        if let label = site.displayName {
           let labelStyle = resolved.labelStyle
           let fontSize = cellSize * (labelStyle?.size ?? 0.18)
           let weight = labelStyle?.weight?.uiWeight ?? .semibold
@@ -315,29 +315,19 @@ class GameScene<
         dvLabel.horizontalAlignmentMode = .center
         circle.addChild(dvLabel)
       }
-      if let label = piece.label {
-        if hasDisplayValue {
-          let subtitle = SKLabelNode(text: label)
-          subtitle.applySystemFont(
-            size: cellSize * 0.14, weight: .semibold, color: .black)
-          subtitle.horizontalAlignmentMode = .center
-          subtitle.verticalAlignmentMode = .top
-          subtitle.position = CGPoint(x: 0, y: -radius - 2)
-          subtitle.name = "pieceLabel"
-          container.addChild(subtitle)
-        } else {
-          let labelNode = SKLabelNode(text: label)
-          labelNode.applySystemFont(
-            size: radius * 0.8, weight: .bold, color: .white)
-          labelNode.horizontalAlignmentMode = .center
-          labelNode.verticalAlignmentMode = .center
-          labelNode.name = "pieceLabel"
-          circle.addChild(labelNode)
-        }
+      if let name = piece.displayName {
+        let subtitle = SKLabelNode(text: name)
+        subtitle.applySystemFont(
+          size: cellSize * 0.14, weight: .semibold, color: .black)
+        subtitle.horizontalAlignmentMode = .center
+        subtitle.verticalAlignmentMode = .top
+        subtitle.position = CGPoint(x: 0, y: -radius - 2)
+        subtitle.name = "pieceLabel"
+        container.addChild(subtitle)
       }
       return container
     case .die:
-      let node = makeDieNode(label: piece.label, owner: piece.owner, scale: scale)
+      let node = makeDieNode(displayName: piece.displayName, owner: piece.owner, scale: scale)
       node.name = "die_\(piece.id)"
       return node
     case .card:
@@ -357,7 +347,7 @@ class GameScene<
     }
   }
 
-  private func makeDieNode(label pieceLabel: String?, owner: PlayerID?, scale: CGFloat = 1) -> SKNode {
+  private func makeDieNode(displayName pieceLabel: String?, owner: PlayerID?, scale: CGFloat = 1) -> SKNode {
     let size = cellSize * 0.8 * scale
     let node = SKNode()
     let sprite = SKSpriteNode()

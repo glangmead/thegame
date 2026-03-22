@@ -57,7 +57,7 @@ struct LoDPieceAdapter {
         id: armyBaseID + idx,
         kind: .token,
         owner: PlayerID(1),  // Enemy
-        label: armyLabels[slot] ?? slot.rawValue
+        displayName: armyLabels[slot] ?? slot.rawValue
       ))
     }
 
@@ -67,23 +67,23 @@ struct LoDPieceAdapter {
         id: heroBaseID + idx,
         kind: .token,
         owner: PlayerID(0),  // Player
-        label: heroLabels[hero] ?? hero.rawValue
+        displayName: heroLabels[hero] ?? hero.rawValue
       ))
     }
 
     // Markers
-    result.append(GamePiece(id: moraleID, kind: .token, label: "Mor"))
-    result.append(GamePiece(id: timeID, kind: .token, label: "T"))
-    result.append(GamePiece(id: maaMarkerID, kind: .token, label: "MaA"))
-    result.append(GamePiece(id: archerMarkerID, kind: .token, label: "Arc"))
-    result.append(GamePiece(id: priestMarkerID, kind: .token, label: "Pri"))
-    result.append(GamePiece(id: arcaneMarkerID, kind: .token, label: "Ark"))
-    result.append(GamePiece(id: divineMarkerID, kind: .token, label: "Div"))
-    result.append(GamePiece(id: bloodyBattleID, kind: .token, owner: PlayerID(1), label: "Bld"))
-    result.append(GamePiece(id: slowMarkerID, kind: .token, owner: PlayerID(1), label: "Slw"))
+    result.append(GamePiece(id: moraleID, kind: .token, displayName: "Mor"))
+    result.append(GamePiece(id: timeID, kind: .token, displayName: "T"))
+    result.append(GamePiece(id: maaMarkerID, kind: .token, displayName: "MaA"))
+    result.append(GamePiece(id: archerMarkerID, kind: .token, displayName: "Arc"))
+    result.append(GamePiece(id: priestMarkerID, kind: .token, displayName: "Pri"))
+    result.append(GamePiece(id: arcaneMarkerID, kind: .token, displayName: "Ark"))
+    result.append(GamePiece(id: divineMarkerID, kind: .token, displayName: "Div"))
+    result.append(GamePiece(id: bloodyBattleID, kind: .token, owner: PlayerID(1), displayName: "Bld"))
+    result.append(GamePiece(id: slowMarkerID, kind: .token, owner: PlayerID(1), displayName: "Slw"))
 
     // Current card
-    result.append(GamePiece(id: currentCardID, kind: .card, label: "card"))
+    result.append(GamePiece(id: currentCardID, kind: .card, displayName: "card"))
 
     return result
   }

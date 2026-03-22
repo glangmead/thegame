@@ -8,7 +8,8 @@ struct InterpretedPieceAdapter {
     state: InterpretedState,
     schema: StateSchema,
     graph: SiteGraph,
-    playerIndex: [String: Int]
+    playerIndex: [String: Int],
+    pieceDisplayNames: [String: String] = [:]
   ) {
     var pieces: [GamePiece] = []
     var section: GameSection = [:]
@@ -34,7 +35,7 @@ struct InterpretedPieceAdapter {
         id: pieceID,
         kind: .token,
         owner: owner,
-        label: pieceName,
+        displayName: pieceDisplayNames[pieceName],
         displayValues: displayValues
       )
       pieces.append(piece)

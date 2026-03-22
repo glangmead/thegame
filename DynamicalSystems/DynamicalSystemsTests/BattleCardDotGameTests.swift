@@ -5,6 +5,11 @@ import Testing
 @Suite("BattleCard .game")
 struct BattleCardDotGameTests {
 
+  /// Compute piece ID the same way InterpretedPieceAdapter does.
+  private static func pieceID(_ name: String) -> Int {
+    name.hashValue & 0x7FFFFFFF
+  }
+
   private static func loadGameSource(_ name: String) throws -> String {
     guard let url = Bundle.main.url(
       forResource: name, withExtension: "game"
@@ -82,7 +87,7 @@ struct BattleCardDotGameTests {
     )
     let nilOwnerPieces = adapter.pieces
       .filter { $0.owner == nil }
-      .map { "\($0.label ?? "?") (type=\(state.pieceTypes[$0.label ?? ""] ?? "nil"))" }
+      .map { "id=\($0.id)" }
     #expect(nilOwnerPieces.isEmpty,
             Comment(rawValue: "Nil-owner pieces: \(nilOwnerPieces)"))
     // Check every piece has correct owner and display values
@@ -97,7 +102,8 @@ struct BattleCardDotGameTests {
       ("germanArnhem", 1, "germanStrength", 2)
     ]
     for (name, player, dvKey, dvVal) in expected {
-      let piece = adapter.pieces.first { $0.label == name }
+      let id = Self.pieceID(name)
+      let piece = adapter.pieces.first { $0.id == id }
       #expect(piece != nil,
               Comment(rawValue: "Missing piece: \(name)"))
       #expect(piece?.owner == PlayerID(player),
@@ -109,9 +115,8 @@ struct BattleCardDotGameTests {
     }
     // Check for hash collisions in piece IDs
     let ids = adapter.pieces.map(\.id)
-    let labels = adapter.pieces.map { "\($0.label ?? "?")=\($0.id)" }
     #expect(Set(ids).count == ids.count,
-            Comment(rawValue: "Hash collision! \(labels)"))
+            Comment(rawValue: "Hash collision! ids=\(ids)"))
   }
 
   @Test func existentialReducePreservesPieceTypes() throws {
@@ -170,7 +175,7 @@ struct BattleCardDotGameTests {
     )
     let nilOwnerPieces = adapter.pieces
       .filter { $0.owner == nil }
-      .map { "\($0.label ?? "?") (type=\(state.pieceTypes[$0.label ?? ""] ?? "nil"))" }
+      .map { "id=\($0.id)" }
     #expect(nilOwnerPieces.isEmpty,
             Comment(rawValue: "build() nil-owner pieces: \(nilOwnerPieces)"))
   }

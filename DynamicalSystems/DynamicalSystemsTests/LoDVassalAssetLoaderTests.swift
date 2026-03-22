@@ -38,7 +38,7 @@ struct LoDVassalAssetLoaderTests {
     for piece in pieces where piece.id != cardID {
       #expect(
         LoDVassalAssetLoader.pieceImageNames[piece.id] != nil,
-        "Missing image mapping for piece \(piece.id) (\(piece.label ?? "?"))"
+        "Missing image mapping for piece \(piece.id) (\(piece.displayName ?? "?"))"
       )
     }
   }

@@ -28,6 +28,7 @@ where State.Action: Hashable {
   var graph: SiteGraph = SiteGraph()
   var sceneStyle: StyleConfig?
   var playerIndex: [String: Int] = [:]
+  var pieceDisplayNames: [String: String] = [:]
 
   func isTerminal(state: State) -> Bool { terminalCheck(state) }
   func isRolloutTerminal(state: State) -> Bool {
