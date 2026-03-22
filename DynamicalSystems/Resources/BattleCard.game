@@ -12,7 +12,8 @@
     (enum AllyPiece {allied101st allied82nd allied1st} player: 0
       displayNames: {"101st" "82nd" "1st"})
     (enum GermanPiece {germanEindhoven germanGrave
-                       germanNijmegen germanArnhem} player: 1)
+                       germanNijmegen germanArnhem} player: 1
+      displayNames: {"Eindhoven" "Grave" "Nijmegen" "Arnhem"})
     (enum CorpsPiece {corps} player: 0
       displayNames: {"XXX Corps"})
     (enum Weather {fog clear})
@@ -56,16 +57,15 @@
     (dict control Site Control))
 
   (graph
-    (track "allied" length: 4
-      tags: {"allied"})
+    (track "alliedTrack" length: 4 tags: {"allied"})
     (track "road" length: 5
       displayNames: {"Belgium" "Eindhoven" "Grave" "Nijmegen" "Arnhem"}
       tags: {"road"})
-    (track "german" length: 4
+    (track "germanTrack" length: 4
       tags: {"german"})
-    (crossConnect "allied" "road" offset: 1)
-    (crossConnect "allied" "german")
-    (crossConnect "german" "road" offset: 1))
+    (crossConnect "alliedTrack" "road" offset: 1)
+    (crossConnect "alliedTrack" "germanTrack")
+    (crossConnect "germanTrack" "road" offset: 1))
 
   (actions
     ;; Setup
@@ -114,16 +114,16 @@
       (reduce initialize
         (seq
           ;; Place allied airborne units
-          (place allied101st (site "allied" 0))
-          (place allied82nd (site "allied" 1))
-          (place allied1st (site "allied" 3))
+          (place allied101st (site "alliedTrack" 0))
+          (place allied82nd (site "alliedTrack" 1))
+          (place allied1st (site "alliedTrack" 3))
           ;; Place 30 Corps at Belgium
           (place corps (site "road" 0))
           ;; Place German garrisons
-          (place germanEindhoven (site "german" 0))
-          (place germanGrave (site "german" 1))
-          (place germanNijmegen (site "german" 2))
-          (place germanArnhem (site "german" 3))
+          (place germanEindhoven (site "germanTrack" 0))
+          (place germanGrave (site "germanTrack" 1))
+          (place germanNijmegen (site "germanTrack" 2))
+          (place germanArnhem (site "germanTrack" 3))
           ;; Allied strengths
           (setEntry allyStrength allied101st 6)
           (setEntry allyStrength allied82nd 6)
@@ -149,14 +149,13 @@
       (items (list allied101st allied82nd allied1st))
       (transition enterBattle)
       (reduce airdrop
-        (let piece (param piece)
-          (let roll (rollDie 6)
-            (let penalty (airdropPenalty $roll)
-              (seq
-                (setEntry allyStrength $piece
-                  (max 0 (- (lookup allyStrength $piece) $penalty)))
-                (log (format "Airdrop for {}: rolled {}, -{} strength"
-                  $piece $roll $penalty))))))))
+        (let roll (rollDie 6)
+          (let penalty (airdropPenalty $roll)
+            (seq
+              (setEntry allyStrength $piece
+                (max 0 (- (lookup allyStrength $piece) $penalty)))
+              (log (format "Airdrop for {}: rolled {}, -{} strength"
+                $piece $roll $penalty))))))))
 
     ;; ── Battle ─────────────────────────────────────────────
     ;; Each ally facing a german chooses attack or defend.
@@ -168,56 +167,54 @@
       (transition enterReinforceGermans)
 
       (reduce rollForAttack
-        (let piece (param piece)
-          (let opponent (pieceAt (adjacent (pos $piece) "german"))
-            (let roll (rollDie 6)
-              (let result (attackCRT
-                    (compareStrength
-                      (lookup allyStrength $piece)
-                      (lookup germanStrength $opponent))
-                    $roll)
-                (seq
-                  (setEntry allyStrength $piece
-                    (max 0 (- (lookup allyStrength $piece)
-                              (. $result allyHits))))
-                  (setEntry germanStrength $opponent
-                    (max 1 (- (lookup germanStrength $opponent)
-                              (. $result germanHits))))
-                  (if (. $result controlGained)
-                    (setEntry control
-                      (adjacent (pos $piece) "road")
-                      allies)
-                    (log "No control change"))
-                  (log (format "Attack {}: rolled {}, ally -{}, german -{}"
-                    $piece $roll
-                    (. $result allyHits)
-                    (. $result germanHits)))))))))
+        (let opponent (pieceAt (adjacent (pos $piece) "germanTrack"))
+          (let roll (rollDie 6)
+            (let result (attackCRT
+                  (compareStrength
+                    (lookup allyStrength $piece)
+                    (lookup germanStrength $opponent))
+                  $roll)
+              (seq
+                (setEntry allyStrength $piece
+                  (max 0 (- (lookup allyStrength $piece)
+                            (. $result allyHits))))
+                (setEntry germanStrength $opponent
+                  (max 1 (- (lookup germanStrength $opponent)
+                            (. $result germanHits))))
+                (if (. $result controlGained)
+                  (setEntry control
+                    (adjacent (pos $piece) "road")
+                    allies)
+                  (log "No control change"))
+                (log (format "Attack {}: rolled {}, ally -{}, german -{}"
+                  $piece $roll
+                  (. $result allyHits)
+                  (. $result germanHits))))))))
 
       (reduce rollForDefend
-        (let piece (param piece)
-          (let opponent (pieceAt (adjacent (pos $piece) "german"))
-            (let roll (rollDie 6)
-              (let result (defendCRT
-                    (compareStrength
-                      (lookup allyStrength $piece)
-                      (lookup germanStrength $opponent))
-                    $roll)
-                (let newAllyStr (max 0 (- (lookup allyStrength $piece)
-                                          (. $result allyHits)))
-                  (let newGermanStr (max 1 (- (lookup germanStrength $opponent)
-                                              (. $result germanHits)))
-                    (seq
-                      (setEntry allyStrength $piece $newAllyStr)
-                      (setEntry germanStrength $opponent $newGermanStr)
-                      (if (> $newGermanStr $newAllyStr)
-                        (setEntry control
-                          (adjacent (pos $piece) "road")
-                          germans)
-                        (log "Control unchanged"))
-                      (log (format "Defend {}: rolled {}, ally -{}, german -{}"
-                        $piece $roll
-                        (. $result allyHits)
-                        (. $result germanHits))))))))))))
+        (let opponent (pieceAt (adjacent (pos $piece) "germanTrack"))
+          (let roll (rollDie 6)
+            (let result (defendCRT
+                  (compareStrength
+                    (lookup allyStrength $piece)
+                    (lookup germanStrength $opponent))
+                  $roll)
+              (let newAllyStr (max 0 (- (lookup allyStrength $piece)
+                                        (. $result allyHits)))
+                (let newGermanStr (max 1 (- (lookup germanStrength $opponent)
+                                            (. $result germanHits)))
+                  (seq
+                    (setEntry allyStrength $piece $newAllyStr)
+                    (setEntry germanStrength $opponent $newGermanStr)
+                    (if (> $newGermanStr $newAllyStr)
+                      (setEntry control
+                        (adjacent (pos $piece) "road")
+                        germans)
+                      (log "Control unchanged"))
+                    (log (format "Defend {}: rolled {}, ally -{}, german -{}"
+                      $piece $roll
+                      (. $result allyHits)
+                      (. $result germanHits)))))))))))
 
     ;; ── Reinforce Germans ──────────────────────────────────
     ;; Each german on board gets +1 strength.
@@ -230,28 +227,27 @@
         (\ (g) (!= (pos $g) nil))))
       (transition enterAdvance)
       (reduce reinforceGerman
-        (let piece (param piece)
-          (seq
-            ;; Reinforce strength
-            (if (== $piece germanNijmegen)
-              (if (== (lookup control (site "road" 4)) germans)
-                (seq
-                  (setEntry germanStrength $piece
-                    (min 6 (+ (lookup germanStrength $piece) 1)))
-                  (log (format "+1 to {}" $piece)))
-                (log (format "+0 to {} (Allies control Arnhem)" $piece)))
+        (seq
+          ;; Reinforce strength
+          (if (== $piece germanNijmegen)
+            (if (== (lookup control (site "road" 4)) germans)
               (seq
                 (setEntry germanStrength $piece
                   (min 6 (+ (lookup germanStrength $piece) 1)))
-                (log (format "+1 to {}" $piece))))
-            ;; Control check: if no opponent or german stronger, german control
-            (let allyHere (pieceAt (adjacent (pos $piece) "allied"))
-              (if (== $allyHere nil)
+                (log (format "+1 to {}" $piece)))
+              (log (format "+0 to {} (Allies control Arnhem)" $piece)))
+            (seq
+              (setEntry germanStrength $piece
+                (min 6 (+ (lookup germanStrength $piece) 1)))
+              (log (format "+1 to {}" $piece))))
+          ;; Control check: if no opponent or german stronger, german control
+          (let allyHere (pieceAt (adjacent (pos $piece) "alliedTrack"))
+            (if (== $allyHere nil)
+              (setEntry control (adjacent (pos $piece) "road") germans)
+              (if (> (lookup germanStrength $piece)
+                     (lookup allyStrength $allyHere))
                 (setEntry control (adjacent (pos $piece) "road") germans)
-                (if (> (lookup germanStrength $piece)
-                       (lookup allyStrength $allyHere))
-                  (setEntry control (adjacent (pos $piece) "road") germans)
-                  (log "Control unchanged"))))))))
+                (log "Control unchanged")))))))
 
     ;; ── Advance ────────────────────────────────────────────
     ;; 30 Corps advances if next city is allied-controlled.
@@ -291,7 +287,7 @@
 
       (reduce advance30Corps
         (let dest (advance (pos corps) "road" 1)
-          (let german (pieceAt (adjacent $dest "german"))
+          (let german (pieceAt (adjacent $dest "germanTrack"))
             (seq
               (move corps $dest)
               (if (!= $german nil)
@@ -389,7 +385,7 @@
 
 ;; Does this ally face a living german at the same city?
 (define "hasFacingGerman" (ally)
-  (!= (pieceAt (adjacent (pos $ally) "german")) nil))
+  (!= (pieceAt (adjacent (pos $ally) "germanTrack")) nil))
 
 ;; Compare two strength values -> Advantage enum
 (define "compareStrength" (allyStr germanStr)
@@ -412,7 +408,7 @@
 ;; Advance an allied piece one position forward.
 ;; If another ally is already at the destination, merge strengths.
 (define "AdvanceAlly" (piece)
-  (let dest (advance (pos $piece) "allied" 1)
+  (let dest (advance (pos $piece) "alliedTrack" 1)
     (let existing (pieceAt $dest)
       (if (!= $existing nil)
         ;; Merge into existing ally

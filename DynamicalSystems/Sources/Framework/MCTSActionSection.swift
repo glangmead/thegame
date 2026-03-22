@@ -76,6 +76,7 @@ struct MCTSActionSection<
   let actions: [Action]
   let onAction: (Action) -> Void
   let grouping: ((Action) -> String)?
+  let displayName: ((Action) -> String)?
 
   @SwiftUI.State private var mctsStats: [Action: (Float, Float)] = [:]
   @SwiftUI.State private var mctsRunning = false
@@ -85,11 +86,13 @@ struct MCTSActionSection<
     model: GameModel<State, Action>,
     actions: [Action],
     grouping: ((Action) -> String)? = nil,
+    displayName: ((Action) -> String)? = nil,
     onAction: @escaping (Action) -> Void
   ) {
     self.model = model
     self.actions = actions
     self.grouping = grouping
+    self.displayName = displayName
     self.onAction = onAction
   }
 
@@ -154,7 +157,7 @@ struct MCTSActionSection<
       onAction(action)
     } label: {
       HStack {
-        Text(action.description)
+        Text(displayName?(action) ?? action.description)
         Spacer()
         if let (valueSum, visitCount) = mctsStats[action], visitCount > 0 {
           let pct = valueSum / visitCount * 100

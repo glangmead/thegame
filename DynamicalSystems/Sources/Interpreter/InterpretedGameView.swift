@@ -115,9 +115,11 @@ struct InterpretedGameView: View {
         }
 
         if !model.isTerminal {
+          let names = game.pieceDisplayNames
           MCTSActionSection(
             model: model,
             actions: model.allowedActions,
+            displayName: { $0.displayName { names[$0] } },
             onAction: { action in
               model.perform(action)
               syncScene()

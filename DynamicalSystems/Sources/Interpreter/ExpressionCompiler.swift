@@ -62,8 +62,12 @@ struct ExpressionCompiler {
     ) {
       self.state = state
       self.actionParams = actionParams
-      self.bindings = bindings
       self.randomSource = randomSource
+      // Seed locals from action params so $piece etc. work without
+      // an explicit (let piece (param piece)) wrapper.
+      var merged = actionParams
+      for (key, value) in bindings { merged[key] = value }
+      self.bindings = merged
     }
 
     /// Temporarily bind `name` to `value`, execute `body`, then restore.
