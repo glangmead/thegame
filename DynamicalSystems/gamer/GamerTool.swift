@@ -14,6 +14,7 @@ enum Games: String, Codable, ExpressibleByArgument {
   case battleCardDotGame = "BattleCardDotGame"
   case BCMC = "MalayanCampaign"
   case legionsOfDarkness = "LegionsOfDarkness"
+  case legionsOfDarknessJSONC = "LegionsOfDarknessJSONC"
   case hearts = "Hearts"
 }
 
@@ -78,6 +79,18 @@ struct GamerTool: AsyncParsableCommand {
     case .legionsOfDarkness:
       var gameRunner = GameRunner(
         reducer: LoD.composedGame(windsOfMagicArcane: 3),
+        numTrials: numTrials,
+        numMCTSIters: numMCTSIters,
+        numRollouts: numRollouts,
+        interactive: interactive,
+        logFile: logFile,
+        showAIHints: showAIHints
+      )
+      await gameRunner.run()
+    case .legionsOfDarknessJSONC:
+      let game = try loadDotGame("Legions of Darkness")
+      var gameRunner = GameRunner(
+        reducer: game,
         numTrials: numTrials,
         numMCTSIters: numMCTSIters,
         numRollouts: numRollouts,

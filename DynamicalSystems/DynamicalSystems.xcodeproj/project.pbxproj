@@ -52,6 +52,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				BattleCard.game.jsonc,
+				"Legions of Darkness.game.jsonc",
 			);
 			target = 9B3138712E63462B00D3AE6D /* DynamicalSystems */;
 		};

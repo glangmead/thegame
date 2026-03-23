@@ -81,6 +81,12 @@ enum GameBuilder {
         if let first = capturedPhases.first {
           state.phase = first
         }
+        // Populate decks from card definitions
+        for card in components.cards {
+          if let deckName = card.asStruct?.fields["deck"]?.displayString {
+            state.appendToDeck(deckName, card)
+          }
+        }
         return state
       },
       terminalCheck: terminalCheck,

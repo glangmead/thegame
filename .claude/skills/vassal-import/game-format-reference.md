@@ -1,417 +1,461 @@
-# .game S-Expression Format Reference
+# .game.jsonc Format Reference
 
-Complete reference for the `.game` file format interpreted by the DynamicalSystems
-app. A `.game` file declares a solo board game as plain text. The app parses it,
-validates it, and runs it against MCTS AI.
+Complete reference for the `.game.jsonc` file format interpreted by the
+DynamicalSystems app. A `.game.jsonc` file declares a solo board game as
+JSON with comments. The app parses it, validates it, and runs it against
+MCTS AI.
 
 ## File Structure
 
-A `.game` file contains one to three top-level S-expression forms:
+A `.game.jsonc` file is a single JSON object with these top-level keys:
 
-```scheme
-(game "Name"
-  (players 1)
-  (components ...)
-  (state ...)
-  (graph ...)
-  (actions ...)
-  (rules ...))
-
-(define ...)   ;; zero or more macro definitions
-
-(metadata
-  (ai ...))
+```jsonc
+{
+  "game": "Name",
+  "players": 1,
+  "components": { ... },
+  "state": { ... },
+  "graph": { ... },
+  "actions": { ... },
+  "rules": { ... },
+  "defines": [ ... ],
+  "metadata": { ... },
+  "scene": { ... }
+}
 ```
 
-Order of top-level forms does not matter. The `(game ...)` form is required.
-`(define ...)` and `(metadata ...)` are optional.
+`"game"` and `"players"` are required. All other sections are optional.
 
 ---
 
-## S-Expression Syntax
+## JSON with Comments
 
-Atoms: bare words (`hello`, `42`, `true`, `false`) or quoted strings (`"Goblin Assault"`).
+The parser accepts standard JSON extended with `//` line comments.
+Comments are stripped before parsing.
 
-Lists: parenthesized `(a b c)` or braced `{a b c}` — both produce the same list node.
-Braces are conventional for inline enum-case sets and function mappings.
-
-Comments: `;` to end of line.
-
-Variable references: `$name` refers to a variable bound by `(let ...)`, a
-`(define ...)` parameter, or a `(\\ ...)` lambda parameter. Bare names (no `$`)
+Variable references: `"$name"` refers to a variable bound by `{"let": ...}`,
+a define parameter, or a `{"fn": ...}` lambda parameter. Bare names (no `$`)
 refer to state fields or enum values.
+
+Enum case references: `".caseName"` (dot prefix) explicitly marks an enum
+case. Bare strings matching a declared enum case are also resolved as enum
+values.
 
 ---
 
 ## Components
 
-The `(components ...)` section declares enums, structs, enum functions, and cards.
+The `"components"` object declares enums, structs, functions, cards, and CRTs.
 
 ### Enums
 
-Simple enumeration of named cases:
-
-```scheme
-(enum Track {east west gate terror sky})
-(enum Phase {card army event action heroic housekeeping})
+```jsonc
+"enums": [
+  {"name": "Phase", "values": ["card", "army", "event", "action"]},
+  {"name": "AllyPiece", "values": ["allied101st", "allied82nd"],
+   "player": 0, "displayNames": ["101st", "82nd"]},
+  {"name": "ArmySlot", "values": ["east", "west", "gate"],
+   "player": 1, "displayNames": ["East", "West", "Gate"]}
+]
 ```
 
-Sum types with associated values:
-
-```scheme
-(enum HeroLocation reserves (onTrack Track))
-```
-
-Here `reserves` is a simple case; `onTrack` carries a `Track` value.
+- `"player"`: assigns all cases to a player index (0 = protagonist, 1 = opponent).
+  Used by the renderer to color pieces.
+- `"displayNames"`: parallel array of human-readable names for each case.
 
 ### Structs
 
 Named record types with typed fields:
 
-```scheme
-(struct CardDRM
-  (field action String)
-  (field value Int))
+```jsonc
+"structs": [
+  {"name": "CardDRM", "fields": [
+    {"name": "action", "type": "String"},
+    {"name": "value", "type": "Int"}
+  ]}
+]
 ```
 
-### Enum Functions
+### Functions
 
 Total functions mapping every case of an enum to a value:
 
-```scheme
-(fn strength ArmyType {goblin 2 orc 3 dragon 4 troll 4})
-(fn isWall Track {east true west true gate true terror false sky false})
+```jsonc
+"functions": [
+  {"name": "armyStrength", "domain": "ArmySlot",
+   "mapping": {"east": 2, "west": 3, "gate": 2}}
+]
 ```
 
-The mapping must be exhaustive — every case of the domain enum must appear.
-Values can be `Int`, `Bool`, `String`, or list literals.
+The mapping must cover every case of the domain enum.
 
 ### Cards
 
-Inline card data, parsed into struct values:
+Inline card data. Each card is a struct-like object with arbitrary fields:
 
-```scheme
-(cards
-  (card 1 "Goblin Raid" action event: advance)
-  (card 2 "Dragon Fire" action event: terror))
+```jsonc
+"cards": [
+  {"number": 1, "title": "Goblin Raid", "deck": "dayDeck",
+   "advances": ["east", "west"], "actions": 3, "heroics": 1,
+   "eventNumber": 1}
+]
 ```
 
-Each `(card ...)` produces a `Card` struct with fields: `number` (Int),
-`title` (String), `deck` (String), plus any `key: value` pairs as additional
-fields.
+The `"deck"` field determines which state deck the card is added to during
+`makeInitialState`. Cards are shuffled and drawn at runtime.
 
 ### Combat Results Tables (CRT)
 
-Tabular lookup for combat or similar mechanics. Two forms: 2D (enum row +
-die-roll column) and 1D (die-roll column only).
-
 #### 2D CRT
 
-```scheme
-(crt attackCRT
-  (row Advantage) (col 1 6)
-  (results allyHits germanHits controlGained)
-  (allies  {1 (1 0 false) 2-4 (1 1 true)  5-6 (0 1 true)})
-  (equal   {1 (2 0 false) 2-4 (1 1 false) 5-6 (1 1 true)})
-  (germans {1 (3 0 false) 2-4 (2 1 false) 5-6 (1 0 true)}))
+```jsonc
+"crts": [
+  {"name": "attackCRT",
+   "row": "Advantage", "col": [1, 6],
+   "results": ["allyHits", "germanHits", "controlGained"],
+   "entries": {
+     "allies":  [{"dice": [1], "values": [1, 0, false]},
+                 {"dice": [2, 3, 4], "values": [1, 1, true]},
+                 {"dice": [5, 6], "values": [0, 1, true]}],
+     "germans": [{"dice": [1], "values": [3, 0, false]},
+                 {"dice": [2, 3, 4], "values": [2, 1, false]},
+                 {"dice": [5, 6], "values": [1, 0, true]}]
+   }}
+]
 ```
 
-- `(row EnumName)` — the row index type (must be a declared enum)
-- `(col min max)` — the die range (documentation only; not enforced)
-- `(results field1 field2 ...)` — names for each result column
-- Each remaining child is `(caseName {range1 result1 ...})`, one per enum case
-
-Column ranges use notation `N` (single value) or `N-M` (inclusive range).
-Results are tuples `(val1 val2 ...)` matching the results fields.
-
-Called as `(crtName rowValue dieRoll)`. Returns a struct with the declared
-result fields, accessible via `(. result fieldName)`.
+Called as `{"attackCRT": ["$rowValue", "$dieRoll"]}`. Returns a struct with
+result fields accessible via `{"get": ["$result", "allyHits"]}`.
 
 #### 1D CRT
 
-```scheme
-(crt airdropPenalty
-  (col 1 6)
-  {1-2 2  3-4 1  5-6 0})
+```jsonc
+{"name": "airdropPenalty",
+ "col": [1, 6],
+ "entries": [
+   {"dice": [1, 2], "values": [2]},
+   {"dice": [3, 4], "values": [1]},
+   {"dice": [5, 6], "values": [0]}
+ ]}
 ```
 
-No `(row ...)` or `(results ...)`. A single brace-enclosed list of
-range-value pairs.
-
-Called as `(crtName dieRoll)`. Returns a scalar value directly.
+Called as `{"airdropPenalty": ["$roll"]}`. Returns a scalar value.
 
 ---
 
 ## State Schema
 
-The `(state ...)` section declares every mutable field. The interpreter builds
-a dictionary-backed state from this schema and validates all mutations at
-build time.
+The `"state"` object declares every mutable field.
+
+```jsonc
+"state": {
+  "fields": [
+    {"name": "phase", "type": "Phase"},
+    {"name": "morale", "type": "Morale"}
+  ],
+  "counters": [
+    {"name": "score", "min": 0, "max": 10},
+    {"name": "hp", "min": 0, "max": "inf"}
+  ],
+  "flags": ["ended", "victory", "gameAcknowledged"],
+  "dicts": [
+    {"name": "armyPosition", "key": "ArmySlot", "value": "Int"},
+    {"name": "armyStrengthDict", "key": "ArmySlot", "value": "Int"}
+  ],
+  "sets": [
+    {"name": "breaches", "type": "Track"}
+  ],
+  "decks": [
+    {"name": "dayDeck", "cardType": "Card"}
+  ],
+  "optionals": [
+    {"name": "currentCard", "type": "Card"},
+    {"name": "slowedArmy", "type": "ArmySlot"}
+  ]
+}
+```
 
 ### Field Kinds
 
-| Form | Semantics | Default |
-|------|-----------|---------|
-| `(counter name min max)` | Bounded integer, mutations clamp automatically | `min` |
-| `(flag name)` | Boolean | `false` |
-| `(field name Type)` | Typed value (typically an enum) | first enum case |
-| `(dict name KeyType ValueType)` | Dictionary indexed by key type | empty |
-| `(set name ElementType)` | Unordered set | empty |
-| `(deck name CardType)` | Ordered list with draw/shuffle/discard | empty |
-| `(optional name ValueType)` | Nullable value | `nil` |
-
-Use `inf` for unbounded counter max: `(counter hp 0 inf)`.
+| Key | Semantics | Default |
+|-----|-----------|---------|
+| `"fields"` | Typed value (typically an enum) | first enum case |
+| `"counters"` | Bounded integer, mutations clamp automatically | `min` |
+| `"flags"` | Boolean | `false` |
+| `"dicts"` | Dictionary indexed by key type | empty |
+| `"sets"` | Unordered set | empty |
+| `"decks"` | Ordered list with draw/shuffle/discard. Requires `"cardType"`. | empty, populated from cards |
+| `"optionals"` | Nullable value | `null` |
 
 ### Framework-Managed Fields
 
-These fields exist implicitly and do not need to be declared in the schema:
+These fields exist implicitly:
 
-- `ended` — set by `(endGame ...)`, boolean
-- `victory` — set by `(endGame victory)`, boolean
+- `ended` — set by `{"endGame": [...]}`, boolean
+- `victory` — set by `{"endGame": ["victory"]}`, boolean
 - `gameAcknowledged` — typically the terminal condition
 - `phase` — managed by the phase system
 - `history` — action history, managed by the framework
 
-However, `ended`, `victory`, and `gameAcknowledged` are commonly declared as
-explicit `(flag ...)` entries so that page conditions can reference them. The
-validator allows mutations to these names regardless of declaration.
+Declaring `ended`, `victory`, and `gameAcknowledged` as explicit flags is
+common so page conditions can reference them.
 
 ---
 
 ## Graph
 
-The `(graph ...)` section declares spatial topology used by game logic.
+The `"graph"` object declares spatial topology.
 
-```scheme
-(graph
-  (track "east" length: 6 wall: true)
-  (track "sky" length: 6)
-  (site reserves))
+```jsonc
+"graph": {
+  "tracks": [
+    {"name": "eastTrack", "length": 7, "tags": ["army", "east"],
+     "displayNames": ["E0", "E1", "E2", "E3", "E4", "E5", "E6"]},
+    {"name": "road", "length": 5,
+     "displayNames": ["Belgium", "Eindhoven", "Grave", "Nijmegen", "Arnhem"],
+     "tags": ["road"]}
+  ],
+  "connections": [
+    {"type": "crossConnect", "from": "alliedTrack", "to": "road", "offset": 1}
+  ]
+}
 ```
 
 ### Tracks
 
-`(track "name" length: N)` creates N connected sites forming a linear path.
-Optional `wall: true` tags the track as a wall track.
+Each track entry creates a linear sequence of connected sites.
 
-Each site in a track gets tags: `track:<name>`, `space:<index>`.
+- `"name"`: track identifier used in `{"site": ["trackName", index]}`
+- `"length"`: number of sites
+- `"tags"`: string array for categorization and styling
+- `"displayNames"`: optional labels for each site (must match length)
 
-### Sites
+### Connections
 
-`(site name)` creates a single named site (e.g., a reserve area, a card display
-zone). The site gets `label` equal to the name.
+- `"crossConnect"`: creates parallel edges between corresponding sites of
+  two tracks. `"offset"` shifts the alignment.
 
 ### Empty Graph
 
-`(graph)` with no children is valid — produces an empty `SiteGraph`.
+`"graph": {}` or omitting the key produces an empty `SiteGraph`.
 
 ---
 
 ## Actions
 
-The `(actions ...)` section declares every action the player can take. Actions
-are schema only — they declare names and parameters. Behavior is defined in
-page `(reduce ...)` clauses.
+The `"actions"` object declares every action the player can take.
 
-```scheme
-(actions
-  (action drawCard)
-  (action meleeAttack (slot ArmySlot))
-  (action buildUpgrade (type UpgradeType) (track Track))
-  (action acknowledge))
+```jsonc
+"actions": {
+  "actions": [
+    {"name": "drawCard"},
+    {"name": "meleeAttack", "params": [{"name": "slot", "type": "ArmySlot"}]},
+    {"name": "buildUpgrade", "params": [
+      {"name": "type", "type": "UpgradeType"},
+      {"name": "track", "type": "Track"}
+    ]},
+    {"name": "acknowledge"}
+  ],
+  "groups": [
+    {"name": "Combat", "actions": ["meleeAttack", "rangedAttack"]},
+    {"name": "Magic", "actions": ["chant", "memorize", "pray"]}
+  ]
+}
 ```
 
 ### Parameters
 
-Each parameter is `(name Type)`. Parameters represent player choices made
-before the action resolves. Randomness (die rolls, draws) happens at
-resolution time in reduce, not as parameters.
+Each parameter has `"name"` and `"type"`. Parameters represent player choices.
+Randomness (die rolls, draws) happens at resolution time in reduce.
 
-### Groups
+### Display Names
 
-UI-only sectioning for the action picker:
-
-```scheme
-(group "Combat" {meleeAttack rangedAttack})
-(group "Magic" {chant memorize pray})
-```
+Actions can have `"displayName"` for UI rendering. By default the action's
+coded name and parameter display names are composed automatically.
 
 ---
 
 ## Rules
 
-The `(rules ...)` section is the heart of the game. It declares phases,
-terminal conditions, pages, and reactions.
+The `"rules"` object is the heart of the game.
+
+```jsonc
+"rules": {
+  "terminal": "gameAcknowledged",
+  "rolloutTerminal": "ended",
+  "pages": [ ... ],
+  "priorities": [ ... ],
+  "reactions": [ ... ]
+}
+```
+
+### Terminal and Rollout Terminal
+
+- `"terminal"`: field name or expression. When truthy, `isTerminal` returns
+  true. Defaults to `gameAcknowledged`.
+- `"rolloutTerminal"`: faster check for MCTS rollouts. Typically `"ended"`.
 
 ### Phases
 
-```scheme
-(phases {card army event action heroic housekeeping})
-```
-
-Declares the ordered phase cycle. The initial phase is the first in the list.
-The `phase` field on state tracks the current phase.
-
-### Terminal Condition
-
-```scheme
-(terminal (field gameAcknowledged))
-```
-
-An expression evaluated against state. When it returns true, `isTerminal`
-returns true and the game ends. Defaults to checking `gameAcknowledged` if
-omitted.
-
-### Rollout Terminal
-
-```scheme
-(rolloutTerminal (field ended))
-```
-
-A faster terminal check used during MCTS rollouts. Typically checks `ended`
-rather than `gameAcknowledged`, so MCTS doesn't need to simulate the
-acknowledgment step.
+Phases are implicit — determined by the order pages appear and the phase
+values used in conditions. The initial phase is the first value of the
+Phase enum.
 
 ### Pages
 
-Pages are the primary game-flow mechanism. Each page has a name, rules
-(condition → offered actions), and reduce clauses (action → mutations).
-
 #### Standard Page
 
-```scheme
-(page "Card Phase"
-  (rule (when (== phase card))
-        (offer drawCard))
-  (reduce drawCard
-    (seq
-      (draw from: dayDrawPile to: currentCard)
-      (chain advanceArmies))))
+```jsonc
+{
+  "page": "Card Phase",
+  "rules": [
+    {"when": {"==": ["phase", ".card"]},
+     "offer": ["drawCard"]}
+  ],
+  "reduce": {
+    "drawCard": {"seq": [
+      {"draw": ["dayDeck", "currentCard"]},
+      {"setPhase": [".army"]}
+    ]}
+  }
+}
 ```
 
-A rule fires when its `(when ...)` condition is true, offering the listed
-actions. A `(reduce actionName ...)` clause defines what happens when that
-action is chosen.
+A rule fires when its `"when"` condition is true, offering the listed actions.
+A reduce clause defines what happens when that action is chosen.
 
 #### Priority Page
 
-```scheme
-(priority "Victory"
-  (rule (when (and victory (not gameAcknowledged)))
-        (offer claimVictory))
-  (reduce claimVictory
-    (set gameAcknowledged true)))
+```jsonc
+{
+  "priority": "Victory",
+  "rules": [
+    {"when": {"and": ["victory", {"not": ["gameAcknowledged"]}]},
+     "offer": ["claimVictory"]}
+  ],
+  "reduce": {
+    "claimVictory": {"seq": [
+      {"endGame": ["victory"]},
+      {"set": ["gameAcknowledged", true]}
+    ]}
+  }
+}
 ```
 
-Same syntax as `(page ...)` but checked before normal pages. Used for
-victory/defeat acknowledgment and interrupts.
+Checked before normal pages. Used for victory/defeat and interrupts.
 
 #### ForEach Page
 
-```scheme
-(forEachPage "Army Advance"
-  (when (== phase army))
-  (items (list east west gate))
-  (transition enterEvent)
-  (reduce advanceArmy
-    (log "advanced")))
+```jsonc
+{
+  "forEachPage": "Army Advance",
+  "when": {"==": ["phase", ".army"]},
+  "items": {"list": ["east", "west", "gate"]},
+  "transition": "enterEvent",
+  "reduce": {
+    "advanceArmy": {"advanceSingleArmy": ["$item"]}
+  }
+}
 ```
 
-Iterates over a dynamic list of items. Each item is processed once. After all
-items are processed, the transition action fires automatically.
+Iterates over a dynamic list. Each item is processed once. After all items,
+the transition action fires.
 
 #### Budgeted Page
 
-```scheme
-(budgetedPage "Actions"
-  (when (== phase action))
-  (budget (atMost 3))
-  (pass endPlayerTurn)
-  (reduce meleeAttack ...))
+```jsonc
+{
+  "budgetedPage": "Actions",
+  "when": {"==": ["phase", ".action"]},
+  "budget": {"atMost": 3},
+  "pass": "endPlayerTurn",
+  "rules": [
+    {"when": {"condition": "..."}, "offer": ["meleeAttack", "buildUpgrade"]}
+  ],
+  "reduce": {
+    "meleeAttack": { ... },
+    "endPlayerTurn": {"setPhase": [".housekeeping"]}
+  }
+}
 ```
 
-Allows a limited number of actions per activation. The `(pass ...)` action
-lets the player end early.
+Allows a limited number of actions per activation. The pass action lets
+the player end early.
 
 ### Rules Within Pages
 
-```scheme
-(rule (when CONDITION) (offer ACTION1 ACTION2 ...))
+```jsonc
+{"when": CONDITION, "offer": ["action1", "action2"]}
 ```
 
 Multiple rules per page are allowed. The page offers the union of all
 matching rules' actions.
 
-### Reduce Clauses
-
-```scheme
-(reduce actionName BODY)
-```
-
-The body is a reduce expression (see Reduce Primitives below). Each declared
-action must have exactly one reduce clause across all pages.
-
 ### Reactions
 
-```scheme
-(reaction "Name"
-  (when CONDITION)
-  (apply REDUCE-EXPR))
+```jsonc
+{
+  "reaction": "Check Defeat",
+  "when": {"allDefendersGone": []},
+  "apply": {"seq": [
+    {"set": ["ended", true]},
+    {"log": ["All defenders lost"]}
+  ]}
+}
 ```
 
-Reactions fire silently after action resolution (including all follow-ups).
-They never offer choices — they observe and mutate. Equivalent to `AutoRule`
-in the Swift framework.
+Reactions fire silently after action resolution. They never offer choices.
 
 ---
 
 ## Reduce Primitives
 
-The bottom-layer operations executed by the reduce engine.
-
 ### Mutations
 
 | Form | Effect |
 |------|--------|
-| `(set field value)` | Assign any state field |
-| `(increment field N)` | Add N, clamp to counter max |
-| `(decrement field N)` | Subtract N, clamp to counter min |
-| `(insertInto setField element)` | Add to set |
-| `(removeFrom setField element)` | Remove from set |
-| `(setEntry dictField key value)` | Set dictionary entry |
-| `(removeEntry dictField key)` | Remove dictionary entry |
-| `(draw from: deckField to: optField)` | Draw top card from deck |
-| `(shuffle deckField)` | Randomize deck order |
-| `(discard from: optField to: deckField)` | Return card to deck |
-| `(appendTo listField element)` | Append to list |
-| `(removeAt listField index)` | Remove by index |
-| `(clearList listField)` | Empty a list |
-| `(setPhase phase)` | Explicit phase transition |
-| `(endGame victory)` / `(endGame defeat)` | Set ended + victory/defeat |
+| `{"set": ["field", value]}` | Assign any state field |
+| `{"increment": ["field", N]}` | Add N, clamp to counter max |
+| `{"decrement": ["field", N]}` | Subtract N, clamp to counter min |
+| `{"insertInto": ["setField", element]}` | Add to set |
+| `{"removeFrom": ["setField", element]}` | Remove from set |
+| `{"setEntry": ["dictField", key, value]}` | Set dictionary entry |
+| `{"removeEntry": ["dictField", key]}` | Remove dictionary entry |
+| `{"draw": ["deckField", "optField"]}` | Draw top card from deck |
+| `{"shuffle": ["deckField"]}` | Randomize deck order |
+| `{"discard": ["optField", "deckField"]}` | Return card to deck |
+| `{"appendTo": ["listField", element]}` | Append to list |
+| `{"removeAt": ["listField", index]}` | Remove by index |
+| `{"clearList": ["listField"]}` | Empty a list |
+| `{"setPhase": [".phaseName"]}` | Explicit phase transition |
+| `{"endGame": ["victory"]}` | Set ended + victory |
+| `{"endGame": ["defeat"]}` | Set ended + defeat |
+
+### Piece Operations
+
+| Form | Effect |
+|------|--------|
+| `{"place": ["pieceName", {"site": ["track", idx]}]}` | Place piece on board site |
+| `{"move": ["pieceName", {"site": ["track", idx]}]}` | Move piece to new site |
+| `{"remove": ["pieceName"]}` | Remove piece from board |
+
+The piece name must be a case of an enum with a `"player"` assignment for
+correct rendering. The track name must be a literal string (not a variable);
+the index can be a runtime expression.
 
 ### Control Flow
 
 | Form | Effect |
 |------|--------|
-| `(seq expr ...)` | Execute in order |
-| `(if cond then else?)` | Conditional branch |
-| `(forEach collection (\\ (item) body))` | Iteration |
-| `(guard condition)` | Abort rest of seq if false |
-| `(chain actionName)` | Dispatch follow-up action through pages |
-| `(let name value body)` | Bind variable for use in body |
-| `(log message)` | Emit log entry |
-
-### Guard Semantics
-
-`(guard condition)` inside a `(seq ...)` aborts the remaining sequence if
-false. Mutations before the guard persist — there is no rollback. It is not
-a page-level dispatch mechanism.
-
-### Chain Semantics
-
-`(chain actionName)` queues a follow-up action. The framework dispatches it
-through the page system after the current reduce completes. This enables
-recursive resolution and cross-cutting interrupts (e.g., paladin reroll).
+| `{"seq": [expr, ...]}` | Execute in order |
+| `{"if": [cond, then, else?]}` | Conditional branch (else is optional) |
+| `{"forEach": [collection, {"fn": ["item", body]}]}` | Iteration |
+| `{"guard": [condition]}` | Abort rest of seq if false |
+| `{"chain": ["actionName"]}` | Dispatch follow-up action through pages |
+| `{"let": ["name", value, body]}` | Bind variable for use in body |
+| `{"let": ["n1", v1, "n2", v2, body]}` | Multiple bindings |
+| `{"log": ["message"]}` | Emit log entry |
+| `{"log": [{"format": ["template {}", arg1]}]}` | Formatted log |
 
 ---
 
@@ -421,106 +465,122 @@ Pure expressions used in conditions, reduce bodies, and heuristics.
 
 ### Arithmetic
 
-```scheme
-(+ a b)  (- a b)  (* a b)  (/ a b)  (% a b)
-(min a b)  (max a b)  (abs a)
+```jsonc
+{"+": [a, b]}  {"-": [a, b]}  {"*": [a, b]}  {"/": [a, b]}  {"%": [a, b]}
+{"min": [a, b]}  {"max": [a, b]}  {"abs": [a]}
 ```
 
 ### Comparison
 
-```scheme
-(== a b)  (!= a b)  (> a b)  (< a b)  (>= a b)  (<= a b)
+```jsonc
+{"==": [a, b]}  {"!=": [a, b]}  {">": [a, b]}  {"<": [a, b]}
+{">=": [a, b]}  {"<=": [a, b]}
 ```
 
 ### Boolean
 
-```scheme
-(and a b)  (or a b)  (not a)
+```jsonc
+{"and": [a, b]}  {"or": [a, b]}  {"not": [a]}
 ```
 
-`(and ...)` and `(or ...)` use short-circuit evaluation.
+Short-circuit evaluation for `and`/`or`.
 
 ### Collections
 
-```scheme
-(contains setField element)     ;; set membership test
-(lookup dictField key)          ;; dictionary access
-(count deckOrListField)         ;; length
-(isEmpty collection)            ;; empty check
-(nth list index)                ;; index into list (0-based)
-(list elem1 elem2 ...)          ;; construct list literal
-(filter list (\\ (item) cond))  ;; filter to matching
-(map list (\\ (item) expr))     ;; transform elements
+```jsonc
+{"contains": ["setField", element]}       // set membership test
+{"lookup": ["dictField", key]}             // dictionary access
+{"count": ["deckOrListField"]}             // length
+{"isEmpty": ["collection"]}                // empty check
+{"nth": [list, index]}                     // index into list (0-based)
+{"list": [elem1, elem2, ...]}             // construct list literal
+{"filter": [list, {"fn": ["item", cond]}]} // filter to matching
+{"map": [list, {"fn": ["item", expr]}]}    // transform elements
+{"get": [struct, "fieldName"]}             // struct field accessor
 ```
 
 ### State Access
 
-```scheme
-fieldName                       ;; bare name reads a state field
-(field name)                    ;; explicit field read
-(param name)                    ;; read action parameter
-(. structField memberField)     ;; struct field accessor
+```jsonc
+"fieldName"                                // bare name reads state field
+{"field": ["name"]}                        // explicit field read
+"$paramName"                               // read action parameter or binding
 ```
 
-### Variable Binding
+### Site Operations
 
-```scheme
-(let x 5 (+ $x 3))             ;; binds $x = 5, evaluates body
+```jsonc
+{"site": ["trackName", index]}             // construct site value
+{"pos": ["pieceName"]}                     // get piece's current site
+{"advance": [site, "trackName", N]}        // site N steps along track
+{"trackOf": [site]}                        // track name of a site
+{"indexOf": [site]}                        // index within track
+{"adjacent": [site, "trackName"]}          // parallel site on another track
+{"pieceAt": [site]}                        // piece occupying site, or null
 ```
-
-Scoping is lexical. Inner bindings shadow outer ones.
 
 ### Randomness
 
-```scheme
-(rollDie sides)                 ;; random integer 1..sides
-(randomElement collection)      ;; pick random element
+```jsonc
+{"rollDie": [sides]}                       // random integer 1..sides
+{"randomElement": [collection]}            // pick random element
 ```
-
-These only execute at resolution time (inside reduce). The interpreter
-accepts a deterministic random source for testing.
 
 ### String Formatting
 
-```scheme
-(format "{} attacks {}" slotName targetName)
+```jsonc
+{"format": ["template {} attacks {}", arg1, arg2]}
 ```
 
 ### History Queries
 
-```scheme
-(historyCount (since marker) (matching (\\ (a) condition)))
+```jsonc
+{"historyCount": [{"since": "marker"}, {"matching": {"fn": ["a", cond]}}]}
 ```
 
 ---
 
 ## Defines
 
-Macros that expand inline at the call site. Defined at the top level of the
-`.game` file.
+Reusable logic defined in the top-level `"defines"` array. Defines expand
+inline at each call site.
 
 ### Parameterless Define
 
-```scheme
-(define "drawsFromDayDeck" (< timePosition 6))
+```jsonc
+{"name": "drawsFromDayDeck",
+ "params": [],
+ "body": {"<": ["timePosition", 6]}}
 ```
 
-Called as `(drawsFromDayDeck)` — expands to `(< timePosition 6)`.
+Called as `{"drawsFromDayDeck": []}`.
 
 ### Parameterized Define
 
-```scheme
-(define "AdvanceArmy" (slot)
-  (setEntry armyPosition $slot (- (lookup armyPosition $slot) 1)))
+```jsonc
+{"name": "advanceSingleArmy",
+ "params": ["slot"],
+ "body": {"setEntry": ["armyPosition", "$slot",
+   {"-": [{"lookup": ["armyPosition", "$slot"]}, 1]}]}}
 ```
 
-Called as `(AdvanceArmy east)` — substitutes `east` for every `$slot` in
-the body.
+Called as `{"advanceSingleArmy": ["east"]}`.
 
 ### Composition
 
 Defines can call other defines. The expander enforces an acyclic call graph
-at parse time — cyclic definitions are a build error.
+at parse time — cyclic definitions throw `cyclicDefine`. To implement loops,
+create a one-step helper and call it N times:
+
+```jsonc
+{"name": "advanceTimeOneStep", "params": [], "body": { ... }},
+{"name": "advanceTime", "params": ["spaces"],
+ "body": {"seq": [
+   {"if": [{">=": ["$spaces", 1]}, {"advanceTimeOneStep": []}]},
+   {"if": [{">=": ["$spaces", 2]}, {"advanceTimeOneStep": []}]},
+   {"if": [{">=": ["$spaces", 3]}, {"advanceTimeOneStep": []}]}
+ ]}}
+```
 
 ---
 
@@ -528,17 +588,33 @@ at parse time — cyclic definitions are a build error.
 
 Optional section for AI configuration.
 
-### Heuristic
-
-```scheme
-(metadata
-  (ai
-    (heuristic (/ score 10))))
+```jsonc
+"metadata": {
+  "ai": {
+    "heuristic": {"+": [
+      {"*": [0.5, {"/": ["score", 10.0]}]},
+      {"*": [0.25, {"/": [{"alliedCityCount": []}, 4.0]}]}
+    ]}
+  }
+}
 ```
 
-An expression evaluated against state, returning a float used by MCTS as
-the state evaluation function. The expression has access to all state fields
-and expression operators.
+The heuristic expression is evaluated against state, returning a float for
+MCTS state evaluation. Higher = better for the player.
+
+---
+
+## Scene
+
+Optional section for visual styling.
+
+```jsonc
+"scene": {
+  "stroke": "black",
+  "lineWidth": 1,
+  "fill": "white"
+}
+```
 
 ---
 
@@ -552,136 +628,122 @@ All runtime values are one of:
 | `.float(Float)` | `1.5` |
 | `.bool(Bool)` | `true`, `false` |
 | `.string(String)` | `"Goblin Assault"` |
-| `.enumCase(type, value)` | `east` resolved as `Track.east` |
-| `.list([DSLValue])` | `(list 1 2 3)` |
+| `.enumCase(type, value)` | `"east"` resolved as `ArmySlot.east` |
+| `.list([DSLValue])` | `{"list": [1, 2, 3]}` |
 | `.structValue(type, fields)` | Card instances |
-| `.nil` | absent optional |
+| `.site(track, index)` | `{"site": ["road", 2]}` |
+| `.nil` | absent optional, JSON `null` |
 
-Enum cases are resolved by the `ComponentRegistry` — bare names that match
-a declared enum case are automatically wrapped.
-
----
-
-## Validation
-
-`GameBuilder.buildValidated(from:)` performs static checks at parse time:
-
-- Every `(set ...)`, `(increment ...)`, `(decrement ...)` etc. targets a
-  field declared in the state schema (or a builtin like `ended`/`victory`).
-- Define call graphs are acyclic.
-- All S-expressions parse without error.
+Enum cases are resolved by the `ComponentRegistry` — bare names matching a
+declared enum case are automatically wrapped. When multiple enums share a
+case name, the first-defined enum wins.
 
 ---
 
 ## Interpretation Pipeline
 
-When a `.game` file is loaded:
+When a `.game.jsonc` file is loaded:
 
-1. **Parse** — S-expression text → `SExpr` tree (atoms and lists).
-2. **Classify** — Top-level forms sorted into `game`, `define`, `metadata`.
-3. **Expand** — `DefineExpander` processes all `(define ...)` forms, validates
+1. **Parse** — JSONC text → `JSONValue` tree (strip comments, parse JSON).
+2. **Build components** — `JSONComponentRegistry` from `"components"`.
+3. **Build state schema** — `JSONStateSchema` from `"state"`.
+4. **Build actions** — `JSONActionSchema` from `"actions"`.
+5. **Expand defines** — `JSONDefineExpander` processes `"defines"`, validates
    acyclic call graph.
-4. **Build components** — `ComponentRegistry` from `(components ...)`.
-5. **Build state schema** — `StateSchema` from `(state ...)`.
-6. **Build actions** — `ActionSchema` from `(actions ...)`.
-7. **Build graph** — `GraphBuilder` from `(graph ...)`.
-8. **Build pages** — `PageBuilder` constructs `RulePage`, `ForEachPage`,
-   `BudgetedPhasePage` instances from `(rules ...)`.
-9. **Build reactions** — `PageBuilder` extracts `(reaction ...)` forms.
-10. **Validate** — `Validator` checks all mutation targets exist.
-11. **Compose** — Everything assembled into a `ComposedGame<InterpretedState>`.
-12. **Metadata** — `MetadataBuilder` extracts heuristic if present.
+6. **Build graph** — `JSONGraphBuilder` from `"graph"`.
+7. **Compile expressions** — `JSONExpressionCompiler` with all registries.
+8. **Build pages** — `JSONPageBuilder` constructs `RulePage`, `ForEachPage`,
+   `BudgetedPhasePage` from `"rules"`.
+9. **Build reactions** — Extract `"reactions"` from rules.
+10. **Populate decks** — Cards with matching `"deck"` fields are added to
+    state decks during `makeInitialState`.
+11. **Compose** — Everything assembled into `ComposedGame<InterpretedState>`.
+12. **Metadata** — `JSONMetadataBuilder` extracts heuristic if present.
 
 The resulting `ComposedGame` conforms to `PlayableGame` and works with the
-existing MCTS engine, SwiftUI views, and CLI gamer tool.
+MCTS engine, SwiftUI views (`InterpretedGameView`), and CLI gamer tool.
 
 ---
 
 ## Complete Minimal Example
 
-```scheme
-(game "Coin Flip"
-  (players 1)
-  (components
-    (enum Phase {play done}))
-  (state
-    (counter score 0 10)
-    (flag ended)
-    (flag victory)
-    (flag gameAcknowledged)
-    (field phase Phase))
-  (graph)
-  (actions
-    (action flipHeads)
-    (action flipTails)
-    (action acknowledge))
-  (rules
-    (phases {play done})
-    (terminal (field gameAcknowledged))
-    (page "Play"
-      (rule (when (== phase play))
-            (offer flipHeads flipTails))
-      (reduce flipHeads
-        (seq (increment score 1)
-             (if (>= score 3)
-               (seq (endGame victory) (setPhase done))
-               (log "tails, no points"))))
-      (reduce flipTails
-        (log "tails, no points")))
-    (priority "Victory"
-      (rule (when (and victory (not gameAcknowledged)))
-            (offer acknowledge))
-      (reduce acknowledge
-        (set gameAcknowledged true)))))
+```jsonc
+{
+  "game": "Coin Flip",
+  "players": 1,
+  "components": {
+    "enums": [
+      {"name": "Phase", "values": ["play", "done"]}
+    ]
+  },
+  "state": {
+    "counters": [{"name": "score", "min": 0, "max": 10}],
+    "flags": ["ended", "victory", "gameAcknowledged"]
+  },
+  "actions": {
+    "actions": [
+      {"name": "flipHeads"},
+      {"name": "flipTails"},
+      {"name": "acknowledge"}
+    ]
+  },
+  "rules": {
+    "terminal": "gameAcknowledged",
+    "pages": [
+      {
+        "page": "Play",
+        "rules": [
+          {"when": {"==": ["phase", ".play"]},
+           "offer": ["flipHeads", "flipTails"]}
+        ],
+        "reduce": {
+          "flipHeads": {"seq": [
+            {"increment": ["score", 1]},
+            {"if": [{">=": ["score", 3]},
+              {"seq": [{"endGame": ["victory"]}, {"setPhase": [".done"]}]},
+              {"log": ["Heads! +1"]}
+            ]}
+          ]},
+          "flipTails": {"log": ["Tails, no points"]}
+        }
+      }
+    ],
+    "priorities": [
+      {
+        "priority": "Victory",
+        "rules": [
+          {"when": {"and": ["victory", {"not": ["gameAcknowledged"]}]},
+           "offer": ["acknowledge"]}
+        ],
+        "reduce": {
+          "acknowledge": {"set": ["gameAcknowledged", true]}
+        }
+      }
+    ]
+  }
+}
 ```
 
-## Example with Die Rolls and Heuristic
+## Wiring a New Game
 
-```scheme
-(game "Coin Collector"
-  (players 1)
-  (components
-    (enum Phase {flip done})
-    (enum Outcome {heads tails}))
-  (state
-    (counter heads 0 10)
-    (counter tails 0 3)
-    (field phase Phase)
-    (flag ended)
-    (flag victory)
-    (flag gameAcknowledged))
-  (actions
-    (action flip)
-    (action acknowledge))
-  (rules
-    (phases {flip done})
-    (terminal (field gameAcknowledged))
-    (rolloutTerminal (field ended))
-    (page "Flip"
-      (rule (when (and (== phase flip) (not ended)))
-            (offer flip))
-      (reduce flip
-        (seq
-          (let coin (rollDie 2))
-          (if (== $coin 1)
-            (seq
-              (increment heads 1)
-              (set tails 0)
-              (if (>= heads 10)
-                (endGame victory)
-                (log "Heads!")))
-            (seq
-              (increment tails 1)
-              (if (>= tails 3)
-                (endGame defeat)
-                (log "Tails...")))))))
-    (priority "End"
-      (rule (when (and ended (not gameAcknowledged)))
-            (offer acknowledge))
-      (reduce acknowledge
-        (set gameAcknowledged true)))))
+After creating the `.game.jsonc` file:
 
-(metadata
-  (ai
-    (heuristic (- (* 0.1 heads) (* 0.3 tails)))))
-```
+1. Place it in `DynamicalSystems/Resources/`.
+2. Add it to `membershipExceptions` in `project.pbxproj` for the
+   DynamicalSystems target (INCLUDE semantics).
+3. Add a `NavigationLink` in `DynamicalSystemsApp.swift`:
+   ```swift
+   NavigationLink("Game Name (JSONC)") {
+     InterpretedGameView(
+       game: InterpretedGameView.loadBundleGame("Game Name")
+     )
+   }
+   ```
+4. Add an enum case and switch branch in `GamerTool.swift`:
+   ```swift
+   case gameNameJSONC = "GameNameJSONC"
+   // ...
+   case .gameNameJSONC:
+     let game = try loadDotGame("Game Name")
+     // ... GameRunner setup
+   ```

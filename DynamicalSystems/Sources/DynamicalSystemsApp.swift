@@ -36,6 +36,11 @@ struct DynamicalSystemsApp: App {
               game: InterpretedGameView.loadBundleGame("BattleCard")
             )
           }
+          NavigationLink("Legions of Darkness (JSONC)") {
+            InterpretedGameView(
+              game: InterpretedGameView.loadBundleGame("Legions of Darkness")
+            )
+          }
         }
         .navigationTitle("Games")
       }
