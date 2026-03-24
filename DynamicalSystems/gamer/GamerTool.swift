@@ -4,6 +4,7 @@
 //
 //  Created by Greg Langmead on 12/3/25.
 //
+// swiftlint:disable file_length
 
 import ArgumentParser
 import Foundation
@@ -26,6 +27,7 @@ struct GamerTool: AsyncParsableCommand {
   @Option(help: "Whether to print out the UI") private var interactive: Bool = true
   @Option(help: "Where to print out the MCTS log") private var logFile: String = ""
   @Option(help: "Whether to show MCTS opinions") private var showAIHints: Bool = false
+  @Option(help: "Directory for trace output files") private var trace: String = ""
   @Option(help: "Which game to play") private var game: Games
 
   // swiftlint:disable:next function_body_length
@@ -39,7 +41,9 @@ struct GamerTool: AsyncParsableCommand {
         numRollouts: numRollouts,
         interactive: interactive,
         logFile: logFile,
-        showAIHints: showAIHints
+        showAIHints: showAIHints,
+        traceDir: trace,
+        gameName: game.rawValue
       )
       await gameRunner.run()
     case .battleCard:
@@ -50,19 +54,23 @@ struct GamerTool: AsyncParsableCommand {
         numRollouts: numRollouts,
         interactive: interactive,
         logFile: logFile,
-        showAIHints: showAIHints
+        showAIHints: showAIHints,
+        traceDir: trace,
+        gameName: game.rawValue
       )
       await gameRunner.run()
     case .battleCardDotGame:
-      let game = try loadDotGame("BattleCard")
+      let dotGame = try loadDotGame("BattleCard")
       var gameRunner = GameRunner(
-        reducer: game,
+        reducer: dotGame,
         numTrials: numTrials,
         numMCTSIters: numMCTSIters,
         numRollouts: numRollouts,
         interactive: interactive,
         logFile: logFile,
-        showAIHints: showAIHints
+        showAIHints: showAIHints,
+        traceDir: trace,
+        gameName: game.rawValue
       )
       await gameRunner.run()
     case .BCMC:
@@ -73,7 +81,9 @@ struct GamerTool: AsyncParsableCommand {
         numRollouts: numRollouts,
         interactive: interactive,
         logFile: logFile,
-        showAIHints: showAIHints
+        showAIHints: showAIHints,
+        traceDir: trace,
+        gameName: game.rawValue
       )
       await gameRunner.run()
     case .legionsOfDarkness:
@@ -84,19 +94,23 @@ struct GamerTool: AsyncParsableCommand {
         numRollouts: numRollouts,
         interactive: interactive,
         logFile: logFile,
-        showAIHints: showAIHints
+        showAIHints: showAIHints,
+        traceDir: trace,
+        gameName: game.rawValue
       )
       await gameRunner.run()
     case .legionsOfDarknessJSONC:
-      let game = try loadDotGame("Legions of Darkness")
+      let dotGame = try loadDotGame("Legions of Darkness")
       var gameRunner = GameRunner(
-        reducer: game,
+        reducer: dotGame,
         numTrials: numTrials,
         numMCTSIters: numMCTSIters,
         numRollouts: numRollouts,
         interactive: interactive,
         logFile: logFile,
-        showAIHints: showAIHints
+        showAIHints: showAIHints,
+        traceDir: trace,
+        gameName: game.rawValue
       )
       await gameRunner.run()
     case .hearts:
@@ -111,7 +125,9 @@ struct GamerTool: AsyncParsableCommand {
         numRollouts: numRollouts,
         interactive: interactive,
         logFile: logFile,
-        showAIHints: showAIHints
+        showAIHints: showAIHints,
+        traceDir: trace,
+        gameName: game.rawValue
       )
       await gameRunner.run()
     }
@@ -133,6 +149,8 @@ struct GameRunner<
   private var interactive: Bool = true
   private var logFile: String = ""
   private var showAIHints: Bool = false
+  private var traceDir: String = ""
+  private var gameName: String = ""
   private var reducer: Reducer
 
   var colwidths: [Int]
@@ -145,6 +163,8 @@ struct GameRunner<
     interactive: Bool,
     logFile: String,
     showAIHints: Bool,
+    traceDir: String = "",
+    gameName: String = "",
     colwidths: [Int] = [10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
   ) {
     self.reducer = reducer
@@ -154,6 +174,8 @@ struct GameRunner<
     self.interactive = interactive
     self.logFile = logFile
     self.showAIHints = showAIHints
+    self.traceDir = traceDir
+    self.gameName = gameName
     self.colwidths = colwidths
   }
 
@@ -166,12 +188,15 @@ struct GameRunner<
     }
   }
 
+  // swiftlint:disable:next function_body_length
   private func runParallelTrials() async {
     let player = reducer.newState().player
     let trialCount = numTrials
     let iters = numMCTSIters
     let rollouts = numRollouts
     let reducer = self.reducer
+    let traceDir = self.traceDir
+    let gameName = self.gameName
 
     let cores = ProcessInfo.processInfo.activeProcessorCount
     print("Running \(trialCount) trials across \(cores) cores "
@@ -186,16 +211,29 @@ struct GameRunner<
     // gets a thread to print progress between completions.
     await withTaskGroup(of: (won: Bool, lost: Bool, String).self) { group in
       var launched = 0
+      var trialIndex = 0
       for _ in 0..<min(trialCount, cores) {
+        let idx = trialIndex
+        trialIndex += 1
         group.addTask {
-          playOneTrial(reducer: reducer, player: player, iters: iters, rollouts: rollouts)
+          playOneTrial(
+            reducer: reducer, player: player, iters: iters,
+            rollouts: rollouts, traceDir: traceDir,
+            gameName: gameName, trialIndex: idx, mctsIters: iters
+          )
         }
         launched += 1
       }
       for await (won, lost, table) in group {
         if launched < trialCount {
+          let idx = trialIndex
+          trialIndex += 1
           group.addTask {
-            playOneTrial(reducer: reducer, player: player, iters: iters, rollouts: rollouts)
+            playOneTrial(
+              reducer: reducer, player: player, iters: iters,
+              rollouts: rollouts, traceDir: traceDir,
+              gameName: gameName, trialIndex: idx, mctsIters: iters
+            )
           }
           launched += 1
         }
@@ -301,20 +339,41 @@ struct GameRunner<
   }
 }
 
+// swiftlint:disable function_body_length large_tuple
 /// Play one complete game, returning win/loss result.
 /// Free function so it can be called from a `TaskGroup.addTask` closure.
 private func playOneTrial<Reducer: PlayableGame & Sendable>(
   reducer: Reducer,
   player: Reducer.State.Player,
   iters: Int,
-  rollouts: Int
+  rollouts: Int,
+  traceDir: String = "",
+  gameName: String = "",
+  trialIndex: Int = 0,
+  mctsIters: Int = 1
 ) -> (won: Bool, lost: Bool, table: String)
 where Reducer.State: GameState & TextTableAble & Sendable & CustomStringConvertible,
       Reducer.Action: Hashable & Equatable & CustomStringConvertible {
   var state = reducer.newState()
+
+  var traceWriter: TraceWriter?
+  if !traceDir.isEmpty,
+     let interpreted = state as? InterpretedState {
+    traceWriter = try? TraceWriter(
+      directory: traceDir, gameName: gameName,
+      trialIndex: trialIndex, mctsIters: mctsIters
+    )
+    traceWriter?.writeHeader()
+    traceWriter?.writeStep0(interpreted)
+  }
+  var step = 0
+
   while !reducer.isTerminal(state: state) {
     let actions = reducer.allowedActions(state: state)
-    guard !actions.isEmpty else { break }
+    guard !actions.isEmpty else {
+      traceWriter?.writeResult("DEADLOCK")
+      break
+    }
     let action: Reducer.Action
     if actions.count == 1 {
       action = actions[0]
@@ -331,13 +390,50 @@ where Reducer.State: GameState & TextTableAble & Sendable & CustomStringConverti
         }.randomElement()
         action = bestAction ?? actions[0]
       } catch {
-        var tableString = ""
-        state.printTable(to: &tableString)
         action = actions[0]
       }
     }
-    _ = reducer.reduce(into: &state, action: action)
+    let isAuto = actions.count == 1
+    let beforeState = state
+    let logs = reducer.reduce(into: &state, action: action)
+    step += 1
+
+    if let traceWriter = traceWriter,
+       let before = beforeState as? InterpretedState,
+       let after = state as? InterpretedState {
+      traceWriter.writeStep(
+        info: StepInfo(
+          step: step,
+          phase: after.phase,
+          ended: after.ended,
+          victory: after.victory,
+          gameAcknowledged: after.gameAcknowledged,
+          offeredActions: actions.map { "\($0)" },
+          chosenAction: "\(action)",
+          isAuto: isAuto,
+          logs: logs.map(\.msg)
+        ),
+        before: before,
+        after: after
+      )
+    }
   }
+
+  if let traceWriter = traceWriter {
+    let result: String
+    if state.endedInVictoryFor.contains(player) {
+      result = "WIN"
+    } else if state.endedInDefeatFor.contains(player) {
+      result = "LOSS"
+    } else if reducer.isTerminal(state: state) {
+      result = "DRAW"
+    } else {
+      result = "INTERRUPTED"
+    }
+    traceWriter.writeResult(result)
+    traceWriter.close()
+  }
+
   var tableString = ""
   state.printTable(to: &tableString)
   return (
@@ -346,6 +442,7 @@ where Reducer.State: GameState & TextTableAble & Sendable & CustomStringConverti
     table: tableString
   )
 }
+// swiftlint:enable function_body_length large_tuple
 
 /// Load a .game.jsonc file from the Resources directory, located relative to this source file.
 private func loadDotGame(_ name: String) throws -> ComposedGame<InterpretedState> {

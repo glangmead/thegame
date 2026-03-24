@@ -84,6 +84,7 @@
 				Framework/GameRule.swift,
 				Framework/GameSection.swift,
 				Framework/HistoryTracking.swift,
+				Framework/MirrorDiff.swift,
 				Framework/PlayerMode.swift,
 				Framework/RulePage.swift,
 				Framework/SceneConfig.swift,
@@ -327,6 +328,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				LogDestination.swift,
+				TraceWriter.swift,
 			);
 			target = 9B3138712E63462B00D3AE6D /* DynamicalSystems */;
 		};
