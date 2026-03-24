@@ -476,8 +476,8 @@
                                            {"name": "slot", "type": "ArmySlot"}]},
       {"name": "rally"},
       // ── Quest actions ──
-      {"name": "questAction", "params": [{"name": "points", "type": "Int"}]},
-      {"name": "questHeroic", "params": [{"name": "points", "type": "Int"}]},
+      {"name": "questAction", "params": [{"name": "points", "type": "Int", "min": 1, "max": 6}]},
+      {"name": "questHeroic", "params": [{"name": "points", "type": "Int", "min": 1, "max": 6}]},
       // ── Quest rewards ──
       {"name": "scrollsOfTheDead", "params": [{"name": "spell", "type": "SpellType"}]},
       {"name": "putForthTheCall", "params": [{"name": "defType", "type": "DefenderType"}]},
@@ -496,7 +496,7 @@
       // ── Paladin reroll ──
       {"name": "paladinReroll"}, {"name": "declineReroll"},
       // ── Defender choice ──
-      {"name": "loseDefenderArchers"}, {"name": "loseDefenderMenAtArms"}, {"name": "loseDefenderPriests"},
+      {"name": "loseDefenderArchers"}, {"name": "loseDefenderMenAtArms"}, {"name": "loseDefenderPriests"}, {"name": "loseDefenderNoneAvailable"},
       // ── Victory / defeat ──
       {"name": "claimVictory"}, {"name": "declareLoss"}
     ],
@@ -1735,7 +1735,8 @@
                              {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
                              {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
            "offer": ["castFireball"],
-           "paramFilter": {"slotMatchesHeroLocation": ["$slot", "wizard"]}},
+           "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "wizard"]},
+                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]}]}},
           // Heroic: reroll on miss, wizard must be alive
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {">": [{"heroicBudgetRemaining": []}, 0]},
@@ -1747,7 +1748,9 @@
                              {">=": ["arcaneEnergy", 1]},
                              {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
                              {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
-           "offer": ["castFireballHeroic"]}
+           "offer": ["castFireballHeroic"],
+           "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "wizard"]},
+                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]}]}}
         ],
         "reduce": {
           "castFireball": {"seq": [
@@ -1813,7 +1816,8 @@
                              {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
                              {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
            "offer": ["castSlowNormal"],
-           "paramFilter": {"slotMatchesHeroLocation": ["$slot", "wizard"]}},
+           "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "wizard"]},
+                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]}]}},
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {">": [{"heroicBudgetRemaining": []}, 0]},
                              {"not": ["inChainLightning"]},
@@ -1824,7 +1828,9 @@
                              {">=": ["arcaneEnergy", 2]},
                              {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
                              {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
-           "offer": ["castSlowHeroic"]}
+           "offer": ["castSlowHeroic"],
+           "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "wizard"]},
+                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]}]}}
         ],
         "reduce": {
           "castSlowNormal": {"seq": [
@@ -2004,7 +2010,8 @@
                              {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
                              {"not": [{"contains": ["heroDead", ".cleric"]}]}]},
            "offer": ["castDivineWrathNormal"],
-           "paramFilter": {"slotMatchesHeroLocation": ["$slot", "cleric"]}},
+           "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "cleric"]},
+                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]}]}},
           // Heroic: two +1 attacks on (possibly different) slots, cleric must be alive
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {">": [{"heroicBudgetRemaining": []}, 0]},
@@ -2016,7 +2023,12 @@
                              {">=": ["divineEnergy", 3]},
                              {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
                              {"not": [{"contains": ["heroDead", ".cleric"]}]}]},
-           "offer": ["castDivineWrathHeroic"]}
+           "offer": ["castDivineWrathHeroic"],
+           "paramFilter": {"and": [{"!=": ["$slot1", "$slot2"]},
+                                    {"slotMatchesHeroLocation": ["$slot1", "cleric"]},
+                                    {"slotMatchesHeroLocation": ["$slot2", "cleric"]},
+                                    {"!=": [{"lookup": ["armyPosition", "$slot1"]}, null]},
+                                    {"!=": [{"lookup": ["armyPosition", "$slot2"]}, null]}]}}
         ],
         "reduce": {
           "castDivineWrathNormal": {"seq": [
@@ -2304,7 +2316,8 @@
            "offer": ["moveHero"],
            "paramFilter": {"and": [
              {"!=": [{"lookup": ["heroLocationDict", "$hero"]}, null]},
-             {"not": [{"contains": ["heroDead", "$hero"]}]}]}},
+             {"not": [{"contains": ["heroDead", "$hero"]}]},
+             {"!=": ["$location", {"lookup": ["heroLocationDict", "$hero"]}]}]}},
           // Heroic attack: hero must be on a track (not reserves/dead) with army present
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {">": [{"heroicBudgetRemaining": []}, 0]},
@@ -2343,7 +2356,7 @@
       {
         "page": "Quest",
         "rules": [
-          // Rule 5.7: quest attempt once per turn
+          // Rule 5.7: quest attempt once per turn — questAction requires action budget
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {"!=": [{"get": ["currentCard", "questNumber"]}, 0]},
                              {"not": ["questAttemptedThisTurn"]},
@@ -2351,9 +2364,20 @@
                              {"not": ["inDeathAndDespair"]},
                              {"not": ["inFortune"]},
                              {"not": ["questRewardPending"]},
-                             {"or": [{">": [{"actionBudgetRemaining": []}, 0]},
-                                     {">": [{"heroicBudgetRemaining": []}, 0]}]}]},
-           "offer": ["questAction", "questHeroic"]}
+                             {">": [{"actionBudgetRemaining": []}, 0]}]},
+           "offer": ["questAction"],
+           "paramFilter": {"<=": ["$points", {"actionBudgetRemaining": []}]}},
+          // questHeroic requires heroic budget
+          {"when": {"and": [{"==": ["phase", ".action"]},
+                             {"!=": [{"get": ["currentCard", "questNumber"]}, 0]},
+                             {"not": ["questAttemptedThisTurn"]},
+                             {"not": ["inChainLightning"]},
+                             {"not": ["inDeathAndDespair"]},
+                             {"not": ["inFortune"]},
+                             {"not": ["questRewardPending"]},
+                             {">": [{"heroicBudgetRemaining": []}, 0]}]},
+           "offer": ["questHeroic"],
+           "paramFilter": {"<=": ["$points", {"heroicBudgetRemaining": []}]}}
         ],
         "reduce": {
           "questAction": {"seq": [
@@ -2505,7 +2529,9 @@
                              {"not": ["inFortune"]},
                              {"not": ["questRewardPending"]},
                              {"anyAcidEligible": []}]},
-           "offer": ["acidMeleeAttack"]}
+           "offer": ["acidMeleeAttack"],
+           "paramFilter": {"and": [{"==": [{"lookup": ["upgradeDict", "$slot"]}, ".acid"]},
+                                    {"==": [{"lookup": ["armyPosition", "$slot"]}, 1]}]}}
         ],
         "reduce": {
           "acidMeleeAttack": {"seq": [
@@ -2675,8 +2701,21 @@
       {
         "priority": "Defender Choice",
         "rules": [
-          {"when": "defenderChoicePending",
-           "offer": ["loseDefenderArchers", "loseDefenderMenAtArms", "loseDefenderPriests"]}
+          {"when": {"and": ["defenderChoicePending",
+                            {"<": [{"lookup": ["defenderPosition", "archers"]}, 4]}]},
+           "offer": ["loseDefenderArchers"]},
+          {"when": {"and": ["defenderChoicePending",
+                            {"<": [{"lookup": ["defenderPosition", "menAtArms"]}, 5]}]},
+           "offer": ["loseDefenderMenAtArms"]},
+          {"when": {"and": ["defenderChoicePending",
+                            {"<": [{"lookup": ["defenderPosition", "priests"]}, 3]}]},
+           "offer": ["loseDefenderPriests"]},
+          // Fallback: all defenders at max — clear pending without losing anyone
+          {"when": {"and": ["defenderChoicePending",
+                            {">=": [{"lookup": ["defenderPosition", "archers"]}, 4]},
+                            {">=": [{"lookup": ["defenderPosition", "menAtArms"]}, 5]},
+                            {">=": [{"lookup": ["defenderPosition", "priests"]}, 3]}]},
+           "offer": ["loseDefenderNoneAvailable"]}
         ],
         "reduce": {
           "loseDefenderArchers": {"seq": [
@@ -2693,6 +2732,10 @@
             {"loseDefender": ["priests"]},
             {"set": ["defenderChoicePending", false]},
             {"log": ["Player chose to lose a priest"]}
+          ]},
+          "loseDefenderNoneAvailable": {"seq": [
+            {"set": ["defenderChoicePending", false]},
+            {"log": ["All defenders at maximum losses — no choice to make"]}
           ]}
         }
       }
@@ -3028,12 +3071,12 @@
                                       {"==": ["$slot", "west"]},
                                       {"or": [{"==": ["$slot", "gate1"]}, {"==": ["$slot", "gate2"]}]}]},
                        {"handleBreach": ["$slot"]},
-                       // Rule 4.4: Terror/Sky reaching castle — lose a defender, remove army
+                       // Rule 4.4: Terror/Sky reaching castle — lose a defender, army stays at 1
                        {"seq": [
                          {"set": ["defenderChoicePending", true]},
-                         {"removeEntry": ["armyPosition", "$slot"]},
-                         {"remove": ["$slot"]},
-                         {"log": [{"format": ["{} army reached castle — removed, choose defender to lose", "$slot"]}]}
+                         {"setEntry": ["armyPosition", "$slot", 1]},
+                         {"placeArmy": ["$slot", 1]},
+                         {"log": [{"format": ["{} army reached castle — stays at 1, choose defender to lose", "$slot"]}]}
                        ]}
                      ]}
                    ]},

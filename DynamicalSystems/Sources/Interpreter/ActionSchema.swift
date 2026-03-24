@@ -2,6 +2,9 @@ struct ActionParameter: Sendable {
   let name: String
   let type: String
   let isOptional: Bool
+  /// For Int-typed params: inclusive range to enumerate.
+  let min: Int?
+  let max: Int?
 }
 
 struct ActionDefinition: Sendable {

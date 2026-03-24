@@ -309,6 +309,10 @@ extension JSONExpressionCompiler {
     case (.string(let str), .enumCase(_, let val)),
       (.enumCase(_, let val), .string(let str)):
       return str == val
+    case (.enumCase(_, let val1), .enumCase(_, let val2)):
+      // Compare by value, ignoring type — same case name in different
+      // enums (e.g. ArmySlot.east vs HeroLocation.east) should match.
+      return val1 == val2
     default:
       return false
     }

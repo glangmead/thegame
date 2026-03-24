@@ -23,7 +23,12 @@ enum JSONActionSchema {
               throw DSLError.malformed("action param missing name or type")
             }
             let isOptional = pObj["optional"]?.boolValue ?? false
-            params.append(ActionParameter(name: pName, type: pType, isOptional: isOptional))
+            let pMin = pObj["min"]?.intValue
+            let pMax = pObj["max"]?.intValue
+            params.append(ActionParameter(
+              name: pName, type: pType, isOptional: isOptional,
+              min: pMin, max: pMax
+            ))
           }
         }
         actions[name] = ActionDefinition(name: name, parameters: params)

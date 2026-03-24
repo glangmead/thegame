@@ -189,7 +189,7 @@ enum JSONPageBuilder {
     )
   }
 
-  /// Expand a parameterized action into all combinations of enum cases.
+  /// Expand a parameterized action into all combinations of enum/int values.
   private static func expandParameters(
     actionName: String,
     params: [ActionParameter],
@@ -198,14 +198,21 @@ enum JSONPageBuilder {
     // Build list of (paramName, [(caseName, DSLValue)]) for each param
     var paramOptions: [(String, [(String, DSLValue)])] = []
     for param in params {
-      guard let cases = components.enumCases(param.type) else {
-        // Not an enum type — cannot expand; fall back to unexpanded
+      if let cases = components.enumCases(param.type) {
+        let options = cases.map { caseName in
+          (caseName, DSLValue.enumCase(type: param.type, value: caseName))
+        }
+        paramOptions.append((param.name, options))
+      } else if param.type == "Int",
+                let rangeMin = param.min, let rangeMax = param.max {
+        let options = (rangeMin...rangeMax).map { value in
+          (String(value), DSLValue.int(value))
+        }
+        paramOptions.append((param.name, options))
+      } else {
+        // Unknown type without range — cannot expand
         return [ActionValue(actionName)]
       }
-      let options = cases.map { caseName in
-        (caseName, DSLValue.enumCase(type: param.type, value: caseName))
-      }
-      paramOptions.append((param.name, options))
     }
     // Compute cartesian product
     var combos: [[String: DSLValue]] = [[:]]
