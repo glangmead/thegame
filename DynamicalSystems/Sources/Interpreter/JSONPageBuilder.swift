@@ -36,7 +36,8 @@ enum JSONPageBuilder {
         } else {
           let page = try buildPage(
             pageJSON, compiler: compiler,
-            actionSchema: actionSchema
+            actionSchema: actionSchema,
+            components: components
           )
           result.pages.append(page)
         }
@@ -48,7 +49,8 @@ enum JSONPageBuilder {
       for prioJSON in prioritiesArray {
         let page = try buildPriority(
           prioJSON, compiler: compiler,
-          actionSchema: actionSchema
+          actionSchema: actionSchema,
+          components: components
         )
         result.priorities.append(page)
       }
@@ -73,7 +75,8 @@ enum JSONPageBuilder {
   private static func buildPage(
     _ json: JSONValue,
     compiler: JSONExpressionCompiler,
-    actionSchema: ActionSchema
+    actionSchema: ActionSchema,
+    components: ComponentRegistry
   ) throws -> RulePage<InterpretedState, ActionValue> {
     guard case .object(let dict) = json else {
       throw DSLError.malformed("page must be an object")
@@ -81,7 +84,8 @@ enum JSONPageBuilder {
     let name = dict["page"]?.stringValue ?? ""
     let rules = try buildRuleArray(
       dict["rules"], compiler: compiler,
-      actionSchema: actionSchema
+      actionSchema: actionSchema,
+      components: components
     )
     let compiledReducers = try compileReduceMap(
       dict["reduce"], compiler: compiler
@@ -96,7 +100,8 @@ enum JSONPageBuilder {
   private static func buildPriority(
     _ json: JSONValue,
     compiler: JSONExpressionCompiler,
-    actionSchema: ActionSchema
+    actionSchema: ActionSchema,
+    components: ComponentRegistry
   ) throws -> RulePage<InterpretedState, ActionValue> {
     guard case .object(let dict) = json else {
       throw DSLError.malformed("priority must be an object")
@@ -104,7 +109,8 @@ enum JSONPageBuilder {
     let name = dict["priority"]?.stringValue ?? ""
     let rules = try buildRuleArray(
       dict["rules"], compiler: compiler,
-      actionSchema: actionSchema
+      actionSchema: actionSchema,
+      components: components
     )
     let compiledReducers = try compileReduceMap(
       dict["reduce"], compiler: compiler
@@ -121,18 +127,23 @@ enum JSONPageBuilder {
   private static func buildRuleArray(
     _ json: JSONValue?,
     compiler: JSONExpressionCompiler,
-    actionSchema: ActionSchema
+    actionSchema: ActionSchema,
+    components: ComponentRegistry
   ) throws -> [GameRule<InterpretedState, ActionValue>] {
     guard let arr = json?.arrayValue else { return [] }
     return try arr.map {
-      try buildRule($0, compiler: compiler, actionSchema: actionSchema)
+      try buildRule(
+        $0, compiler: compiler,
+        actionSchema: actionSchema, components: components
+      )
     }
   }
 
   private static func buildRule(
     _ json: JSONValue,
     compiler: JSONExpressionCompiler,
-    actionSchema: ActionSchema
+    actionSchema: ActionSchema,
+    components: ComponentRegistry
   ) throws -> GameRule<InterpretedState, ActionValue> {
     guard case .object(let dict) = json else {
       throw DSLError.malformed("rule must be an object")
@@ -140,13 +151,23 @@ enum JSONPageBuilder {
     let compiledCondition: JSONExpressionCompiler.Expr? = dict["when"].map {
       compiler.expr($0)
     }
-    let precomputedActions: [ActionValue] = (dict["offer"]?.arrayValue ?? [])
-      .map { offerItem -> ActionValue in
-        if let name = offerItem.stringValue {
-          return ActionValue(name)
+    let precomputedActions: [ActionValue] =
+      (dict["offer"]?.arrayValue ?? []).flatMap { offerItem -> [ActionValue] in
+        let name = offerItem.stringValue ?? ""
+        guard let def = actionSchema.action(name),
+              !def.parameters.isEmpty else {
+          return [ActionValue(name)]
         }
-        return ActionValue(offerItem.stringValue ?? "")
+        return expandParameters(
+          actionName: name, params: def.parameters,
+          components: components
+        )
       }
+
+    // Optional per-combo filter for parameterized actions.
+    // Evaluated at runtime with action params bound so $param references work.
+    let compiledParamFilter: JSONExpressionCompiler.Expr? =
+      dict["paramFilter"].map { compiler.expr($0) }
 
     return GameRule(
       condition: { state in
@@ -154,8 +175,52 @@ enum JSONPageBuilder {
         let env = ExpressionCompiler.Env(state: state)
         return (try? check(env))?.asBool ?? false
       },
-      actions: { _ in precomputedActions }
+      actions: { state in
+        guard let filter = compiledParamFilter else {
+          return precomputedActions
+        }
+        return precomputedActions.filter { action in
+          let env = ExpressionCompiler.Env(
+            state: state, actionParams: action.parameters
+          )
+          return (try? filter(env))?.asBool ?? false
+        }
+      }
     )
+  }
+
+  /// Expand a parameterized action into all combinations of enum cases.
+  private static func expandParameters(
+    actionName: String,
+    params: [ActionParameter],
+    components: ComponentRegistry
+  ) -> [ActionValue] {
+    // Build list of (paramName, [(caseName, DSLValue)]) for each param
+    var paramOptions: [(String, [(String, DSLValue)])] = []
+    for param in params {
+      guard let cases = components.enumCases(param.type) else {
+        // Not an enum type — cannot expand; fall back to unexpanded
+        return [ActionValue(actionName)]
+      }
+      let options = cases.map { caseName in
+        (caseName, DSLValue.enumCase(type: param.type, value: caseName))
+      }
+      paramOptions.append((param.name, options))
+    }
+    // Compute cartesian product
+    var combos: [[String: DSLValue]] = [[:]]
+    for (paramName, options) in paramOptions {
+      var next: [[String: DSLValue]] = []
+      for combo in combos {
+        for (_, value) in options {
+          var updated = combo
+          updated[paramName] = value
+          next.append(updated)
+        }
+      }
+      combos = next
+    }
+    return combos.map { ActionValue(actionName, $0) }
   }
 
   // MARK: - Reduce map compilation

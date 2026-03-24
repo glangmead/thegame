@@ -151,8 +151,8 @@ extension JSONExpressionCompiler {
       return { env in .int(abs(try operand(env).asInt ?? 0)) }
 
     // Comparison
-    case "==": return dslComparison(args, compare: ==)
-    case "!=": return dslComparison(args, compare: !=)
+    case "==": return dslComparison(args, negate: false)
+    case "!=": return dslComparison(args, negate: true)
     case ">": return intComparison(args, compare: >)
     case "<": return intComparison(args, compare: <)
     case ">=": return intComparison(args, compare: >=)
@@ -187,11 +187,29 @@ extension JSONExpressionCompiler {
     case "contains": return compileContains(args)
     case "lookup": return compileLookup(args)
     case "count":
-      let deckName = args[0].stringValue ?? ""
-      return { env in .int(env.state.getDeck(deckName).count) }
+      if let name = args[0].stringValue,
+        !name.hasPrefix("$"), !name.hasPrefix(".") {
+        // Literal deck name — fast path
+        return { env in .int(env.state.getDeck(name).count) }
+      }
+      let compiled = expr(args[0])
+      return { env in
+        let val = try compiled(env)
+        if let list = val.asList { return .int(list.count) }
+        return .int(0)
+      }
     case "isEmpty":
-      let deckName = args[0].stringValue ?? ""
-      return { env in .bool(env.state.getDeck(deckName).isEmpty) }
+      if let name = args[0].stringValue,
+        !name.hasPrefix("$"), !name.hasPrefix(".") {
+        // Literal deck name — fast path
+        return { env in .bool(env.state.getDeck(name).isEmpty) }
+      }
+      let compiled = expr(args[0])
+      return { env in
+        let val = try compiled(env)
+        if let list = val.asList { return .bool(list.isEmpty) }
+        return .bool(true)
+      }
 
     // Binding & access
     case "let": return compileLet(args)
@@ -283,13 +301,29 @@ extension JSONExpressionCompiler {
     }
   }
 
+  /// Compare with cross-type coercion: `.string("x")` equals
+  /// `.enumCase(_, "x")` so card-stored strings match enum literals.
+  static func dslEqual(_ lhs: DSLValue, _ rhs: DSLValue) -> Bool {
+    if lhs == rhs { return true }
+    switch (lhs, rhs) {
+    case (.string(let str), .enumCase(_, let val)),
+      (.enumCase(_, let val), .string(let str)):
+      return str == val
+    default:
+      return false
+    }
+  }
+
   private func dslComparison(
     _ args: [JSONValue],
-    compare: @escaping (DSLValue, DSLValue) -> Bool
+    negate: Bool
   ) -> Expr {
     let lhs = expr(args[0])
     let rhs = expr(args[1])
-    return { env in .bool(compare(try lhs(env), try rhs(env))) }
+    return { env in
+      let result = Self.dslEqual(try lhs(env), try rhs(env))
+      return .bool(negate ? !result : result)
+    }
   }
 
   private func intComparison(
