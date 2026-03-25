@@ -181,7 +181,10 @@ struct InterpretedState: Sendable {
   }
 
   mutating func shuffleDeck(_ deckName: String) {
-    decks[deckName]?.shuffle()
+    if var deck = decks[deckName] {
+      GameRNG.shuffle(&deck)
+      decks[deckName] = deck
+    }
   }
 
   mutating func appendToDeck(_ deckName: String, _ card: DSLValue) {
@@ -289,7 +292,7 @@ extension InterpretedState: GameState {
 
   func redeterminize() -> InterpretedState {
     var new = self
-    for (name, _) in new.decks {
+    for name in new.decks.keys.sorted() {
       new.shuffleDeck(name)
     }
     return new

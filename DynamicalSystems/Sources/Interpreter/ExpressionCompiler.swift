@@ -3,7 +3,7 @@ final class RandomSource {
   var values: [Int]
   init(_ values: [Int]) { self.values = values }
   func next(sides: Int) -> Int {
-    if values.isEmpty { return Int.random(in: 1...sides) }
+    if values.isEmpty { return GameRNG.next(in: 1...sides) }
     return values.removeFirst()
   }
 }

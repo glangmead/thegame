@@ -29,107 +29,111 @@ struct GamerTool: AsyncParsableCommand {
   @Option(help: "Whether to show MCTS opinions") private var showAIHints: Bool = false
   @Option(help: "Directory for trace output files") private var trace: String = ""
   @Option(help: "Which game to play") private var game: Games
+  @Option(help: "RNG seed for deterministic runs") private var seed: UInt64?
 
   // swiftlint:disable:next function_body_length
   mutating func run() async throws {
-    switch game {
-    case .cantStop:
-      var gameRunner = GameRunner(
-        reducer: CantStopPages.game(),
-        numTrials: numTrials,
-        numMCTSIters: numMCTSIters,
-        numRollouts: numRollouts,
-        interactive: interactive,
-        logFile: logFile,
-        showAIHints: showAIHints,
-        traceDir: trace,
-        gameName: game.rawValue
-      )
-      await gameRunner.run()
-    case .battleCard:
-      var gameRunner = GameRunner(
-        reducer: BCPages.game(),
-        numTrials: numTrials,
-        numMCTSIters: numMCTSIters,
-        numRollouts: numRollouts,
-        interactive: interactive,
-        logFile: logFile,
-        showAIHints: showAIHints,
-        traceDir: trace,
-        gameName: game.rawValue
-      )
-      await gameRunner.run()
-    case .battleCardDotGame:
-      let dotGame = try loadDotGame("BattleCard")
-      var gameRunner = GameRunner(
-        reducer: dotGame,
-        numTrials: numTrials,
-        numMCTSIters: numMCTSIters,
-        numRollouts: numRollouts,
-        interactive: interactive,
-        logFile: logFile,
-        showAIHints: showAIHints,
-        traceDir: trace,
-        gameName: game.rawValue
-      )
-      await gameRunner.run()
-    case .BCMC:
-      var gameRunner = GameRunner(
-        reducer: MCPages.game(),
-        numTrials: numTrials,
-        numMCTSIters: numMCTSIters,
-        numRollouts: numRollouts,
-        interactive: interactive,
-        logFile: logFile,
-        showAIHints: showAIHints,
-        traceDir: trace,
-        gameName: game.rawValue
-      )
-      await gameRunner.run()
-    case .legionsOfDarkness:
-      var gameRunner = GameRunner(
-        reducer: LoD.composedGame(windsOfMagicArcane: 3),
-        numTrials: numTrials,
-        numMCTSIters: numMCTSIters,
-        numRollouts: numRollouts,
-        interactive: interactive,
-        logFile: logFile,
-        showAIHints: showAIHints,
-        traceDir: trace,
-        gameName: game.rawValue
-      )
-      await gameRunner.run()
-    case .legionsOfDarknessJSONC:
-      let dotGame = try loadDotGame("Legions of Darkness")
-      var gameRunner = GameRunner(
-        reducer: dotGame,
-        numTrials: numTrials,
-        numMCTSIters: numMCTSIters,
-        numRollouts: numRollouts,
-        interactive: interactive,
-        logFile: logFile,
-        showAIHints: showAIHints,
-        traceDir: trace,
-        gameName: game.rawValue
-      )
-      await gameRunner.run()
-    case .hearts:
-      var gameRunner = GameRunner(
-        reducer: Hearts.composedGame(
-          config: Hearts.HeartsConfig(playerModes: [
-            .north: .fastAI, .east: .fastAI,
-            .south: .fastAI, .west: .fastAI
-          ])),
-        numTrials: numTrials,
-        numMCTSIters: numMCTSIters,
-        numRollouts: numRollouts,
-        interactive: interactive,
-        logFile: logFile,
-        showAIHints: showAIHints,
-        traceDir: trace,
-        gameName: game.rawValue
-      )
-      await gameRunner.run()
+    let box = seed.map { RNGBox(SeededRNG(seed: $0)) } ?? RNGBox()
+    try await GameRNG.$box.withValue(box) {
+      switch game {
+      case .cantStop:
+        var gameRunner = GameRunner(
+          reducer: CantStopPages.game(),
+          numTrials: numTrials,
+          numMCTSIters: numMCTSIters,
+          numRollouts: numRollouts,
+          interactive: interactive,
+          logFile: logFile,
+          showAIHints: showAIHints,
+          traceDir: trace,
+          gameName: game.rawValue
+        )
+        await gameRunner.run()
+      case .battleCard:
+        var gameRunner = GameRunner(
+          reducer: BCPages.game(),
+          numTrials: numTrials,
+          numMCTSIters: numMCTSIters,
+          numRollouts: numRollouts,
+          interactive: interactive,
+          logFile: logFile,
+          showAIHints: showAIHints,
+          traceDir: trace,
+          gameName: game.rawValue
+        )
+        await gameRunner.run()
+      case .battleCardDotGame:
+        let dotGame = try loadDotGame("BattleCard")
+        var gameRunner = GameRunner(
+          reducer: dotGame,
+          numTrials: numTrials,
+          numMCTSIters: numMCTSIters,
+          numRollouts: numRollouts,
+          interactive: interactive,
+          logFile: logFile,
+          showAIHints: showAIHints,
+          traceDir: trace,
+          gameName: game.rawValue
+        )
+        await gameRunner.run()
+      case .BCMC:
+        var gameRunner = GameRunner(
+          reducer: MCPages.game(),
+          numTrials: numTrials,
+          numMCTSIters: numMCTSIters,
+          numRollouts: numRollouts,
+          interactive: interactive,
+          logFile: logFile,
+          showAIHints: showAIHints,
+          traceDir: trace,
+          gameName: game.rawValue
+        )
+        await gameRunner.run()
+      case .legionsOfDarkness:
+        var gameRunner = GameRunner(
+          reducer: LoD.composedGame(windsOfMagicArcane: 3),
+          numTrials: numTrials,
+          numMCTSIters: numMCTSIters,
+          numRollouts: numRollouts,
+          interactive: interactive,
+          logFile: logFile,
+          showAIHints: showAIHints,
+          traceDir: trace,
+          gameName: game.rawValue
+        )
+        await gameRunner.run()
+      case .legionsOfDarknessJSONC:
+        let dotGame = try loadDotGame("Legions of Darkness")
+        var gameRunner = GameRunner(
+          reducer: dotGame,
+          numTrials: numTrials,
+          numMCTSIters: numMCTSIters,
+          numRollouts: numRollouts,
+          interactive: interactive,
+          logFile: logFile,
+          showAIHints: showAIHints,
+          traceDir: trace,
+          gameName: game.rawValue
+        )
+        await gameRunner.run()
+      case .hearts:
+        var gameRunner = GameRunner(
+          reducer: Hearts.composedGame(
+            config: Hearts.HeartsConfig(playerModes: [
+              .north: .fastAI, .east: .fastAI,
+              .south: .fastAI, .west: .fastAI
+            ])),
+          numTrials: numTrials,
+          numMCTSIters: numMCTSIters,
+          numRollouts: numRollouts,
+          interactive: interactive,
+          logFile: logFile,
+          showAIHints: showAIHints,
+          traceDir: trace,
+          gameName: game.rawValue
+        )
+        await gameRunner.run()
+      }
     }
   }
 }
@@ -310,9 +314,11 @@ struct GameRunner<
     }
 
     let bestValue = results.values.map({ ratio($0) }).max() ?? 0
-    let bestAction = results.keys.filter { action in
-      ratio(results[action]!).near(bestValue)
-    }.randomElement()
+    let bestAction = GameRNG.pickRandom(
+      from: results.keys.filter { action in
+        ratio(results[action]!).near(bestValue)
+      }
+    )
     if interactive {
       for (index, action) in actions.enumerated() {
         let hint = (showAIHints && (action == bestAction)) ? "🤖 " : "  "
@@ -421,9 +427,11 @@ where Reducer.State: GameState & TextTableAble & Sendable & CustomStringConverti
           val.0 / (val.1 > 0 ? val.1 : 1)
         }
         let bestValue = results.values.map({ ratio($0) }).max() ?? 0
-        let bestAction = results.keys.filter { key in
-          ratio(results[key]!).near(bestValue)
-        }.randomElement()
+        let bestAction = GameRNG.pickRandom(
+          from: results.keys.filter { key in
+            ratio(results[key]!).near(bestValue)
+          }
+        )
         action = bestAction ?? actions[0]
       } catch {
         action = actions[0]

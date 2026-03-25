@@ -439,7 +439,7 @@ extension JSONExpressionCompiler {
       if let source = env.randomSource {
         return .int(source.next(sides: sides))
       }
-      return .int(Int.random(in: 1...sides))
+      return .int(GameRNG.next(in: 1...sides))
     }
   }
 
@@ -559,7 +559,7 @@ extension JSONExpressionCompiler {
         let idx = source.next(sides: items.count) - 1
         return items[idx]
       }
-      return items.randomElement() ?? .nil
+      return GameRNG.pickRandom(from: items) ?? .nil
     }
   }
 

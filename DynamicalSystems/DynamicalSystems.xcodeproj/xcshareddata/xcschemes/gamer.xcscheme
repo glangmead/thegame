@@ -54,10 +54,17 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "--game BattleCardDotGame --num-trials 100 --show-ai-hints true --interactive true --num-mcts-iters 50"
+            argument = "--game LegionsOfDarknessJSONC --num-trials 1 --num-mcts-iters 50"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "SWIFT_DETERMINISTIC_HASHING"
+            value = "1"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

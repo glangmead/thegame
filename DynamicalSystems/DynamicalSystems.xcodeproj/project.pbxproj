@@ -91,6 +91,7 @@
 				Framework/SiteGraph.swift,
 				Framework/TextTableAble.swift,
 				Game.swift,
+				GameRNG.swift,
 				Hearts/HeartsAction.swift,
 				Hearts/HeartsComponents.swift,
 				Hearts/HeartsEvaluator.swift,
@@ -183,6 +184,7 @@
 				OpenLoopMCTS.swift,
 				Pair.swift,
 				RawComparable.swift,
+				SeededRNG.swift,
 			);
 			target = 9B7ABDA72EE0E5E700F0FD43 /* gamer */;
 		};
@@ -226,6 +228,7 @@
 				Framework/SiteGraph.swift,
 				Framework/TextTableAble.swift,
 				Game.swift,
+				GameRNG.swift,
 				Hearts/HeartsAction.swift,
 				Hearts/HeartsComponents.swift,
 				Hearts/HeartsEvaluator.swift,
@@ -321,6 +324,7 @@
 				OpenLoopMCTS.swift,
 				Pair.swift,
 				RawComparable.swift,
+				SeededRNG.swift,
 			);
 			target = 9B31387E2E63462C00D3AE6D /* DynamicalSystemsTests */;
 		};

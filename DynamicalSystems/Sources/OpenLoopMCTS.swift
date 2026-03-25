@@ -149,7 +149,7 @@ class OpenLoopMCTS<
     let bestActions = legalActions.filter { action in
       node.children[action]!.exploreExploitValue.near(bestScore)
     }
-    return bestActions.randomElement()!
+    return GameRNG.pickRandom(from: bestActions)!
   }
 
   // pick an unexpanded action
@@ -159,13 +159,15 @@ class OpenLoopMCTS<
     let unvisited = legalActions.filter {
       (parent.children[$0]?.visitCount ?? 0) == 0
     }
-    return unvisited.randomElement() ?? legalActions.randomElement()!
+    return GameRNG.pickRandom(from: unvisited)
+      ?? GameRNG.pickRandom(from: legalActions)!
   }
 
   func rolloutAction(from: ActionNode<Action, State.Player>, in state: State) -> Action? {
     let actions = reducer.allowedActions(state: state)
     guard !actions.isEmpty else { return nil }
-    return rolloutPolicy?(actions) ?? actions.randomElement()!
+    return rolloutPolicy?(actions)
+      ?? GameRNG.pickRandom(from: actions)!
   }
 
   enum SearchPhase {
