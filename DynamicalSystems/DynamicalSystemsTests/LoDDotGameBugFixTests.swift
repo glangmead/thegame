@@ -420,22 +420,22 @@ struct LoDDotGameBugFixTests {
     state.setDictEntry("armyPosition", key: "terror", value: .int(1))
     // Force army advance phase to trigger the advance
     state.phase = "armyAdvance"
-    state.setFlag("defenderChoicePending", false)
+    state.setCounter("defenderLossesPending", 0)
     // Force card with terror advance
     let card = state.getOptional("currentCard")
     if case .structValue(let type, var fields) = card {
       fields["terrorAdvance"] = .int(1)
       state.setOptional("currentCard", .structValue(type: type, fields: fields))
     }
-    // Run until defenderChoicePending or we exhaust steps
+    // Run until defenderLossesPending > 0 or we exhaust steps
     for _ in 0..<20 {
       let actions = game.allowedActions(state: state)
       guard let action = actions.first else { break }
       _ = game.reduce(into: &state, action: action)
-      if state.getFlag("defenderChoicePending") { break }
+      if state.getCounter("defenderLossesPending") > 0 { break }
     }
     // After terror reaches castle, army should still be at position 1
-    if state.getFlag("defenderChoicePending") {
+    if state.getCounter("defenderLossesPending") > 0 {
       let terrorPos = state.getDict("armyPosition")["terror"]
       #expect(terrorPos == .int(1), "Terror army should stay at pos 1, not be removed")
     }
@@ -588,7 +588,7 @@ struct LoDDotGameBugFixTests {
       Issue.record("Could not reach action phase")
       return
     }
-    state.setFlag("defenderChoicePending", true)
+    state.setCounter("defenderLossesPending", 1)
     // Archers at max (4), menAtArms not maxed (2), priests at max (3)
     state.setDictEntry("defenderPosition", key: "archers", value: .int(4))
     state.setDictEntry("defenderPosition", key: "menAtArms", value: .int(2))
@@ -610,7 +610,7 @@ struct LoDDotGameBugFixTests {
       Issue.record("Could not reach action phase")
       return
     }
-    state.setFlag("defenderChoicePending", true)
+    state.setCounter("defenderLossesPending", 1)
     state.setDictEntry("defenderPosition", key: "archers", value: .int(4))
     state.setDictEntry("defenderPosition", key: "menAtArms", value: .int(5))
     state.setDictEntry("defenderPosition", key: "priests", value: .int(3))
@@ -844,6 +844,230 @@ struct LoDDotGameBugFixTests {
     )
   }
 
+  // MARK: - Bug B.1: Grease persists when it holds (roll <= 2)
+
+  @Test func greasePersistsWhenItHolds() throws {
+    let game = try Self.loadGame()
+    // Run multiple trials to hit the grease-holds case (probability 1/3 per trial)
+    var sawGreaseHold = false
+    for _ in 0..<60 {
+      var state = game.newState()
+      guard Self.advanceToActionPhase(game: game, state: &state) else {
+        Issue.record("Could not reach action phase")
+        return
+      }
+      // Place east army at position 1 (one step from breach)
+      state.setDictEntry("armyPosition", key: "east", value: .int(1))
+      // Install grease on east track
+      state.setDictEntry(
+        "upgradeDict", key: "east",
+        value: .enumCase(type: "UpgradeType", value: "grease")
+      )
+      // Ensure no existing breach on east
+      state.removeFromSet("breaches", "east")
+      // Set up army advance phase
+      state.phase = "armyAdvance"
+      state.setCounter("defenderLossesPending", 0)
+      // Force card with east advance of 1
+      let card = state.getOptional("currentCard")
+      if case .structValue(let type, var fields) = card {
+        fields["eastAdvance"] = .int(1)
+        // Zero out other advances to isolate east
+        fields["westAdvance"] = .int(0)
+        fields["gate1Advance"] = .int(0)
+        fields["gate2Advance"] = .int(0)
+        fields["terrorAdvance"] = .int(0)
+        fields["skyAdvance"] = .int(0)
+        state.setOptional(
+          "currentCard",
+          .structValue(type: type, fields: fields)
+        )
+      }
+      // Run through army advance until phase changes
+      for _ in 0..<30 {
+        let actions = game.allowedActions(state: state)
+        guard let action = actions.first else { break }
+        _ = game.reduce(into: &state, action: action)
+        if state.phase != "armyAdvance" { break }
+      }
+      // Check if grease held: army should be at position 1
+      let eastPos = state.getDict("armyPosition")["east"]
+      if eastPos == .int(1) {
+        // Grease held — upgrade must still be present
+        let upgrade = state.getDict("upgradeDict")["east"]
+        #expect(
+          upgrade == .enumCase(type: "UpgradeType", value: "grease"),
+          "Grease should persist when it holds (roll <= 2), but upgradeDict[east] = \(String(describing: upgrade))"
+        )
+        sawGreaseHold = true
+        break
+      }
+    }
+    #expect(sawGreaseHold, "Expected at least one grease-holds result in 60 trials")
+  }
+
+  // MARK: - Bug B.1(gate): Tied gate armies create breach, not instant defeat
+
+  @Test func tiedGateArmiesCreateBreachNotDefeat() throws {
+    let game = try Self.loadGame()
+    var state = game.newState()
+    guard Self.advanceToActionPhase(game: game, state: &state) else {
+      Issue.record("Could not reach action phase")
+      return
+    }
+    // Both gate armies at position 1 (tied, one step from breach)
+    state.setDictEntry("armyPosition", key: "gate1", value: .int(1))
+    state.setDictEntry("armyPosition", key: "gate2", value: .int(1))
+    // No breach, no grease, no barricade on gate
+    state.removeFromSet("breaches", "gate")
+    state.removeFromSet("barricades", "gate")
+    state.removeDictEntry("upgradeDict", key: "gate")
+    // Neither army is slowed
+    state.setField("slowedArmy", .nil)
+    // Force card with only a single gate advance
+    let card = state.getOptional("currentCard")
+    if case .structValue(let type, var fields) = card {
+      fields["advances"] = .list([.string("gate")])
+      fields["bloodyBattle"] = .string("none")
+      state.setOptional(
+        "currentCard",
+        .structValue(type: type, fields: fields)
+      )
+    }
+    // Directly trigger army advance
+    _ = game.reduce(
+      into: &state,
+      action: ActionValue("advanceArmies")
+    )
+    // Breach should exist on gate (first time reaching space 0 creates breach)
+    let breaches = state.getSet("breaches")
+    #expect(
+      breaches.contains("gate"),
+      "Gate breach should be created when tied armies reach space 0"
+    )
+    // Game should NOT have ended (breach, not defeat)
+    let ended = state.getFlag("ended")
+    #expect(
+      !ended,
+      "Game should not end from first breach — both armies stay at 1"
+    )
+    // Both armies should be at position 1 (behind the breach)
+    let gate1Pos = state.getDict("armyPosition")["gate1"]
+    let gate2Pos = state.getDict("armyPosition")["gate2"]
+    #expect(
+      gate1Pos == .int(1),
+      "gate1 should be at 1 after breach, got \(String(describing: gate1Pos))"
+    )
+    #expect(
+      gate2Pos == .int(1),
+      "gate2 should be at 1 after breach, got \(String(describing: gate2Pos))"
+    )
+  }
+
+  @Test func tiedGateArmiesWithGreaseHold() throws {
+    let game = try Self.loadGame()
+    var sawGreaseHold = false
+    for _ in 0..<60 {
+      var state = game.newState()
+      guard Self.advanceToActionPhase(game: game, state: &state) else {
+        Issue.record("Could not reach action phase")
+        return
+      }
+      // Both gate armies at position 1 (tied, one step from breach)
+      state.setDictEntry("armyPosition", key: "gate1", value: .int(1))
+      state.setDictEntry("armyPosition", key: "gate2", value: .int(1))
+      // Install grease on gate track
+      state.setDictEntry(
+        "upgradeDict", key: "gate",
+        value: .enumCase(type: "UpgradeType", value: "grease")
+      )
+      // No existing breach or barricade
+      state.removeFromSet("breaches", "gate")
+      state.removeFromSet("barricades", "gate")
+      // Neither army is slowed
+      state.setField("slowedArmy", .nil)
+      // Force card with only a single gate advance
+      let card = state.getOptional("currentCard")
+      if case .structValue(let type, var fields) = card {
+        fields["advances"] = .list([.string("gate")])
+        fields["bloodyBattle"] = .string("none")
+        state.setOptional(
+          "currentCard",
+          .structValue(type: type, fields: fields)
+        )
+      }
+      // Directly trigger army advance
+      _ = game.reduce(
+        into: &state,
+        action: ActionValue("advanceArmies")
+      )
+      // Check if grease held: gate1 should be at position 1
+      let gate1Pos = state.getDict("armyPosition")["gate1"]
+      if gate1Pos == .int(1) && !state.getSet("breaches").contains("gate") {
+        // Grease held — upgrade must still be present
+        let upgrade = state.getDict("upgradeDict")["gate"]
+        #expect(
+          upgrade == .enumCase(type: "UpgradeType", value: "grease"),
+          "Grease should persist when it holds, got \(String(describing: upgrade))"
+        )
+        // gate2 must also be at position 1
+        let gate2Pos = state.getDict("armyPosition")["gate2"]
+        #expect(
+          gate2Pos == .int(1),
+          "gate2 should stay at 1 when grease holds for tied advance, got \(String(describing: gate2Pos))"
+        )
+        sawGreaseHold = true
+        break
+      }
+    }
+    #expect(
+      sawGreaseHold,
+      "Expected at least one grease-holds result in 60 trials"
+    )
+  }
+
+  @Test func tiedGateArmiesNormalAdvance() throws {
+    let game = try Self.loadGame()
+    var state = game.newState()
+    guard Self.advanceToActionPhase(game: game, state: &state) else {
+      Issue.record("Could not reach action phase")
+      return
+    }
+    // Both gate armies at position 3 (tied, far from breach)
+    state.setDictEntry("armyPosition", key: "gate1", value: .int(3))
+    state.setDictEntry("armyPosition", key: "gate2", value: .int(3))
+    // No upgrades, no breach, no barricade
+    state.removeFromSet("breaches", "gate")
+    state.removeFromSet("barricades", "gate")
+    state.removeDictEntry("upgradeDict", key: "gate")
+    state.setField("slowedArmy", .nil)
+    // Force card with only a single gate advance
+    let card = state.getOptional("currentCard")
+    if case .structValue(let type, var fields) = card {
+      fields["advances"] = .list([.string("gate")])
+      fields["bloodyBattle"] = .string("none")
+      state.setOptional(
+        "currentCard",
+        .structValue(type: type, fields: fields)
+      )
+    }
+    _ = game.reduce(
+      into: &state,
+      action: ActionValue("advanceArmies")
+    )
+    // Both armies should advance to position 2 together
+    let gate1Pos = state.getDict("armyPosition")["gate1"]
+    let gate2Pos = state.getDict("armyPosition")["gate2"]
+    #expect(
+      gate1Pos == .int(2),
+      "gate1 should be at 2 after normal tied advance, got \(String(describing: gate1Pos))"
+    )
+    #expect(
+      gate2Pos == .int(2),
+      "gate2 should be at 2 after normal tied advance, got \(String(describing: gate2Pos))"
+    )
+  }
+
   // MARK: - Bug #13: morale snapshot captures post-event morale
 
   @Test func moraleSnapshotCapturedBeforeActionPhase() throws {
@@ -877,6 +1101,223 @@ struct LoDDotGameBugFixTests {
       actions.count > 1,
       "Should have actions available with 4 budget remaining"
     )
+  }
+
+  // MARK: - Bug 3 + B.4: Hero eligibility for events
+
+  @Test func assassinsCreedoOnlyOffersSelectedHeroes() throws {
+    let game = try Self.loadGame()
+    var state = game.newState()
+    guard Self.advanceToActionPhase(game: game, state: &state) else {
+      Issue.record("Could not reach action phase")
+      return
+    }
+    // Set current card to one with eventNumber 30 (Assassin's Creedo)
+    let card = state.getOptional("currentCard")
+    if case .structValue(let type, var fields) = card {
+      fields["eventNumber"] = .int(30)
+      state.setOptional(
+        "currentCard",
+        .structValue(type: type, fields: fields)
+      )
+    }
+    // Set phase to event
+    state.phase = "event"
+    // Greenskin setup: warrior, wizard, cleric are selected (in heroLocationDict)
+    // Ranger, rogue, paladin should NOT be in heroLocationDict
+    state.removeDictEntry("heroLocationDict", key: "ranger")
+    state.removeDictEntry("heroLocationDict", key: "rogue")
+    state.removeDictEntry("heroLocationDict", key: "paladin")
+    // Ensure selected heroes are alive
+    state.removeFromSet("heroDead", "warrior")
+    state.removeFromSet("heroDead", "wizard")
+    state.removeFromSet("heroDead", "cleric")
+    let actions = game.allowedActions(state: state)
+    let names = actions.map(\.name)
+    // Selected heroes should be offered
+    #expect(names.contains("assassinsCreedoWarrior"),
+      "Warrior (selected) should be offered")
+    #expect(names.contains("assassinsCreedoWizard"),
+      "Wizard (selected) should be offered")
+    #expect(names.contains("assassinsCreedoCleric"),
+      "Cleric (selected) should be offered")
+    // Non-selected heroes should NOT be offered
+    #expect(!names.contains("assassinsCreedoRanger"),
+      "Ranger (not selected) should not be offered")
+    #expect(!names.contains("assassinsCreedoRogue"),
+      "Rogue (not selected) should not be offered")
+    #expect(!names.contains("assassinsCreedoPaladin"),
+      "Paladin (not selected) should not be offered")
+  }
+
+  // MARK: - Bug #B2: Gate attack only targets closest army (Rule 8.1.2)
+
+  @Test func gateAttackOnlyTargetsClosestArmy() throws {
+    let game = try Self.loadGame()
+    var state = game.newState()
+    guard Self.advanceToActionPhase(game: game, state: &state) else {
+      Issue.record("Could not reach action phase")
+      return
+    }
+    // gate2 at space 1 (closer), gate1 at space 2 (farther)
+    state.setDictEntry("armyPosition", key: "gate1", value: .int(2))
+    state.setDictEntry("armyPosition", key: "gate2", value: .int(1))
+    // Ensure archers upgrade so ranged attacks are available
+    state.setDictEntry(
+      "upgradeDict", key: "gate",
+      value: .enumCase(type: "UpgradeType", value: "archers")
+    )
+
+    let actions = game.allowedActions(state: state)
+    let names = actions.map(\.name)
+
+    // gate1 is farther — should NOT be targetable
+    #expect(!names.contains("meleeGate1"),
+      "meleeGate1 should not be offered when gate2 is closer")
+    #expect(!names.contains("rangedGate1"),
+      "rangedGate1 should not be offered when gate2 is closer")
+    // gate2 is closest — should be targetable
+    #expect(names.contains("meleeGate2"),
+      "meleeGate2 should be offered for closest army")
+    #expect(names.contains("rangedGate2"),
+      "rangedGate2 should be offered for closest army")
+  }
+
+  @Test func gateAttackBothTargetableWhenTied() throws {
+    let game = try Self.loadGame()
+    var state = game.newState()
+    guard Self.advanceToActionPhase(game: game, state: &state) else {
+      Issue.record("Could not reach action phase")
+      return
+    }
+    // Both at space 2 — tied, so both should be targetable
+    state.setDictEntry("armyPosition", key: "gate1", value: .int(2))
+    state.setDictEntry("armyPosition", key: "gate2", value: .int(2))
+
+    let actions = game.allowedActions(state: state)
+    let names = actions.map(\.name)
+
+    #expect(names.contains("meleeGate1"),
+      "meleeGate1 should be offered when tied")
+    #expect(names.contains("meleeGate2"),
+      "meleeGate2 should be offered when tied")
+  }
+
+  // MARK: - Bug B.3: Double sky advance causes two defender losses
+
+  @Test func doubleSkyAdvanceCausesTwoDefenderLosses() throws {
+    let game = try Self.loadGame()
+    var state = game.newState()
+    guard Self.advanceToActionPhase(game: game, state: &state) else {
+      Issue.record("Could not reach action phase")
+      return
+    }
+    // Sky army at position 1 (would-advance triggers defender loss)
+    state.setDictEntry("armyPosition", key: "sky", value: .int(1))
+    // Reset defender losses pending
+    state.setCounter("defenderLossesPending", 0)
+    // Force card with two sky advance icons
+    let card = state.getOptional("currentCard")
+    if case .structValue(let type, var fields) = card {
+      fields["advances"] = .list([.string("sky"), .string("sky")])
+      fields["bloodyBattle"] = .string("none")
+      state.setOptional(
+        "currentCard",
+        .structValue(type: type, fields: fields)
+      )
+    }
+    // Trigger army advance
+    state.phase = "armyAdvance"
+    _ = game.reduce(
+      into: &state,
+      action: ActionValue("advanceArmies")
+    )
+    // After two sky advances from space 1, counter should be 2
+    let pending = state.getCounter("defenderLossesPending")
+    #expect(
+      pending == 2,
+      "Two sky advances from space 1 should queue 2 defender losses, got \(pending)"
+    )
+    // Sky should still be at position 1
+    let skyPos = state.getDict("armyPosition")["sky"]
+    #expect(skyPos == .int(1), "Sky army should stay at 1")
+  }
+
+  // MARK: - Armies at farthest position should not be attackable
+
+  @Test func attacksNotOfferedForArmyAtMaxPosition() throws {
+    let game = try Self.loadGame()
+    var state = game.newState()
+    guard Self.advanceToActionPhase(game: game, state: &state) else {
+      Issue.record("Could not reach action phase")
+      return
+    }
+    // Clear event suppression flags
+    state.setFlag("inChainLightning", false)
+    state.setFlag("inDeathAndDespair", false)
+    state.setFlag("inFortune", false)
+    state.setFlag("questRewardPending", false)
+    state.setFlag("noMeleeThisTurn", false)
+
+    // Place east army at max position (6) — should NOT be targetable
+    state.setDictEntry("armyPosition", key: "east", value: .int(6))
+    // Place west army at position 3 — should be targetable
+    state.setDictEntry("armyPosition", key: "west", value: .int(3))
+    // Remove other armies
+    state.setDictEntry("armyPosition", key: "gate1", value: .nil)
+    state.setDictEntry("armyPosition", key: "gate2", value: .nil)
+    state.setDictEntry("armyPosition", key: "sky", value: .nil)
+    state.setDictEntry("armyPosition", key: "terror", value: .nil)
+
+    let actions = game.allowedActions(state: state)
+    let actionNames = Set(actions.map(\.name))
+
+    // East at max: no melee or ranged
+    #expect(!actionNames.contains("meleeEast"),
+            "meleeEast should not be offered when army is at max position")
+    #expect(!actionNames.contains("rangedEast"),
+            "rangedEast should not be offered when army is at max position")
+    // West at 3: melee and ranged should be offered
+    #expect(actionNames.contains("meleeWest"),
+            "meleeWest should be offered when army is within range")
+    #expect(actionNames.contains("rangedWest"),
+            "rangedWest should be offered when army is within range")
+  }
+
+  @Test func heroicAttackNotOfferedForArmyAtMaxPosition() throws {
+    let game = try Self.loadGame()
+    var state = game.newState()
+    guard Self.advanceToActionPhase(game: game, state: &state) else {
+      Issue.record("Could not reach action phase")
+      return
+    }
+    // Clear event suppression flags
+    state.setFlag("inChainLightning", false)
+    state.setFlag("inDeathAndDespair", false)
+    state.setFlag("inFortune", false)
+    state.setFlag("questRewardPending", false)
+
+    // Place warrior on east track, east army at max position (6)
+    state.setDictEntry(
+      "heroLocationDict", key: "warrior",
+      value: .enumCase(type: "HeroLocation", value: "east")
+    )
+    state.removeFromSet("heroDead", "warrior")
+    state.removeFromSet("heroWounded", "warrior")
+    state.setDictEntry("armyPosition", key: "east", value: .int(6))
+
+    // Remove other armies so only east is relevant
+    state.setDictEntry("armyPosition", key: "west", value: .nil)
+    state.setDictEntry("armyPosition", key: "gate1", value: .nil)
+    state.setDictEntry("armyPosition", key: "gate2", value: .nil)
+    state.setDictEntry("armyPosition", key: "sky", value: .nil)
+    state.setDictEntry("armyPosition", key: "terror", value: .nil)
+
+    let actions = game.allowedActions(state: state)
+    let heroicAttacks = actions.filter { $0.name == "heroicAttack" }
+
+    #expect(heroicAttacks.isEmpty,
+            "heroicAttack should not be offered when army is at max position")
   }
 }
 

@@ -54,7 +54,10 @@
       // We store these as separate per-position lookups below
       // Track max space
       {"name": "trackMaxSpace", "domain": "Track",
-       "mapping": {"east": 6, "west": 6, "gate": 4, "terror": 3, "sky": 6}}
+       "mapping": {"east": 6, "west": 6, "gate": 4, "terror": 3, "sky": 6}},
+      // Max space per army slot (same concept as trackMaxSpace but keyed by ArmySlot)
+      {"name": "slotMaxSpace", "domain": "ArmySlot",
+       "mapping": {"east": 6, "west": 6, "gate1": 4, "gate2": 4, "sky": 6, "terror": 3}}
     ],
 
     "cards": [
@@ -305,7 +308,8 @@
       {"name": "eventAttackDRMBonus", "min": 0, "max": 5},
       {"name": "chainLightningBoltIndex", "min": 0, "max": 3},
       {"name": "deathDespairDieRoll", "min": 0, "max": 6},
-      {"name": "deathDespairSacrifices", "min": 0, "max": 6}
+      {"name": "deathDespairSacrifices", "min": 0, "max": 6},
+      {"name": "defenderLossesPending", "min": 0, "max": 10}
     ],
     "flags": [
       "ended", "victory", "gameAcknowledged",
@@ -318,7 +322,6 @@
       "inDeathAndDespair", "inFortune", "fortuneHeroic",
       "fortuneDiscardDone", "snapshotTaken",
       "magicBowActive", "magicSwordActive",
-      "defenderChoicePending",
       "bloodyBattleGateTied"
     ],
     "dicts": [
@@ -759,9 +762,9 @@
         }
       },
 
-      // ── Event: Card 1 Catapult Shrapnel ────────────────────────
+      // ── Event: Card 1 ───────────────────────────────────────────
       {
-        "page": "Catapult Shrapnel",
+        "page": "Event 1",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 1]}]},
@@ -777,16 +780,16 @@
                   {"log": ["No effect"]}
                 ]}
               ]},
-              {"log": [{"format": ["Catapult Shrapnel: rolled {}", "$roll"]}]},
+              {"log": [{"format": ["Event 1: rolled {}", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]}
         }
       },
 
-      // ── Event: Card 4 Rocks of Ages ────────────────────────────
+      // ── Event: Card 4 ────────────────────────────────────────────
       {
-        "page": "Rocks of Ages",
+        "page": "Event 4",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 4]}]},
@@ -802,16 +805,16 @@
                   {"log": ["No effect"]}
                 ]}
               ]},
-              {"log": [{"format": ["Rocks of Ages: rolled {}", "$roll"]}]},
+              {"log": [{"format": ["Event 4: rolled {}", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]}
         }
       },
 
-      // ── Event: Card 8 Acts of Valor ────────────────────────────
+      // ── Event: Card 8 ────────────────────────────────────────────
       {
-        "page": "Acts of Valor",
+        "page": "Event 8",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 8]}]},
@@ -825,9 +828,9 @@
               {"if": ["$hadUnwounded",
                 {"seq": [
                   {"increment": ["eventAttackDRMBonus", 1]},
-                  {"log": ["Acts of Valor: +1 DRM from wounded heroes"]}
+                  {"log": ["Event 8: +1 DRM from wounded heroes"]}
                 ]},
-                {"log": ["Acts of Valor: no unwounded heroes to wound"]}
+                {"log": ["Event 8: no unwounded heroes to wound"]}
               ]},
               {"setPhase": [".action"]}
             ]}
@@ -835,9 +838,9 @@
         }
       },
 
-      // ── Event: Card 9 Distracted Defenders ─────────────────────
+      // ── Event: Card 9 ─────────────────────────────────────────────
       {
-        "page": "Distracted Defenders",
+        "page": "Event 9",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 9]}]},
@@ -856,9 +859,9 @@
         }
       },
 
-      // ── Event: Card 14 Broken Walls ────────────────────────────
+      // ── Event: Card 14 ────────────────────────────────────────────
       {
-        "page": "Broken Walls",
+        "page": "Event 14",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 14]}]},
@@ -872,9 +875,9 @@
         }
       },
 
-      // ── Event: Card 16 Lamentation of the Women ────────────────
+      // ── Event: Card 16 ────────────────────────────────────────────
       {
-        "page": "Lamentation",
+        "page": "Event 16",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 16]}]},
@@ -887,16 +890,16 @@
                 {"lowerMorale": []},
                 {"set": ["noMeleeThisTurn", true]}
               ]},
-              {"log": [{"format": ["Lamentation: rolled {}", "$roll"]}]},
+              {"log": [{"format": ["Event 16: rolled {}", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]}
         }
       },
 
-      // ── Event: Card 17 Reign of Arrows ─────────────────────────
+      // ── Event: Card 17 ─────────────────────────────────────────────
       {
-        "page": "Reign of Arrows",
+        "page": "Event 17",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 17]}]},
@@ -912,16 +915,16 @@
                   {"log": ["No effect"]}
                 ]}
               ]},
-              {"log": [{"format": ["Reign of Arrows: rolled {}", "$roll"]}]},
+              {"log": [{"format": ["Event 17: rolled {}", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]}
         }
       },
 
-      // ── Event: Card 18 Trapped by Flames ───────────────────────
+      // ── Event: Card 18 ───────────────────────────────────────────
       {
-        "page": "Trapped by Flames",
+        "page": "Event 18",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 18]}]},
@@ -937,16 +940,16 @@
                   {"log": ["No effect"]}
                 ]}
               ]},
-              {"log": [{"format": ["Trapped by Flames: rolled {}", "$roll"]}]},
+              {"log": [{"format": ["Event 18: rolled {}", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]}
         }
       },
 
-      // ── Event: Card 20 Banners in the Distance ─────────────────
+      // ── Event: Card 20 ─────────────────────────────────────────────
       {
-        "page": "Banners in Distance",
+        "page": "Event 20",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 20]}]},
@@ -964,9 +967,9 @@
         }
       },
 
-      // ── Event: Card 23 Campfires ───────────────────────────────
+      // ── Event: Card 23 ───────────────────────────────────────────
       {
-        "page": "Campfires",
+        "page": "Event 23",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 23]}]},
@@ -990,9 +993,9 @@
         }
       },
 
-      // ── Event: Card 26 Council of Heroes ───────────────────────
+      // ── Event: Card 26 ───────────────────────────────────────────
       {
-        "page": "Council of Heroes",
+        "page": "Event 26",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 26]}]},
@@ -1003,15 +1006,15 @@
             // Return all living heroes to reserves
             {"returnAllHeroesToReserves": []},
             {"set": ["woundedHeroesCannotAct", true]},
-            {"log": ["Council of Heroes: heroes returned, wounded cannot act"]},
+            {"log": ["Event 26: heroes returned, wounded cannot act"]},
             {"setPhase": [".action"]}
           ]}
         }
       },
 
-      // ── Event: Cards 27+32 Midnight Magic ──────────────────────
+      // ── Event: Cards 27+32 ──────────────────────────────────────
       {
-        "page": "Midnight Magic",
+        "page": "Event 27/32",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"or": [{"==": [{"get": ["currentCard", "eventNumber"]}, 27]},
@@ -1025,16 +1028,16 @@
                 {"set": ["arcaneEnergy", {"min": [6, {"+": ["arcaneEnergy", 1]}]}]},
                 {"set": ["arcaneEnergy", {"min": [6, {"+": ["arcaneEnergy", 2]}]}]}
               ]},
-              {"log": [{"format": ["Midnight Magic: rolled {}", "$roll"]}]},
+              {"log": [{"format": ["Event 27/32: rolled {}", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]}
         }
       },
 
-      // ── Event: Card 31 Pale Moonlight ──────────────────────────
+      // ── Event: Card 31 ──────────────────────────────────────────
       {
-        "page": "Pale Moonlight",
+        "page": "Event 31",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 31]}]},
@@ -1045,15 +1048,15 @@
             {"set": ["divineEnergy", {"max": [0, {"-": ["divineEnergy", 1]}]}]},
             {"set": ["arcaneEnergy", {"min": [6, {"+": ["arcaneEnergy", 1]}]}]},
             {"loseDefender": ["priests"]},
-            {"log": ["Pale Moonlight: -1 divine, +1 arcane, lose 1 priest"]},
+            {"log": ["Event 31: -1 divine, +1 arcane, lose 1 priest"]},
             {"setPhase": [".action"]}
           ]}
         }
       },
 
-      // ── Event: Card 34 Waning Moon ─────────────────────────────
+      // ── Event: Card 34 ─────────────────────────────────────────────
       {
-        "page": "Waning Moon",
+        "page": "Event 34",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 34]}]},
@@ -1066,16 +1069,16 @@
                 {"set": ["arcaneEnergy", {"max": [0, {"-": ["arcaneEnergy", 1]}]}]},
                 {"set": ["arcaneEnergy", {"min": [6, {"+": ["arcaneEnergy", 1]}]}]}
               ]},
-              {"log": [{"format": ["Waning Moon: rolled {}", "$roll"]}]},
+              {"log": [{"format": ["Event 34: rolled {}", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]}
         }
       },
 
-      // ── Event: Card 35 Mystic Forces Reborn ────────────────────
+      // ── Event: Card 35 ────────────────────────────────────────────
       {
-        "page": "Mystic Forces Reborn",
+        "page": "Event 35",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 35]}]},
@@ -1091,16 +1094,16 @@
                 // Roll 4-6: draw random arcane spell (mark as known)
                 {"memorizeRandomArcane": []}
               ]},
-              {"log": [{"format": ["Mystic Forces Reborn: rolled {}", "$roll"]}]},
+              {"log": [{"format": ["Event 35: rolled {}", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]}
         }
       },
 
-      // ── Event: Card 29 Death and Despair (trigger) ─────────────
+      // ── Event: Card 29 (trigger) ────────────────────────────────
       {
-        "page": "Death and Despair Event",
+        "page": "Event 29",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 29]}]},
@@ -1112,16 +1115,16 @@
               {"set": ["deathDespairDieRoll", "$roll"]},
               {"set": ["deathDespairSacrifices", 0]},
               {"set": ["inDeathAndDespair", true]},
-              {"log": [{"format": ["Death and Despair: rolled {}. Choose sacrifices.", "$roll"]}]},
+              {"log": [{"format": ["Event 29: rolled {}. Choose sacrifices.", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]}
         }
       },
 
-      // ── Death and Despair sub-resolution ───────────────────────
+      // ── Event 29 sub-resolution ────────────────────────────────
       {
-        "page": "Death and Despair",
+        "page": "Event 29 Resolution",
         "rules": [
           {"when": "inDeathAndDespair",
            "offer": ["ddCommitAdvance"]}
@@ -1144,15 +1147,15 @@
             {"set": ["inDeathAndDespair", false]},
             {"set": ["deathDespairDieRoll", 0]},
             {"set": ["deathDespairSacrifices", 0]},
-            {"log": ["Death and Despair resolved"]}
+            {"log": ["Event 29 resolved"]}
           ]}
         }
       },
 
-      // ── Event: Card 36 Bump in the Night ───────────────────────
+      // ── Event: Card 36 ───────────────────────────────────────────
       // Rule: advance Sky 1 space OR advance 2 other armies 1 space each
       {
-        "page": "Bump in the Night",
+        "page": "Event 36",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 36]}]},
@@ -1161,22 +1164,22 @@
         "reduce": {
           "bumpAdvanceSky": {"seq": [
             {"advanceSingleArmy": ["sky"]},
-            {"log": ["Bump in the Night: advanced Sky"]},
+            {"log": ["Event 36: advanced Sky"]},
             {"setPhase": [".action"]}
           ]},
           "bumpAdvanceOther": {"seq": [
             {"advanceSingleArmy": ["$slot1"]},
             {"advanceSingleArmy": ["$slot2"]},
-            {"log": [{"format": ["Bump in the Night: advanced {} and {}", "$slot1", "$slot2"]}]},
+            {"log": [{"format": ["Event 36: advanced {} and {}", "$slot1", "$slot2"]}]},
             {"setPhase": [".action"]}
           ]}
         }
       },
 
-      // ── Event: Card 33 Deserters ───────────────────────────────
+      // ── Event: Card 33 ───────────────────────────────────────────
       // Rule: lose 2 defenders OR lower morale. Morale option only if not already low.
       {
-        "page": "Deserters",
+        "page": "Event 33",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 33]}]},
@@ -1190,200 +1193,212 @@
           "desertersLoseDefenders": {"seq": [
             {"loseDefender": ["$def1"]},
             {"loseDefender": ["$def2"]},
-            {"log": [{"format": ["Deserters: lost {} and {}", "$def1", "$def2"]}]},
+            {"log": [{"format": ["Event 33: lost {} and {}", "$def1", "$def2"]}]},
             {"setPhase": [".action"]}
           ]},
           "desertersLoseMorale": {"seq": [
             {"lowerMorale": []},
-            {"log": ["Deserters: morale lowered"]},
+            {"log": ["Event 33: morale lowered"]},
             {"setPhase": [".action"]}
           ]}
         }
       },
 
-      // ── Event: Card 24 Bloody Handprints ───────────────────────
+      // ── Event: Card 24 ───────────────────────────────────────────
       // Player chooses a living hero. Roll: 1-3 kill, 4-6 wound.
       // Rule 8.2.1: wounded heroes must be chosen first.
       {
-        "page": "Bloody Handprints",
+        "page": "Event 24",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
+                             {"!=": [{"lookup": ["heroLocationDict", "warrior"]}, null]},
                              {"not": [{"contains": ["heroDead", "warrior"]}]},
                              {"or": [{"contains": ["heroWounded", "warrior"]},
                                      {"not": [{"anyLivingWoundedHero": []}]}]}]},
            "offer": ["bloodyHandprintsWarrior"]},
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
+                             {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
                              {"not": [{"contains": ["heroDead", "wizard"]}]},
                              {"or": [{"contains": ["heroWounded", "wizard"]},
                                      {"not": [{"anyLivingWoundedHero": []}]}]}]},
            "offer": ["bloodyHandprintsWizard"]},
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
+                             {"!=": [{"lookup": ["heroLocationDict", "ranger"]}, null]},
                              {"not": [{"contains": ["heroDead", "ranger"]}]},
                              {"or": [{"contains": ["heroWounded", "ranger"]},
                                      {"not": [{"anyLivingWoundedHero": []}]}]}]},
            "offer": ["bloodyHandprintsRanger"]},
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
+                             {"!=": [{"lookup": ["heroLocationDict", "rogue"]}, null]},
                              {"not": [{"contains": ["heroDead", "rogue"]}]},
                              {"or": [{"contains": ["heroWounded", "rogue"]},
                                      {"not": [{"anyLivingWoundedHero": []}]}]}]},
            "offer": ["bloodyHandprintsRogue"]},
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
+                             {"!=": [{"lookup": ["heroLocationDict", "paladin"]}, null]},
                              {"not": [{"contains": ["heroDead", "paladin"]}]},
                              {"or": [{"contains": ["heroWounded", "paladin"]},
                                      {"not": [{"anyLivingWoundedHero": []}]}]}]},
            "offer": ["bloodyHandprintsPaladin"]},
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
+                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
                              {"not": [{"contains": ["heroDead", "cleric"]}]},
                              {"or": [{"contains": ["heroWounded", "cleric"]},
                                      {"not": [{"anyLivingWoundedHero": []}]}]}]},
            "offer": ["bloodyHandprintsCleric"]},
-          // No living heroes fallback
+          // No living heroes fallback (hero not selected OR dead)
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
-                             {"contains": ["heroDead", "warrior"]},
-                             {"contains": ["heroDead", "wizard"]},
-                             {"contains": ["heroDead", "ranger"]},
-                             {"contains": ["heroDead", "rogue"]},
-                             {"contains": ["heroDead", "paladin"]},
-                             {"contains": ["heroDead", "cleric"]}]},
+                             {"or": [{"contains": ["heroDead", "warrior"]}, {"==": [{"lookup": ["heroLocationDict", "warrior"]}, null]}]},
+                             {"or": [{"contains": ["heroDead", "wizard"]}, {"==": [{"lookup": ["heroLocationDict", "wizard"]}, null]}]},
+                             {"or": [{"contains": ["heroDead", "ranger"]}, {"==": [{"lookup": ["heroLocationDict", "ranger"]}, null]}]},
+                             {"or": [{"contains": ["heroDead", "rogue"]}, {"==": [{"lookup": ["heroLocationDict", "rogue"]}, null]}]},
+                             {"or": [{"contains": ["heroDead", "paladin"]}, {"==": [{"lookup": ["heroLocationDict", "paladin"]}, null]}]},
+                             {"or": [{"contains": ["heroDead", "cleric"]}, {"==": [{"lookup": ["heroLocationDict", "cleric"]}, null]}]}]},
            "offer": ["bloodyHandprintsNoHeroes"]}
         ],
         "reduce": {
           "bloodyHandprintsWarrior": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
               {"if": [{"<=": ["$roll", 3]}, {"killHero": ["warrior"]}, {"woundHero": ["warrior"]}]},
-              {"log": [{"format": ["Bloody Handprints: rolled {}, hero warrior", "$roll"]}]},
+              {"log": [{"format": ["Event 24: rolled {}, hero warrior", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
           "bloodyHandprintsWizard": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
               {"if": [{"<=": ["$roll", 3]}, {"killHero": ["wizard"]}, {"woundHero": ["wizard"]}]},
-              {"log": [{"format": ["Bloody Handprints: rolled {}, hero wizard", "$roll"]}]},
+              {"log": [{"format": ["Event 24: rolled {}, hero wizard", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
           "bloodyHandprintsRanger": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
               {"if": [{"<=": ["$roll", 3]}, {"killHero": ["ranger"]}, {"woundHero": ["ranger"]}]},
-              {"log": [{"format": ["Bloody Handprints: rolled {}, hero ranger", "$roll"]}]},
+              {"log": [{"format": ["Event 24: rolled {}, hero ranger", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
           "bloodyHandprintsRogue": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
               {"if": [{"<=": ["$roll", 3]}, {"killHero": ["rogue"]}, {"woundHero": ["rogue"]}]},
-              {"log": [{"format": ["Bloody Handprints: rolled {}, hero rogue", "$roll"]}]},
+              {"log": [{"format": ["Event 24: rolled {}, hero rogue", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
           "bloodyHandprintsPaladin": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
               {"if": [{"<=": ["$roll", 3]}, {"killHero": ["paladin"]}, {"woundHero": ["paladin"]}]},
-              {"log": [{"format": ["Bloody Handprints: rolled {}, hero paladin", "$roll"]}]},
+              {"log": [{"format": ["Event 24: rolled {}, hero paladin", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
           "bloodyHandprintsCleric": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
               {"if": [{"<=": ["$roll", 3]}, {"killHero": ["cleric"]}, {"woundHero": ["cleric"]}]},
-              {"log": [{"format": ["Bloody Handprints: rolled {}, hero cleric", "$roll"]}]},
+              {"log": [{"format": ["Event 24: rolled {}, hero cleric", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
           "bloodyHandprintsNoHeroes": {"seq": [
-            {"log": ["Bloody Handprints: no living heroes"]},
+            {"log": ["Event 24: no living heroes"]},
             {"setPhase": [".action"]}
           ]}
         }
       },
 
-      // ── Event: Card 30 Assassin's Creedo ───────────────────────
+      // ── Event: Card 30 ───────────────────────────────────────────
       // Player chooses a living hero. Roll: 1-3 kill hero, 4-6 +1 attack DRM.
       {
-        "page": "Assassins Creedo",
+        "page": "Event 30",
         "rules": [
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
+                             {"!=": [{"lookup": ["heroLocationDict", "warrior"]}, null]},
                              {"not": [{"contains": ["heroDead", "warrior"]}]}]},
            "offer": ["assassinsCreedoWarrior"]},
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
+                             {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
                              {"not": [{"contains": ["heroDead", "wizard"]}]}]},
            "offer": ["assassinsCreedoWizard"]},
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
+                             {"!=": [{"lookup": ["heroLocationDict", "ranger"]}, null]},
                              {"not": [{"contains": ["heroDead", "ranger"]}]}]},
            "offer": ["assassinsCreedoRanger"]},
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
+                             {"!=": [{"lookup": ["heroLocationDict", "rogue"]}, null]},
                              {"not": [{"contains": ["heroDead", "rogue"]}]}]},
            "offer": ["assassinsCreedoRogue"]},
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
+                             {"!=": [{"lookup": ["heroLocationDict", "paladin"]}, null]},
                              {"not": [{"contains": ["heroDead", "paladin"]}]}]},
            "offer": ["assassinsCreedoPaladin"]},
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
+                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
                              {"not": [{"contains": ["heroDead", "cleric"]}]}]},
            "offer": ["assassinsCreedoCleric"]},
-          // No living heroes fallback
+          // No living heroes fallback (hero not selected OR dead)
           {"when": {"and": [{"==": ["phase", ".event"]},
                              {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
-                             {"contains": ["heroDead", "warrior"]},
-                             {"contains": ["heroDead", "wizard"]},
-                             {"contains": ["heroDead", "ranger"]},
-                             {"contains": ["heroDead", "rogue"]},
-                             {"contains": ["heroDead", "paladin"]},
-                             {"contains": ["heroDead", "cleric"]}]},
+                             {"or": [{"contains": ["heroDead", "warrior"]}, {"==": [{"lookup": ["heroLocationDict", "warrior"]}, null]}]},
+                             {"or": [{"contains": ["heroDead", "wizard"]}, {"==": [{"lookup": ["heroLocationDict", "wizard"]}, null]}]},
+                             {"or": [{"contains": ["heroDead", "ranger"]}, {"==": [{"lookup": ["heroLocationDict", "ranger"]}, null]}]},
+                             {"or": [{"contains": ["heroDead", "rogue"]}, {"==": [{"lookup": ["heroLocationDict", "rogue"]}, null]}]},
+                             {"or": [{"contains": ["heroDead", "paladin"]}, {"==": [{"lookup": ["heroLocationDict", "paladin"]}, null]}]},
+                             {"or": [{"contains": ["heroDead", "cleric"]}, {"==": [{"lookup": ["heroLocationDict", "cleric"]}, null]}]}]},
            "offer": ["assassinsCreedoNoHeroes"]}
         ],
         "reduce": {
           "assassinsCreedoWarrior": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
               {"if": [{"<=": ["$roll", 3]}, {"killHero": ["warrior"]}, {"increment": ["eventAttackDRMBonus", 1]}]},
-              {"log": [{"format": ["Assassin's Creedo: rolled {}, hero warrior", "$roll"]}]},
+              {"log": [{"format": ["Event 30: rolled {}, hero warrior", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
           "assassinsCreedoWizard": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
               {"if": [{"<=": ["$roll", 3]}, {"killHero": ["wizard"]}, {"increment": ["eventAttackDRMBonus", 1]}]},
-              {"log": [{"format": ["Assassin's Creedo: rolled {}, hero wizard", "$roll"]}]},
+              {"log": [{"format": ["Event 30: rolled {}, hero wizard", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
           "assassinsCreedoRanger": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
               {"if": [{"<=": ["$roll", 3]}, {"killHero": ["ranger"]}, {"increment": ["eventAttackDRMBonus", 1]}]},
-              {"log": [{"format": ["Assassin's Creedo: rolled {}, hero ranger", "$roll"]}]},
+              {"log": [{"format": ["Event 30: rolled {}, hero ranger", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
           "assassinsCreedoRogue": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
               {"if": [{"<=": ["$roll", 3]}, {"killHero": ["rogue"]}, {"increment": ["eventAttackDRMBonus", 1]}]},
-              {"log": [{"format": ["Assassin's Creedo: rolled {}, hero rogue", "$roll"]}]},
+              {"log": [{"format": ["Event 30: rolled {}, hero rogue", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
           "assassinsCreedoPaladin": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
               {"if": [{"<=": ["$roll", 3]}, {"killHero": ["paladin"]}, {"increment": ["eventAttackDRMBonus", 1]}]},
-              {"log": [{"format": ["Assassin's Creedo: rolled {}, hero paladin", "$roll"]}]},
+              {"log": [{"format": ["Event 30: rolled {}, hero paladin", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
           "assassinsCreedoCleric": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
               {"if": [{"<=": ["$roll", 3]}, {"killHero": ["cleric"]}, {"increment": ["eventAttackDRMBonus", 1]}]},
-              {"log": [{"format": ["Assassin's Creedo: rolled {}, hero cleric", "$roll"]}]},
+              {"log": [{"format": ["Event 30: rolled {}, hero cleric", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
@@ -1393,17 +1408,17 @@
                 {"increment": ["eventAttackDRMBonus", 1]},
                 {"log": ["No heroes to kill"]}
               ]},
-              {"log": [{"format": ["Assassin's Creedo: rolled {} (no heroes)", "$roll"]}]},
+              {"log": [{"format": ["Event 30: rolled {} (no heroes)", "$roll"]}]},
               {"setPhase": [".action"]}
             ]}
           ]}
         }
       },
 
-      // ── Event: Card 11 Harbingers of Doom ──────────────────────
+      // ── Event: Card 11 ──────────────────────────────────────────
       // If multiple armies tied at farthest position, player chooses which to advance
       {
-        "page": "Harbingers of Doom",
+        "page": "Event 11",
         "rules": [
           // No tie: auto-advance the single farthest army
           {"when": {"and": [{"==": ["phase", ".event"]},
@@ -1420,12 +1435,12 @@
         "reduce": {
           "harbingersChoose": {"seq": [
             {"advanceSingleArmy": ["$slot"]},
-            {"log": [{"format": ["Harbingers: player chose to advance {}", "$slot"]}]},
+            {"log": [{"format": ["Event 11: player chose to advance {}", "$slot"]}]},
             {"setPhase": [".action"]}
           ]},
           "harbingersAuto": {"seq": [
             {"advanceFarthestArmy": [1]},
-            {"log": ["Harbingers: advanced farthest army"]},
+            {"log": ["Event 11: advanced farthest army"]},
             {"setPhase": [".action"]}
           ]}
         }
@@ -1468,7 +1483,10 @@
                              {"not": ["noMeleeThisTurn"]},
                              {"<": ["meleeAttacksThisTurn", {"menAtArmsValue": []}]},
                              {"!=": [{"lookup": ["armyPosition", "gate1"]}, null]},
-                             {"<=": [{"lookup": ["armyPosition", "gate1"]}, 3]}]},
+                             {"<=": [{"lookup": ["armyPosition", "gate1"]}, 3]},
+                             {"or": [{"==": [{"lookup": ["armyPosition", "gate2"]}, null]},
+                                     {"<=": [{"lookup": ["armyPosition", "gate1"]},
+                                             {"lookup": ["armyPosition", "gate2"]}]}]}]},
            "offer": ["meleeGate1"]},
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {">": [{"actionBudgetRemaining": []}, 0]},
@@ -1479,7 +1497,10 @@
                              {"not": ["noMeleeThisTurn"]},
                              {"<": ["meleeAttacksThisTurn", {"menAtArmsValue": []}]},
                              {"!=": [{"lookup": ["armyPosition", "gate2"]}, null]},
-                             {"<=": [{"lookup": ["armyPosition", "gate2"]}, 3]}]},
+                             {"<=": [{"lookup": ["armyPosition", "gate2"]}, 3]},
+                             {"or": [{"==": [{"lookup": ["armyPosition", "gate1"]}, null]},
+                                     {"<=": [{"lookup": ["armyPosition", "gate2"]},
+                                             {"lookup": ["armyPosition", "gate1"]}]}]}]},
            "offer": ["meleeGate2"]},
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {">": [{"actionBudgetRemaining": []}, 0]},
@@ -1500,7 +1521,8 @@
                              {"not": ["questRewardPending"]},
                              {"not": ["noMeleeThisTurn"]},
                              {"<": ["meleeAttacksThisTurn", {"menAtArmsValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "terror"]}, null]}]},
+                             {"!=": [{"lookup": ["armyPosition", "terror"]}, null]},
+                             {"<": [{"lookup": ["armyPosition", "terror"]}, 3]}]},
            "offer": ["meleeTerror"]},
           // Ranged attacks — each slot requires army present on board
           {"when": {"and": [{"==": ["phase", ".action"]},
@@ -1510,7 +1532,8 @@
                              {"not": ["inFortune"]},
                              {"not": ["questRewardPending"]},
                              {"<": ["rangedAttacksThisTurn", {"archersValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "east"]}, null]}]},
+                             {"!=": [{"lookup": ["armyPosition", "east"]}, null]},
+                             {"<": [{"lookup": ["armyPosition", "east"]}, 6]}]},
            "offer": ["rangedEast"]},
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {">": [{"actionBudgetRemaining": []}, 0]},
@@ -1519,7 +1542,8 @@
                              {"not": ["inFortune"]},
                              {"not": ["questRewardPending"]},
                              {"<": ["rangedAttacksThisTurn", {"archersValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "west"]}, null]}]},
+                             {"!=": [{"lookup": ["armyPosition", "west"]}, null]},
+                             {"<": [{"lookup": ["armyPosition", "west"]}, 6]}]},
            "offer": ["rangedWest"]},
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {">": [{"actionBudgetRemaining": []}, 0]},
@@ -1528,7 +1552,11 @@
                              {"not": ["inFortune"]},
                              {"not": ["questRewardPending"]},
                              {"<": ["rangedAttacksThisTurn", {"archersValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "gate1"]}, null]}]},
+                             {"!=": [{"lookup": ["armyPosition", "gate1"]}, null]},
+                             {"<": [{"lookup": ["armyPosition", "gate1"]}, 4]},
+                             {"or": [{"==": [{"lookup": ["armyPosition", "gate2"]}, null]},
+                                     {"<=": [{"lookup": ["armyPosition", "gate1"]},
+                                             {"lookup": ["armyPosition", "gate2"]}]}]}]},
            "offer": ["rangedGate1"]},
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {">": [{"actionBudgetRemaining": []}, 0]},
@@ -1537,7 +1565,11 @@
                              {"not": ["inFortune"]},
                              {"not": ["questRewardPending"]},
                              {"<": ["rangedAttacksThisTurn", {"archersValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "gate2"]}, null]}]},
+                             {"!=": [{"lookup": ["armyPosition", "gate2"]}, null]},
+                             {"<": [{"lookup": ["armyPosition", "gate2"]}, 4]},
+                             {"or": [{"==": [{"lookup": ["armyPosition", "gate1"]}, null]},
+                                     {"<=": [{"lookup": ["armyPosition", "gate2"]},
+                                             {"lookup": ["armyPosition", "gate1"]}]}]}]},
            "offer": ["rangedGate2"]},
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {">": [{"actionBudgetRemaining": []}, 0]},
@@ -1546,7 +1578,8 @@
                              {"not": ["inFortune"]},
                              {"not": ["questRewardPending"]},
                              {"<": ["rangedAttacksThisTurn", {"archersValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "sky"]}, null]}]},
+                             {"!=": [{"lookup": ["armyPosition", "sky"]}, null]},
+                             {"<": [{"lookup": ["armyPosition", "sky"]}, 6]}]},
            "offer": ["rangedSky"]}
         ],
         "reduce": {
@@ -1736,7 +1769,8 @@
                              {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
            "offer": ["castFireball"],
            "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "wizard"]},
-                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]}]}},
+                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
+                                    {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]}]}},
           // Heroic: reroll on miss, wizard must be alive
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {">": [{"heroicBudgetRemaining": []}, 0]},
@@ -1750,7 +1784,8 @@
                              {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
            "offer": ["castFireballHeroic"],
            "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "wizard"]},
-                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]}]}}
+                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
+                                    {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]}]}}
         ],
         "reduce": {
           "castFireball": {"seq": [
@@ -1817,7 +1852,8 @@
                              {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
            "offer": ["castSlowNormal"],
            "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "wizard"]},
-                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]}]}},
+                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
+                                    {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]}]}},
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {">": [{"heroicBudgetRemaining": []}, 0]},
                              {"not": ["inChainLightning"]},
@@ -1830,7 +1866,8 @@
                              {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
            "offer": ["castSlowHeroic"],
            "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "wizard"]},
-                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]}]}}
+                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
+                                    {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]}]}}
         ],
         "reduce": {
           "castSlowNormal": {"seq": [
@@ -2011,7 +2048,8 @@
                              {"not": [{"contains": ["heroDead", ".cleric"]}]}]},
            "offer": ["castDivineWrathNormal"],
            "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "cleric"]},
-                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]}]}},
+                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
+                                    {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]}]}},
           // Heroic: two +1 attacks on (possibly different) slots, cleric must be alive
           {"when": {"and": [{"==": ["phase", ".action"]},
                              {">": [{"heroicBudgetRemaining": []}, 0]},
@@ -2028,7 +2066,9 @@
                                     {"slotMatchesHeroLocation": ["$slot1", "cleric"]},
                                     {"slotMatchesHeroLocation": ["$slot2", "cleric"]},
                                     {"!=": [{"lookup": ["armyPosition", "$slot1"]}, null]},
-                                    {"!=": [{"lookup": ["armyPosition", "$slot2"]}, null]}]}}
+                                    {"<": [{"lookup": ["armyPosition", "$slot1"]}, {"slotMaxSpace": ["$slot1"]}]},
+                                    {"!=": [{"lookup": ["armyPosition", "$slot2"]}, null]},
+                                    {"<": [{"lookup": ["armyPosition", "$slot2"]}, {"slotMaxSpace": ["$slot2"]}]}]}}
         ],
         "reduce": {
           "castDivineWrathNormal": {"seq": [
@@ -2196,7 +2236,9 @@
         "rules": [
           {"when": {"and": ["inChainLightning",
                              {"<": ["chainLightningBoltIndex", 3]}]},
-           "offer": ["lightningBolt"]}
+           "offer": ["lightningBolt"],
+           "paramFilter": {"and": [{"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
+                                    {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]}]}}
         ],
         "reduce": {
           "lightningBolt": {"let": [
@@ -2331,6 +2373,7 @@
              {"not": [{"contains": ["heroDead", "$hero"]}]},
              {"!=": [{"lookup": ["heroLocationDict", "$hero"]}, ".reserves"]},
              {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
+             {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]},
              {"slotMatchesHeroLocation": ["$slot", "$hero"]}]}},
           // Rally: always available with heroic budget
           {"when": {"and": [{"==": ["phase", ".action"]},
@@ -2634,7 +2677,7 @@
               {"set": ["questAttemptedThisTurn", false]},
               {"set": ["questPenaltyAppliedThisTurn", false]},
               {"set": ["questRewardPending", false]},
-              {"set": ["defenderChoicePending", false]},
+              {"set": ["defenderLossesPending", 0]},
               {"set": ["actionPointsSpent", 0]},
               {"set": ["heroicPointsSpent", 0]},
               {"set": ["meleeAttacksThisTurn", 0]},
@@ -2701,17 +2744,17 @@
       {
         "priority": "Defender Choice",
         "rules": [
-          {"when": {"and": ["defenderChoicePending",
+          {"when": {"and": [{">": ["defenderLossesPending", 0]},
                             {"<": [{"lookup": ["defenderPosition", "archers"]}, 4]}]},
            "offer": ["loseDefenderArchers"]},
-          {"when": {"and": ["defenderChoicePending",
+          {"when": {"and": [{">": ["defenderLossesPending", 0]},
                             {"<": [{"lookup": ["defenderPosition", "menAtArms"]}, 5]}]},
            "offer": ["loseDefenderMenAtArms"]},
-          {"when": {"and": ["defenderChoicePending",
+          {"when": {"and": [{">": ["defenderLossesPending", 0]},
                             {"<": [{"lookup": ["defenderPosition", "priests"]}, 3]}]},
            "offer": ["loseDefenderPriests"]},
           // Fallback: all defenders at max — clear pending without losing anyone
-          {"when": {"and": ["defenderChoicePending",
+          {"when": {"and": [{">": ["defenderLossesPending", 0]},
                             {">=": [{"lookup": ["defenderPosition", "archers"]}, 4]},
                             {">=": [{"lookup": ["defenderPosition", "menAtArms"]}, 5]},
                             {">=": [{"lookup": ["defenderPosition", "priests"]}, 3]}]},
@@ -2720,21 +2763,21 @@
         "reduce": {
           "loseDefenderArchers": {"seq": [
             {"loseDefender": ["archers"]},
-            {"set": ["defenderChoicePending", false]},
+            {"increment": ["defenderLossesPending", -1]},
             {"log": ["Player chose to lose an archer"]}
           ]},
           "loseDefenderMenAtArms": {"seq": [
             {"loseDefender": ["menAtArms"]},
-            {"set": ["defenderChoicePending", false]},
+            {"increment": ["defenderLossesPending", -1]},
             {"log": ["Player chose to lose a man-at-arms"]}
           ]},
           "loseDefenderPriests": {"seq": [
             {"loseDefender": ["priests"]},
-            {"set": ["defenderChoicePending", false]},
+            {"increment": ["defenderLossesPending", -1]},
             {"log": ["Player chose to lose a priest"]}
           ]},
           "loseDefenderNoneAvailable": {"seq": [
-            {"set": ["defenderChoicePending", false]},
+            {"increment": ["defenderLossesPending", -1]},
             {"log": ["All defenders at maximum losses — no choice to make"]}
           ]}
         }
@@ -3073,7 +3116,7 @@
                        {"handleBreach": ["$slot"]},
                        // Rule 4.4: Terror/Sky reaching castle — lose a defender, army stays at 1
                        {"seq": [
-                         {"set": ["defenderChoicePending", true]},
+                         {"increment": ["defenderLossesPending", 1]},
                          {"setEntry": ["armyPosition", "$slot", 1]},
                          {"placeArmy": ["$slot", 1]},
                          {"log": [{"format": ["{} army reached castle — stays at 1, choose defender to lose", "$slot"]}]}
@@ -3100,11 +3143,10 @@
                                   {"if": [{"==": ["$slot", "west"]}, ".west", ".gate"]}]},
        "trackKey", {"if": [{"==": ["$slot", "east"]}, "east",
                      {"if": [{"==": ["$slot", "west"]}, "west", "gate"]}]},
-       // Grease: Rule 6.3.2 — roll d6, 1-2 prevents breach, 3-6 breach happens. Grease consumed either way.
+       // Grease: Rule 6.3.2 — roll d6, 1-2 prevents breach, 3-6 breach happens. Grease consumed only on failure.
        {"if": [{"==": [{"lookup": ["upgradeDict", "$trackKey"]}, ".grease"]},
          {"let": ["greaseRoll", {"rollDie": [6]},
            {"seq": [
-             {"removeEntry": ["upgradeDict", "$trackKey"]},
              {"if": [{"<=": ["$greaseRoll", 2]},
                {"seq": [
                  {"setEntry": ["armyPosition", "$slot", 1]},
@@ -3112,21 +3154,14 @@
                  {"log": [{"format": ["Grease held on {}! (roll {} <= 2) Army stays at 1", "$track", "$greaseRoll"]}]}
                ]},
                {"seq": [
+                 {"removeEntry": ["upgradeDict", "$trackKey"]},
                  {"log": [{"format": ["Grease failed on {} (roll {} > 2), breach proceeds", "$track", "$greaseRoll"]}]},
                  // Fall through to normal breach logic
                  {"if": [{"contains": ["barricades", "$track"]},
-                   // Barricade test after grease failure: roll <= strength = defeat, > = breach
+                   // Barricade test after grease failure: Rule 4.1.3 — roll <= strength = barricade holds (breach), > = defeat
                    {"let": ["broll", {"rollDie": [6]},
                      "bstr", {"lookup": ["armyStrengthDict", "$slot"]},
                      {"if": [{"<=": ["$broll", "$bstr"]},
-                       // Army overpowers barricade — defeat
-                       {"seq": [
-                         {"removeFrom": ["barricades", "$track"]},
-                         {"setEntry": ["armyPosition", "$slot", 0]},
-                         {"placeArmy": ["$slot", 0]},
-                         {"set": ["ended", true]},
-                         {"log": [{"format": ["Army broke through barricade on {} — defeat!", "$track"]}]}
-                       ]},
                        // Barricade absorbs blow — becomes breach
                        {"seq": [
                          {"removeFrom": ["barricades", "$track"]},
@@ -3134,7 +3169,15 @@
                          {"removeEntry": ["upgradeDict", "$trackKey"]},
                          {"setEntry": ["armyPosition", "$slot", 1]},
                          {"placeArmy": ["$slot", 1]},
-                         {"log": [{"format": ["Barricade held on {} → breach (grease failed)", "$track"]}]}
+                         {"log": [{"format": ["Barricade held on {} → breach (grease failed, roll {} <= str {})", "$track", "$broll", "$bstr"]}]}
+                       ]},
+                       // Army overpowers barricade — defeat
+                       {"seq": [
+                         {"removeFrom": ["barricades", "$track"]},
+                         {"setEntry": ["armyPosition", "$slot", 0]},
+                         {"placeArmy": ["$slot", 0]},
+                         {"set": ["ended", true]},
+                         {"log": [{"format": ["Army broke through barricade on {} — defeat! (grease failed, roll {} > str {})", "$track", "$broll", "$bstr"]}]}
                        ]}
                      ]}
                    ]},
@@ -3157,27 +3200,27 @@
            ]}
          ]},
          {"if": [{"contains": ["barricades", "$track"]},
-           // Barricade test: Rule 4.1.3 — roll <= strength = army breaks through = defeat
-           // roll > strength = barricade holds (becomes breach), army stays at 1
+           // Barricade test: Rule 4.1.3 — roll <= strength = barricade holds (becomes breach)
+           // roll > strength = army breaks through = defeat
            {"let": ["roll", {"rollDie": [6]},
              "strength", {"lookup": ["armyStrengthDict", "$slot"]},
              {"if": [{"<=": ["$roll", "$strength"]},
-               // Army overpowers barricade — defeat
-               {"seq": [
-                 {"removeFrom": ["barricades", "$track"]},
-                 {"setEntry": ["armyPosition", "$slot", 0]},
-                 {"placeArmy": ["$slot", 0]},
-                 {"set": ["ended", true]},
-                 {"log": [{"format": ["Army broke through barricade on {} — defeat! (roll {} <= str {})", "$track", "$roll", "$strength"]}]}
-               ]},
-               // Barricade absorbs the blow — becomes breach, army stays
+               // Barricade absorbs the blow — becomes breach, army stays at 1
                {"seq": [
                  {"removeFrom": ["barricades", "$track"]},
                  {"insertInto": ["breaches", "$track"]},
                  {"removeEntry": ["upgradeDict", "$trackKey"]},
                  {"setEntry": ["armyPosition", "$slot", 1]},
                  {"placeArmy": ["$slot", 1]},
-                 {"log": [{"format": ["Barricade held on {} → breach (roll {} > str {})", "$track", "$roll", "$strength"]}]}
+                 {"log": [{"format": ["Barricade held on {} → breach (roll {} <= str {})", "$track", "$roll", "$strength"]}]}
+               ]},
+               // Army overpowers barricade — defeat
+               {"seq": [
+                 {"removeFrom": ["barricades", "$track"]},
+                 {"setEntry": ["armyPosition", "$slot", 0]},
+                 {"placeArmy": ["$slot", 0]},
+                 {"set": ["ended", true]},
+                 {"log": [{"format": ["Army broke through barricade on {} — defeat! (roll {} > str {})", "$track", "$roll", "$strength"]}]}
                ]}
              ]}
            ]},
@@ -3235,10 +3278,44 @@
                {"advanceSingleArmy": ["gate1"]},
                {"if": [{">": ["$pos2", "$pos1"]},
                  {"advanceSingleArmy": ["gate2"]},
-                 // Tied: both advance
-                 {"seq": [
-                   {"advanceSingleArmy": ["gate1"]},
-                   {"advanceSingleArmy": ["gate2"]}
+                 // Tied: advance together per Rule 4.1.1
+                 // Save gate1 position, advance gate1, then mirror result to gate2
+                 {"let": ["gate1PosBefore", "$pos1",
+                   {"seq": [
+                     {"advanceSingleArmy": ["gate1"]},
+                     {"let": ["gate1PosAfter", {"lookup": ["armyPosition", "gate1"]},
+                       {"if": ["ended",
+                         // gate1 entered castle (existing breach) — gate2 enters too
+                         {"seq": [
+                           {"setEntry": ["armyPosition", "gate2", 0]},
+                           {"placeArmy": ["gate2", 0]},
+                           {"log": ["gate2 also entered castle — defeat!"]}
+                         ]},
+                         {"if": [{"==": ["$gate1PosAfter", "$gate1PosBefore"]},
+                           // gate1 didn't move (grease held, barricade held, slow removed) — gate2 stays too
+                           {"seq": [
+                             {"setEntry": ["armyPosition", "gate2", "$gate1PosAfter"]},
+                             {"placeArmy": ["gate2", "$gate1PosAfter"]},
+                             {"log": ["Both gate armies stayed (grease/barricade held or slow removed)"]}
+                           ]},
+                           {"if": [{"contains": ["breaches", ".gate"]},
+                             // Breach was just created — gate2 stays at 1 with gate1
+                             {"seq": [
+                               {"setEntry": ["armyPosition", "gate2", 1]},
+                               {"placeArmy": ["gate2", 1]},
+                               {"log": ["Both gate armies at 1 after breach"]}
+                             ]},
+                             // Normal advance — set gate2 to same position as gate1
+                             {"seq": [
+                               {"setEntry": ["armyPosition", "gate2", "$gate1PosAfter"]},
+                               {"placeArmy": ["gate2", "$gate1PosAfter"]},
+                               {"log": [{"format": ["Both gate armies advanced to {}", "$gate1PosAfter"]}]}
+                             ]}
+                           ]}
+                         ]}
+                       ]}
+                     ]}
+                   ]}
                  ]}
                ]}
              ]}
@@ -3413,7 +3490,7 @@
                             {"==": [{"slotMatchesBloodyBattle": ["$slot"]}, true]},
                             {"not": ["bloodyBattlePaidThisTurn"]}]},
            {"seq": [
-             {"set": ["defenderChoicePending", true]},
+             {"increment": ["defenderLossesPending", 1]},
              {"set": ["bloodyBattlePaidThisTurn", true]},
              {"log": [{"format": ["Bloody battle cost paid attacking {}", "$slot"]}]}
            ]}
@@ -3454,7 +3531,7 @@
                             {"==": [{"slotMatchesBloodyBattle": ["$slot"]}, true]},
                             {"not": ["bloodyBattlePaidThisTurn"]}]},
            {"seq": [
-             {"set": ["defenderChoicePending", true]},
+             {"increment": ["defenderLossesPending", 1]},
              {"set": ["bloodyBattlePaidThisTurn", true]},
              {"log": [{"format": ["Bloody battle cost paid attacking {}", "$slot"]}]}
            ]}
@@ -3791,7 +3868,7 @@
                             {"==": [{"slotMatchesBloodyBattle": ["$slot"]}, true]},
                             {"not": ["bloodyBattlePaidThisTurn"]}]},
            {"seq": [
-             {"set": ["defenderChoicePending", true]},
+             {"increment": ["defenderLossesPending", 1]},
              {"set": ["bloodyBattlePaidThisTurn", true]},
              {"log": [{"format": ["Bloody battle cost paid attacking {}", "$slot"]}]}
            ]}
@@ -3849,7 +3926,7 @@
                             {"==": [{"slotMatchesBloodyBattle": ["$slot"]}, true]},
                             {"not": ["bloodyBattlePaidThisTurn"]}]},
            {"seq": [
-             {"set": ["defenderChoicePending", true]},
+             {"increment": ["defenderLossesPending", 1]},
              {"set": ["bloodyBattlePaidThisTurn", true]},
              {"log": [{"format": ["Bloody battle cost paid attacking {}", "$slot"]}]}
            ]}

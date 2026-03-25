@@ -258,13 +258,26 @@ struct GameRunner<
     var numWins = 0
     var numLosses = 0
     var numGames = 0
+    let skipProperties: Set<String> = [
+      "history", "pieceTypes", "schema", "decks"
+    ]
     while !done {
-      state.printTable(to: &stdout)
-      print("")
-
       if let action = getAction(state: state, auto: false) {
+        let beforeState = state
         let logs = reducer.reduce(into: &state, action: action)
+        state.printTable(to: &stdout)
         for log in logs { print(log.msg) }
+        // Print colored diff
+        let diffs = mirrorDiff(beforeState, state)
+        let filtered = diffs.filter { line in
+          !skipProperties.contains(where: { line.hasPrefix($0) })
+        }
+        if !filtered.isEmpty {
+          print("")
+          for diff in filtered {
+            printColoredDiff(diff)
+          }
+        }
       } else {
         numGames += 1
         if state.endedInDefeatFor.contains(player) {
@@ -336,6 +349,29 @@ struct GameRunner<
       search.printTree(to: &logStream)
     }
     return results
+  }
+}
+
+/// Print a single mirrorDiff line with ANSI red/green coloring.
+/// Format is "path: oldValue -> newValue".
+private func printColoredDiff(_ line: String) {
+  let red = "\u{1B}[31m"
+  let green = "\u{1B}[32m"
+  let dim = "\u{1B}[2m"
+  let reset = "\u{1B}[0m"
+  guard let arrowRange = line.range(of: " -> ") else {
+    print("  \(line)")
+    return
+  }
+  let left = line[line.startIndex..<arrowRange.lowerBound]
+  let right = line[arrowRange.upperBound...]
+  // Split path from old value at the last ": "
+  if let colonRange = left.range(of: ": ", options: .backwards) {
+    let path = left[left.startIndex..<colonRange.lowerBound]
+    let oldVal = left[colonRange.upperBound...]
+    print("  \(dim)\(path):\(reset) \(red)\(oldVal)\(reset) → \(green)\(right)\(reset)")
+  } else {
+    print("  \(red)\(left)\(reset) → \(green)\(right)\(reset)")
   }
 }
 

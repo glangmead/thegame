@@ -20,7 +20,7 @@ final class TraceWriter {
 
   /// Property names to skip in diff/dump output.
   private let skipProperties: Set<String> = [
-    "history", "pieceTypes", "schema"
+    "history", "pieceTypes", "schema", "decks"
   ]
 
   private var stepCount = 0
