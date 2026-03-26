@@ -54,7 +54,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "--game LegionsOfDarknessJSONC --num-trials 1 --num-mcts-iters 50"
+            argument = "--game LegionsOfDarknessJSONC --num-trials 1 --num-mcts-iters 50 --seed 41"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

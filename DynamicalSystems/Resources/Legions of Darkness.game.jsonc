@@ -412,13 +412,9 @@
       {"name": "desertersLoseDefenders",
        "params": [{"name": "def1", "type": "DefenderType"}, {"name": "def2", "type": "DefenderType"}]},
       {"name": "desertersLoseMorale"},
-      {"name": "bloodyHandprintsWarrior"}, {"name": "bloodyHandprintsWizard"},
-      {"name": "bloodyHandprintsRanger"}, {"name": "bloodyHandprintsRogue"},
-      {"name": "bloodyHandprintsPaladin"}, {"name": "bloodyHandprintsCleric"},
+      {"name": "bloodyHandprints", "params": [{"name": "hero", "type": "HeroType"}]},
       {"name": "bloodyHandprintsNoHeroes"},
-      {"name": "assassinsCreedoWarrior"}, {"name": "assassinsCreedoWizard"},
-      {"name": "assassinsCreedoRanger"}, {"name": "assassinsCreedoRogue"},
-      {"name": "assassinsCreedoPaladin"}, {"name": "assassinsCreedoCleric"},
+      {"name": "assassinsCreedo", "params": [{"name": "hero", "type": "HeroType"}]},
       {"name": "assassinsCreedoNoHeroes"},
       {"name": "harbingersChoose", "params": [{"name": "slot", "type": "ArmySlot"}]},
       {"name": "harbingersAuto"},
@@ -426,21 +422,13 @@
       {"name": "ddSacrificeHero", "params": [{"name": "hero", "type": "HeroType"}]},
       {"name": "ddSacrificeDefender", "params": [{"name": "defType", "type": "DefenderType"}]},
       {"name": "ddCommitAdvance"},
-      // ── Melee attacks (per slot) ──
-      {"name": "meleeEast"}, {"name": "meleeWest"},
-      {"name": "meleeGate1"}, {"name": "meleeGate2"},
-      {"name": "meleeSky"}, {"name": "meleeTerror"},
-      // ── Ranged attacks (per slot, not terror) ──
-      {"name": "rangedEast"}, {"name": "rangedWest"},
-      {"name": "rangedGate1"}, {"name": "rangedGate2"},
-      {"name": "rangedSky"},
-      // ── Build upgrades ──
-      {"name": "buildGreaseEast"}, {"name": "buildGreaseWest"}, {"name": "buildGreaseGate"},
-      {"name": "buildOilEast"}, {"name": "buildOilWest"}, {"name": "buildOilGate"},
-      {"name": "buildAcidEast"}, {"name": "buildAcidWest"}, {"name": "buildAcidGate"},
-      {"name": "buildLavaEast"}, {"name": "buildLavaWest"}, {"name": "buildLavaGate"},
-      // ── Build barricades ──
-      {"name": "barricadeEast"}, {"name": "barricadeWest"}, {"name": "barricadeGate"},
+      // ── Combat ──
+      {"name": "melee", "params": [{"name": "slot", "type": "ArmySlot"}]},
+      {"name": "ranged", "params": [{"name": "slot", "type": "ArmySlot"}]},
+      // ── Build ──
+      {"name": "buildUpgrade", "params": [{"name": "upgrade", "type": "UpgradeType"},
+                                           {"name": "track", "type": "Track"}]},
+      {"name": "barricade", "params": [{"name": "track", "type": "Track"}]},
       // ── Magic actions ──
       {"name": "chant"}, {"name": "memorize"}, {"name": "pray"},
       // ── Spell casts ──
@@ -504,15 +492,8 @@
       {"name": "claimVictory"}, {"name": "declareLoss"}
     ],
     "groups": [
-      {"name": "Combat", "actions": ["meleeEast", "meleeWest", "meleeGate1", "meleeGate2",
-                                      "meleeSky", "meleeTerror",
-                                      "rangedEast", "rangedWest", "rangedGate1", "rangedGate2",
-                                      "rangedSky"]},
-      {"name": "Fortification", "actions": ["buildGreaseEast", "buildGreaseWest", "buildGreaseGate",
-                                             "buildOilEast", "buildOilWest", "buildOilGate",
-                                             "buildAcidEast", "buildAcidWest", "buildAcidGate",
-                                             "buildLavaEast", "buildLavaWest", "buildLavaGate",
-                                             "barricadeEast", "barricadeWest", "barricadeGate"]},
+      {"name": "Combat", "actions": ["melee", "ranged"]},
+      {"name": "Fortification", "actions": ["buildUpgrade", "barricade"]},
       {"name": "Magic", "actions": ["chant", "memorize", "pray",
                                      "castFireball", "castFireballHeroic",
                                      "castSlowNormal", "castSlowHeroic",
@@ -535,14 +516,8 @@
                                      "deathAndDespairEvent",
                                      "bumpAdvanceSky", "bumpAdvanceOther",
                                      "desertersLoseDefenders", "desertersLoseMorale",
-                                     "bloodyHandprintsWarrior", "bloodyHandprintsWizard",
-                                     "bloodyHandprintsRanger", "bloodyHandprintsRogue",
-                                     "bloodyHandprintsPaladin", "bloodyHandprintsCleric",
-                                     "bloodyHandprintsNoHeroes",
-                                     "assassinsCreedoWarrior", "assassinsCreedoWizard",
-                                     "assassinsCreedoRanger", "assassinsCreedoRogue",
-                                     "assassinsCreedoPaladin", "assassinsCreedoCleric",
-                                     "assassinsCreedoNoHeroes",
+                                     "bloodyHandprints", "bloodyHandprintsNoHeroes",
+                                     "assassinsCreedo", "assassinsCreedoNoHeroes",
                                      "harbingersChoose", "harbingersAuto",
                                      "skipEvent"]}
     ]
@@ -766,8 +741,7 @@
       {
         "page": "Event 1",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 1]}]},
+          {"when": {"isEventCard": [1]},
            "offer": ["catapultShrapnel"]}
         ],
         "reduce": {
@@ -791,8 +765,7 @@
       {
         "page": "Event 4",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 4]}]},
+          {"when": {"isEventCard": [4]},
            "offer": ["rocksOfAges"]}
         ],
         "reduce": {
@@ -816,8 +789,7 @@
       {
         "page": "Event 8",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 8]}]},
+          {"when": {"isEventCard": [8]},
            "offer": ["actsOfValor"]}
         ],
         "reduce": {
@@ -842,8 +814,7 @@
       {
         "page": "Event 9",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 9]}]},
+          {"when": {"isEventCard": [9]},
            "offer": ["distractedDefenders"]}
         ],
         "reduce": {
@@ -863,8 +834,7 @@
       {
         "page": "Event 14",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 14]}]},
+          {"when": {"isEventCard": [14]},
            "offer": ["brokenWalls"]}
         ],
         "reduce": {
@@ -879,8 +849,7 @@
       {
         "page": "Event 16",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 16]}]},
+          {"when": {"isEventCard": [16]},
            "offer": ["lamentationOfWomen"]}
         ],
         "reduce": {
@@ -901,8 +870,7 @@
       {
         "page": "Event 17",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 17]}]},
+          {"when": {"isEventCard": [17]},
            "offer": ["reignOfArrows"]}
         ],
         "reduce": {
@@ -926,8 +894,7 @@
       {
         "page": "Event 18",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 18]}]},
+          {"when": {"isEventCard": [18]},
            "offer": ["trappedByFlames"]}
         ],
         "reduce": {
@@ -951,8 +918,7 @@
       {
         "page": "Event 20",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 20]}]},
+          {"when": {"isEventCard": [20]},
            "offer": ["bannersInDistance"]}
         ],
         "reduce": {
@@ -971,8 +937,7 @@
       {
         "page": "Event 23",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 23]}]},
+          {"when": {"isEventCard": [23]},
            "offer": ["campfires"]}
         ],
         "reduce": {
@@ -997,8 +962,7 @@
       {
         "page": "Event 26",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 26]}]},
+          {"when": {"isEventCard": [26]},
            "offer": ["councilOfHeroes"]}
         ],
         "reduce": {
@@ -1039,8 +1003,7 @@
       {
         "page": "Event 31",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 31]}]},
+          {"when": {"isEventCard": [31]},
            "offer": ["paleMoonlight"]}
         ],
         "reduce": {
@@ -1058,8 +1021,7 @@
       {
         "page": "Event 34",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 34]}]},
+          {"when": {"isEventCard": [34]},
            "offer": ["waningMoon"]}
         ],
         "reduce": {
@@ -1080,8 +1042,7 @@
       {
         "page": "Event 35",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 35]}]},
+          {"when": {"isEventCard": [35]},
            "offer": ["mysticForcesReborn"]}
         ],
         "reduce": {
@@ -1105,8 +1066,7 @@
       {
         "page": "Event 29",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 29]}]},
+          {"when": {"isEventCard": [29]},
            "offer": ["deathAndDespairEvent"]}
         ],
         "reduce": {
@@ -1157,8 +1117,7 @@
       {
         "page": "Event 36",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 36]}]},
+          {"when": {"isEventCard": [36]},
            "offer": ["bumpAdvanceSky", "bumpAdvanceOther"]}
         ],
         "reduce": {
@@ -1181,11 +1140,9 @@
       {
         "page": "Event 33",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 33]}]},
+          {"when": {"isEventCard": [33]},
            "offer": ["desertersLoseDefenders"]},
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 33]},
+          {"when": {"and": [{"isEventCard": [33]},
                              {"!=": ["morale", ".low"]}]},
            "offer": ["desertersLoseMorale"]}
         ],
@@ -1210,99 +1167,26 @@
       {
         "page": "Event 24",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
-                             {"!=": [{"lookup": ["heroLocationDict", "warrior"]}, null]},
-                             {"not": [{"contains": ["heroDead", "warrior"]}]},
-                             {"or": [{"contains": ["heroWounded", "warrior"]},
-                                     {"not": [{"anyLivingWoundedHero": []}]}]}]},
-           "offer": ["bloodyHandprintsWarrior"]},
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
-                             {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
-                             {"not": [{"contains": ["heroDead", "wizard"]}]},
-                             {"or": [{"contains": ["heroWounded", "wizard"]},
-                                     {"not": [{"anyLivingWoundedHero": []}]}]}]},
-           "offer": ["bloodyHandprintsWizard"]},
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
-                             {"!=": [{"lookup": ["heroLocationDict", "ranger"]}, null]},
-                             {"not": [{"contains": ["heroDead", "ranger"]}]},
-                             {"or": [{"contains": ["heroWounded", "ranger"]},
-                                     {"not": [{"anyLivingWoundedHero": []}]}]}]},
-           "offer": ["bloodyHandprintsRanger"]},
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
-                             {"!=": [{"lookup": ["heroLocationDict", "rogue"]}, null]},
-                             {"not": [{"contains": ["heroDead", "rogue"]}]},
-                             {"or": [{"contains": ["heroWounded", "rogue"]},
-                                     {"not": [{"anyLivingWoundedHero": []}]}]}]},
-           "offer": ["bloodyHandprintsRogue"]},
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
-                             {"!=": [{"lookup": ["heroLocationDict", "paladin"]}, null]},
-                             {"not": [{"contains": ["heroDead", "paladin"]}]},
-                             {"or": [{"contains": ["heroWounded", "paladin"]},
-                                     {"not": [{"anyLivingWoundedHero": []}]}]}]},
-           "offer": ["bloodyHandprintsPaladin"]},
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
-                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
-                             {"not": [{"contains": ["heroDead", "cleric"]}]},
-                             {"or": [{"contains": ["heroWounded", "cleric"]},
-                                     {"not": [{"anyLivingWoundedHero": []}]}]}]},
-           "offer": ["bloodyHandprintsCleric"]},
-          // No living heroes fallback (hero not selected OR dead)
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 24]},
-                             {"or": [{"contains": ["heroDead", "warrior"]}, {"==": [{"lookup": ["heroLocationDict", "warrior"]}, null]}]},
-                             {"or": [{"contains": ["heroDead", "wizard"]}, {"==": [{"lookup": ["heroLocationDict", "wizard"]}, null]}]},
-                             {"or": [{"contains": ["heroDead", "ranger"]}, {"==": [{"lookup": ["heroLocationDict", "ranger"]}, null]}]},
-                             {"or": [{"contains": ["heroDead", "rogue"]}, {"==": [{"lookup": ["heroLocationDict", "rogue"]}, null]}]},
-                             {"or": [{"contains": ["heroDead", "paladin"]}, {"==": [{"lookup": ["heroLocationDict", "paladin"]}, null]}]},
-                             {"or": [{"contains": ["heroDead", "cleric"]}, {"==": [{"lookup": ["heroLocationDict", "cleric"]}, null]}]}]},
+          {"when": {"isEventCard": [24]},
+           "offer": ["bloodyHandprints"],
+           "paramFilter": {"and": [{"heroAlive": ["$hero"]},
+                                    {"or": [{"contains": ["heroWounded", "$hero"]},
+                                            {"not": [{"anyLivingWoundedHero": []}]}]}]}},
+          // No living heroes fallback
+          {"when": {"and": [{"isEventCard": [24]},
+                             {"not": [{"heroAlive": ["warrior"]}]},
+                             {"not": [{"heroAlive": ["wizard"]}]},
+                             {"not": [{"heroAlive": ["ranger"]}]},
+                             {"not": [{"heroAlive": ["rogue"]}]},
+                             {"not": [{"heroAlive": ["paladin"]}]},
+                             {"not": [{"heroAlive": ["cleric"]}]}]},
            "offer": ["bloodyHandprintsNoHeroes"]}
         ],
         "reduce": {
-          "bloodyHandprintsWarrior": {"let": ["roll", {"rollDie": [6]},
+          "bloodyHandprints": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
-              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["warrior"]}, {"woundHero": ["warrior"]}]},
-              {"log": [{"format": ["Event 24: rolled {}, hero warrior", "$roll"]}]},
-              {"setPhase": [".action"]}
-            ]}
-          ]},
-          "bloodyHandprintsWizard": {"let": ["roll", {"rollDie": [6]},
-            {"seq": [
-              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["wizard"]}, {"woundHero": ["wizard"]}]},
-              {"log": [{"format": ["Event 24: rolled {}, hero wizard", "$roll"]}]},
-              {"setPhase": [".action"]}
-            ]}
-          ]},
-          "bloodyHandprintsRanger": {"let": ["roll", {"rollDie": [6]},
-            {"seq": [
-              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["ranger"]}, {"woundHero": ["ranger"]}]},
-              {"log": [{"format": ["Event 24: rolled {}, hero ranger", "$roll"]}]},
-              {"setPhase": [".action"]}
-            ]}
-          ]},
-          "bloodyHandprintsRogue": {"let": ["roll", {"rollDie": [6]},
-            {"seq": [
-              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["rogue"]}, {"woundHero": ["rogue"]}]},
-              {"log": [{"format": ["Event 24: rolled {}, hero rogue", "$roll"]}]},
-              {"setPhase": [".action"]}
-            ]}
-          ]},
-          "bloodyHandprintsPaladin": {"let": ["roll", {"rollDie": [6]},
-            {"seq": [
-              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["paladin"]}, {"woundHero": ["paladin"]}]},
-              {"log": [{"format": ["Event 24: rolled {}, hero paladin", "$roll"]}]},
-              {"setPhase": [".action"]}
-            ]}
-          ]},
-          "bloodyHandprintsCleric": {"let": ["roll", {"rollDie": [6]},
-            {"seq": [
-              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["cleric"]}, {"woundHero": ["cleric"]}]},
-              {"log": [{"format": ["Event 24: rolled {}, hero cleric", "$roll"]}]},
+              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["$hero"]}, {"woundHero": ["$hero"]}]},
+              {"log": [{"format": ["Event 24: rolled {}, hero {}", "$roll", "$hero"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
@@ -1318,87 +1202,24 @@
       {
         "page": "Event 30",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
-                             {"!=": [{"lookup": ["heroLocationDict", "warrior"]}, null]},
-                             {"not": [{"contains": ["heroDead", "warrior"]}]}]},
-           "offer": ["assassinsCreedoWarrior"]},
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
-                             {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
-                             {"not": [{"contains": ["heroDead", "wizard"]}]}]},
-           "offer": ["assassinsCreedoWizard"]},
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
-                             {"!=": [{"lookup": ["heroLocationDict", "ranger"]}, null]},
-                             {"not": [{"contains": ["heroDead", "ranger"]}]}]},
-           "offer": ["assassinsCreedoRanger"]},
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
-                             {"!=": [{"lookup": ["heroLocationDict", "rogue"]}, null]},
-                             {"not": [{"contains": ["heroDead", "rogue"]}]}]},
-           "offer": ["assassinsCreedoRogue"]},
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
-                             {"!=": [{"lookup": ["heroLocationDict", "paladin"]}, null]},
-                             {"not": [{"contains": ["heroDead", "paladin"]}]}]},
-           "offer": ["assassinsCreedoPaladin"]},
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
-                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
-                             {"not": [{"contains": ["heroDead", "cleric"]}]}]},
-           "offer": ["assassinsCreedoCleric"]},
-          // No living heroes fallback (hero not selected OR dead)
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 30]},
-                             {"or": [{"contains": ["heroDead", "warrior"]}, {"==": [{"lookup": ["heroLocationDict", "warrior"]}, null]}]},
-                             {"or": [{"contains": ["heroDead", "wizard"]}, {"==": [{"lookup": ["heroLocationDict", "wizard"]}, null]}]},
-                             {"or": [{"contains": ["heroDead", "ranger"]}, {"==": [{"lookup": ["heroLocationDict", "ranger"]}, null]}]},
-                             {"or": [{"contains": ["heroDead", "rogue"]}, {"==": [{"lookup": ["heroLocationDict", "rogue"]}, null]}]},
-                             {"or": [{"contains": ["heroDead", "paladin"]}, {"==": [{"lookup": ["heroLocationDict", "paladin"]}, null]}]},
-                             {"or": [{"contains": ["heroDead", "cleric"]}, {"==": [{"lookup": ["heroLocationDict", "cleric"]}, null]}]}]},
+          {"when": {"isEventCard": [30]},
+           "offer": ["assassinsCreedo"],
+           "paramFilter": {"heroAlive": ["$hero"]}},
+          // No living heroes fallback
+          {"when": {"and": [{"isEventCard": [30]},
+                             {"not": [{"heroAlive": ["warrior"]}]},
+                             {"not": [{"heroAlive": ["wizard"]}]},
+                             {"not": [{"heroAlive": ["ranger"]}]},
+                             {"not": [{"heroAlive": ["rogue"]}]},
+                             {"not": [{"heroAlive": ["paladin"]}]},
+                             {"not": [{"heroAlive": ["cleric"]}]}]},
            "offer": ["assassinsCreedoNoHeroes"]}
         ],
         "reduce": {
-          "assassinsCreedoWarrior": {"let": ["roll", {"rollDie": [6]},
+          "assassinsCreedo": {"let": ["roll", {"rollDie": [6]},
             {"seq": [
-              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["warrior"]}, {"increment": ["eventAttackDRMBonus", 1]}]},
-              {"log": [{"format": ["Event 30: rolled {}, hero warrior", "$roll"]}]},
-              {"setPhase": [".action"]}
-            ]}
-          ]},
-          "assassinsCreedoWizard": {"let": ["roll", {"rollDie": [6]},
-            {"seq": [
-              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["wizard"]}, {"increment": ["eventAttackDRMBonus", 1]}]},
-              {"log": [{"format": ["Event 30: rolled {}, hero wizard", "$roll"]}]},
-              {"setPhase": [".action"]}
-            ]}
-          ]},
-          "assassinsCreedoRanger": {"let": ["roll", {"rollDie": [6]},
-            {"seq": [
-              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["ranger"]}, {"increment": ["eventAttackDRMBonus", 1]}]},
-              {"log": [{"format": ["Event 30: rolled {}, hero ranger", "$roll"]}]},
-              {"setPhase": [".action"]}
-            ]}
-          ]},
-          "assassinsCreedoRogue": {"let": ["roll", {"rollDie": [6]},
-            {"seq": [
-              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["rogue"]}, {"increment": ["eventAttackDRMBonus", 1]}]},
-              {"log": [{"format": ["Event 30: rolled {}, hero rogue", "$roll"]}]},
-              {"setPhase": [".action"]}
-            ]}
-          ]},
-          "assassinsCreedoPaladin": {"let": ["roll", {"rollDie": [6]},
-            {"seq": [
-              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["paladin"]}, {"increment": ["eventAttackDRMBonus", 1]}]},
-              {"log": [{"format": ["Event 30: rolled {}, hero paladin", "$roll"]}]},
-              {"setPhase": [".action"]}
-            ]}
-          ]},
-          "assassinsCreedoCleric": {"let": ["roll", {"rollDie": [6]},
-            {"seq": [
-              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["cleric"]}, {"increment": ["eventAttackDRMBonus", 1]}]},
-              {"log": [{"format": ["Event 30: rolled {}, hero cleric", "$roll"]}]},
+              {"if": [{"<=": ["$roll", 3]}, {"killHero": ["$hero"]}, {"increment": ["eventAttackDRMBonus", 1]}]},
+              {"log": [{"format": ["Event 30: rolled {}, hero {}", "$roll", "$hero"]}]},
               {"setPhase": [".action"]}
             ]}
           ]},
@@ -1421,13 +1242,11 @@
         "page": "Event 11",
         "rules": [
           // No tie: auto-advance the single farthest army
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 11]},
+          {"when": {"and": [{"isEventCard": [11]},
                              {"<=": [{"farthestArmyTieCount": []}, 1]}]},
            "offer": ["harbingersAuto"]},
           // Tie: offer player choice among tied slots
-          {"when": {"and": [{"==": ["phase", ".event"]},
-                             {"==": [{"get": ["currentCard", "eventNumber"]}, 11]},
+          {"when": {"and": [{"isEventCard": [11]},
                              {">": [{"farthestArmyTieCount": []}, 1]}]},
            "offer": ["harbingersChoose"],
            "paramFilter": {"isSlotAtFarthestPos": ["$slot"]}}
@@ -1450,152 +1269,23 @@
       {
         "page": "Combat",
         "rules": [
-          // Melee attacks — offered when action budget > 0, not in sub-resolution.
-          // Melee range: east/west/gate spaces 1-3, sky space 1 only, terror all spaces.
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
+          // Melee attacks — parameterized over ArmySlot
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
                              {"not": ["noMeleeThisTurn"]},
-                             {"<": ["meleeAttacksThisTurn", {"menAtArmsValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "east"]}, null]},
-                             {"<=": [{"lookup": ["armyPosition", "east"]}, 3]}]},
-           "offer": ["meleeEast"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"not": ["noMeleeThisTurn"]},
-                             {"<": ["meleeAttacksThisTurn", {"menAtArmsValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "west"]}, null]},
-                             {"<=": [{"lookup": ["armyPosition", "west"]}, 3]}]},
-           "offer": ["meleeWest"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"not": ["noMeleeThisTurn"]},
-                             {"<": ["meleeAttacksThisTurn", {"menAtArmsValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "gate1"]}, null]},
-                             {"<=": [{"lookup": ["armyPosition", "gate1"]}, 3]},
-                             {"or": [{"==": [{"lookup": ["armyPosition", "gate2"]}, null]},
-                                     {"<=": [{"lookup": ["armyPosition", "gate1"]},
-                                             {"lookup": ["armyPosition", "gate2"]}]}]}]},
-           "offer": ["meleeGate1"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"not": ["noMeleeThisTurn"]},
-                             {"<": ["meleeAttacksThisTurn", {"menAtArmsValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "gate2"]}, null]},
-                             {"<=": [{"lookup": ["armyPosition", "gate2"]}, 3]},
-                             {"or": [{"==": [{"lookup": ["armyPosition", "gate1"]}, null]},
-                                     {"<=": [{"lookup": ["armyPosition", "gate2"]},
-                                             {"lookup": ["armyPosition", "gate1"]}]}]}]},
-           "offer": ["meleeGate2"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"not": ["noMeleeThisTurn"]},
-                             {"<": ["meleeAttacksThisTurn", {"menAtArmsValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "sky"]}, null]},
-                             {"==": [{"lookup": ["armyPosition", "sky"]}, 1]}]},
-           "offer": ["meleeSky"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"not": ["noMeleeThisTurn"]},
-                             {"<": ["meleeAttacksThisTurn", {"menAtArmsValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "terror"]}, null]},
-                             {"<": [{"lookup": ["armyPosition", "terror"]}, 3]}]},
-           "offer": ["meleeTerror"]},
-          // Ranged attacks — each slot requires army present on board
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"<": ["rangedAttacksThisTurn", {"archersValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "east"]}, null]},
-                             {"<": [{"lookup": ["armyPosition", "east"]}, 6]}]},
-           "offer": ["rangedEast"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"<": ["rangedAttacksThisTurn", {"archersValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "west"]}, null]},
-                             {"<": [{"lookup": ["armyPosition", "west"]}, 6]}]},
-           "offer": ["rangedWest"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"<": ["rangedAttacksThisTurn", {"archersValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "gate1"]}, null]},
-                             {"<": [{"lookup": ["armyPosition", "gate1"]}, 4]},
-                             {"or": [{"==": [{"lookup": ["armyPosition", "gate2"]}, null]},
-                                     {"<=": [{"lookup": ["armyPosition", "gate1"]},
-                                             {"lookup": ["armyPosition", "gate2"]}]}]}]},
-           "offer": ["rangedGate1"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"<": ["rangedAttacksThisTurn", {"archersValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "gate2"]}, null]},
-                             {"<": [{"lookup": ["armyPosition", "gate2"]}, 4]},
-                             {"or": [{"==": [{"lookup": ["armyPosition", "gate1"]}, null]},
-                                     {"<=": [{"lookup": ["armyPosition", "gate2"]},
-                                             {"lookup": ["armyPosition", "gate1"]}]}]}]},
-           "offer": ["rangedGate2"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"<": ["rangedAttacksThisTurn", {"archersValue": []}]},
-                             {"!=": [{"lookup": ["armyPosition", "sky"]}, null]},
-                             {"<": [{"lookup": ["armyPosition", "sky"]}, 6]}]},
-           "offer": ["rangedSky"]}
+                             {"<": ["meleeAttacksThisTurn", {"menAtArmsValue": []}]}]},
+           "offer": ["melee"],
+           "paramFilter": {"inMeleeRange": ["$slot"]}},
+          // Ranged attacks — parameterized over ArmySlot, not terror
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
+                             {"<": ["rangedAttacksThisTurn", {"archersValue": []}]}]},
+           "offer": ["ranged"],
+           "paramFilter": {"and": [{"armyOnTrack": ["$slot"]},
+                                    {"!=": ["$slot", "terror"]},
+                                    {"gateTieBreak": ["$slot"]}]}}
         ],
         "reduce": {
-          // Melee attacks: roll die with paladin reroll check
-          "meleeEast": {"initiateMeleeAttack": ["east"]},
-          "meleeWest": {"initiateMeleeAttack": ["west"]},
-          "meleeGate1": {"initiateMeleeAttack": ["gate1"]},
-          "meleeGate2": {"initiateMeleeAttack": ["gate2"]},
-          "meleeSky": {"initiateMeleeAttack": ["sky"]},
-          "meleeTerror": {"initiateMeleeAttack": ["terror"]},
-          // Ranged attacks with paladin reroll check
-          "rangedEast": {"initiateRangedAttack": ["east"]},
-          "rangedWest": {"initiateRangedAttack": ["west"]},
-          "rangedGate1": {"initiateRangedAttack": ["gate1"]},
-          "rangedGate2": {"initiateRangedAttack": ["gate2"]},
-          "rangedSky": {"initiateRangedAttack": ["sky"]}
+          "melee": {"initiateMeleeAttack": ["$slot"]},
+          "ranged": {"initiateRangedAttack": ["$slot"]}
         }
       },
 
@@ -1603,83 +1293,34 @@
       {
         "page": "Fortification",
         "rules": [
-          // Upgrades: require army NOT at space 1, no existing upgrade, no breach
-          // Rule 6.3: "Upgrades cannot be built on a track if there is an army in the 1 space."
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"!=": [{"lookup": ["armyPosition", "east"]}, 1]},
-                             {"==": [{"lookup": ["upgradeDict", "east"]}, null]},
-                             {"not": [{"contains": ["breaches", ".east"]}]}]},
-           "offer": ["buildGreaseEast", "buildOilEast", "buildAcidEast", "buildLavaEast"]},
-          // West track
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"!=": [{"lookup": ["armyPosition", "west"]}, 1]},
-                             {"==": [{"lookup": ["upgradeDict", "west"]}, null]},
-                             {"not": [{"contains": ["breaches", ".west"]}]}]},
-           "offer": ["buildGreaseWest", "buildOilWest", "buildAcidWest", "buildLavaWest"]},
-          // Gate track: neither gate1 nor gate2 at space 1
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"!=": [{"lookup": ["armyPosition", "gate1"]}, 1]},
-                             {"!=": [{"lookup": ["armyPosition", "gate2"]}, 1]},
-                             {"==": [{"lookup": ["upgradeDict", "gate"]}, null]},
-                             {"not": [{"contains": ["breaches", ".gate"]}]}]},
-           "offer": ["buildGreaseGate", "buildOilGate", "buildAcidGate", "buildLavaGate"]},
-          // Barricades: require breach on that track
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"contains": ["breaches", ".east"]}]},
-           "offer": ["barricadeEast"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"contains": ["breaches", ".west"]}]},
-           "offer": ["barricadeWest"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"contains": ["breaches", ".gate"]}]},
-           "offer": ["barricadeGate"]}
+          // Upgrades: parameterized over UpgradeType × Track
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []}]},
+           "offer": ["buildUpgrade"],
+           "paramFilter": {"and": [
+             {"!=": ["$track", "sky"]},
+             {"!=": ["$track", "terror"]},
+             {"==": [{"lookup": ["upgradeDict", "$track"]}, null]},
+             {"not": [{"contains": ["breaches", "$track"]}]},
+             {"if": [{"==": ["$track", "gate"]},
+               {"and": [{"!=": [{"lookup": ["armyPosition", "gate1"]}, 1]},
+                        {"!=": [{"lookup": ["armyPosition", "gate2"]}, 1]}]},
+               {"let": ["pos", {"lookup": ["armyPosition", "$track"]},
+                 {"or": [{"==": ["$pos", null]}, {"!=": ["$pos", 1]}]}
+               ]}
+             ]}
+           ]}},
+          // Barricades: parameterized over Track
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []}]},
+           "offer": ["barricade"],
+           "paramFilter": {"and": [
+             {"!=": ["$track", "sky"]},
+             {"!=": ["$track", "terror"]},
+             {"contains": ["breaches", "$track"]}
+           ]}}
         ],
         "reduce": {
-          "buildGreaseEast": {"resolveBuildUpgrade": ["grease", "east"]},
-          "buildGreaseWest": {"resolveBuildUpgrade": ["grease", "west"]},
-          "buildGreaseGate": {"resolveBuildUpgrade": ["grease", "gate"]},
-          "buildOilEast": {"resolveBuildUpgrade": ["oil", "east"]},
-          "buildOilWest": {"resolveBuildUpgrade": ["oil", "west"]},
-          "buildOilGate": {"resolveBuildUpgrade": ["oil", "gate"]},
-          "buildAcidEast": {"resolveBuildUpgrade": ["acid", "east"]},
-          "buildAcidWest": {"resolveBuildUpgrade": ["acid", "west"]},
-          "buildAcidGate": {"resolveBuildUpgrade": ["acid", "gate"]},
-          "buildLavaEast": {"resolveBuildUpgrade": ["lava", "east"]},
-          "buildLavaWest": {"resolveBuildUpgrade": ["lava", "west"]},
-          "buildLavaGate": {"resolveBuildUpgrade": ["lava", "gate"]},
-          "barricadeEast": {"resolveBarricade": ["east"]},
-          "barricadeWest": {"resolveBarricade": ["west"]},
-          "barricadeGate": {"resolveBarricade": ["gate"]}
+          "buildUpgrade": {"resolveBuildUpgrade": ["$upgrade", "$track"]},
+          "barricade": {"resolveBarricade": ["$track"]}
         }
       },
 
@@ -1688,32 +1329,17 @@
         "page": "Magic",
         "rules": [
           // Rule 6.5: Chant always available during action phase
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []}]},
            "offer": ["chant"]},
           // Rule 6.6: Memorize only if a face-down arcane spell exists
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
                              {"or": [{"==": [{"lookup": ["spellStatusDict", "fireball"]}, ".faceDown"]},
                                      {"==": [{"lookup": ["spellStatusDict", "slow"]}, ".faceDown"]},
                                      {"==": [{"lookup": ["spellStatusDict", "chainLightning"]}, ".faceDown"]},
                                      {"==": [{"lookup": ["spellStatusDict", "fortune"]}, ".faceDown"]}]}]},
            "offer": ["memorize"]},
           // Rule 6.7: Pray only if a face-down divine spell exists
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
                              {"or": [{"==": [{"lookup": ["spellStatusDict", "cureWounds"]}, ".faceDown"]},
                                      {"==": [{"lookup": ["spellStatusDict", "massHeal"]}, ".faceDown"]},
                                      {"==": [{"lookup": ["spellStatusDict", "divineWrath"]}, ".faceDown"]},
@@ -1757,35 +1383,17 @@
       {
         "page": "Fireball",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "fireball"]}, ".known"]},
-                             {">=": ["arcaneEnergy", 1]},
-                             {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
+                             {"canCastSpell": ["fireball", "wizard", "arcaneEnergy", 1]}]},
            "offer": ["castFireball"],
            "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "wizard"]},
-                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
-                                    {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]}]}},
+                                    {"armyOnTrack": ["$slot"]}]}},
           // Heroic: reroll on miss, wizard must be alive
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"heroicBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "fireball"]}, ".known"]},
-                             {">=": ["arcaneEnergy", 1]},
-                             {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeHeroicAction": []},
+                             {"canCastSpell": ["fireball", "wizard", "arcaneEnergy", 1]}]},
            "offer": ["castFireballHeroic"],
            "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "wizard"]},
-                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
-                                    {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]}]}}
+                                    {"armyOnTrack": ["$slot"]}]}}
         ],
         "reduce": {
           "castFireball": {"seq": [
@@ -1793,13 +1401,9 @@
             {"setEntry": ["spellStatusDict", "fireball", ".cast"]},
             {"let": ["roll", {"rollDie": [6]},
               "strength", {"lookup": ["armyStrengthDict", "$slot"]},
-              "drm", {"+": [2, {"if": ["inspireDRMActive", 1, 0]}]},
+              "drm", {"spellAttackDRM": [2]},
               {"seq": [
-                {"if": [{"and": [{"!=": ["$roll", 1]},
-                                  {">": [{"+": ["$roll", "$drm"]}, "$strength"]}]},
-                  {"pushBackArmy": ["$slot"]},
-                  {"log": [{"format": ["Fireball missed {}", "$slot"]}]}
-                ]},
+                {"resolveAttackRoll": ["$roll", "$drm", "$strength", "$slot"]},
                 {"log": [{"format": ["Fireball on {}: rolled {} + {} vs {}", "$slot", "$roll", "$drm", "$strength"]}]}
               ]}
             ]},
@@ -1810,7 +1414,7 @@
             {"setEntry": ["spellStatusDict", "fireball", ".cast"]},
             {"let": ["roll", {"rollDie": [6]},
               "strength", {"lookup": ["armyStrengthDict", "$slot"]},
-              "drm", {"+": [2, {"if": ["inspireDRMActive", 1, 0]}]},
+              "drm", {"spellAttackDRM": [2]},
               {"seq": [
                 {"if": [{"and": [{"!=": ["$roll", 1]},
                                   {">": [{"+": ["$roll", "$drm"]}, "$strength"]}]},
@@ -1818,11 +1422,7 @@
                   // Miss — heroic reroll
                   {"let": ["reroll", {"rollDie": [6]},
                     {"seq": [
-                      {"if": [{"and": [{"!=": ["$reroll", 1]},
-                                        {">": [{"+": ["$reroll", "$drm"]}, "$strength"]}]},
-                        {"pushBackArmy": ["$slot"]},
-                        {"log": [{"format": ["Fireball heroic reroll also missed {}", "$slot"]}]}
-                      ]},
+                      {"resolveAttackRoll": ["$reroll", "$drm", "$strength", "$slot"]},
                       {"log": [{"format": ["Fireball heroic reroll on {}: rolled {}", "$slot", "$reroll"]}]}
                     ]}
                   ]}
@@ -1840,34 +1440,16 @@
       {
         "page": "Slow",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "slow"]}, ".known"]},
-                             {">=": ["arcaneEnergy", 2]},
-                             {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
+                             {"canCastSpell": ["slow", "wizard", "arcaneEnergy", 2]}]},
            "offer": ["castSlowNormal"],
            "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "wizard"]},
-                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
-                                    {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]}]}},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"heroicBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "slow"]}, ".known"]},
-                             {">=": ["arcaneEnergy", 2]},
-                             {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
+                                    {"armyOnTrack": ["$slot"]}]}},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeHeroicAction": []},
+                             {"canCastSpell": ["slow", "wizard", "arcaneEnergy", 2]}]},
            "offer": ["castSlowHeroic"],
            "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "wizard"]},
-                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
-                                    {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]}]}}
+                                    {"armyOnTrack": ["$slot"]}]}}
         ],
         "reduce": {
           "castSlowNormal": {"seq": [
@@ -1893,28 +1475,12 @@
       {
         "page": "Cure Wounds",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "cureWounds"]}, ".known"]},
-                             {">=": ["divineEnergy", 1]},
-                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".cleric"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
+                             {"canCastSpell": ["cureWounds", "cleric", "divineEnergy", 1]}]},
            "offer": ["castCureWoundsNormal"]},
           // Heroic: heal 2 heroes, costs heroic point, cleric must be alive
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"heroicBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "cureWounds"]}, ".known"]},
-                             {">=": ["divineEnergy", 1]},
-                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".cleric"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeHeroicAction": []},
+                             {"canCastSpell": ["cureWounds", "cleric", "divineEnergy", 1]}]},
            "offer": ["castCureWoundsHeroic"]}
         ],
         "reduce": {
@@ -1940,28 +1506,12 @@
       {
         "page": "Mass Heal",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "massHeal"]}, ".known"]},
-                             {">=": ["divineEnergy", 2]},
-                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".cleric"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
+                             {"canCastSpell": ["massHeal", "cleric", "divineEnergy", 2]}]},
            "offer": ["castMassHealNormal"]},
           // Heroic: gain 2 different defenders, cleric must be alive
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"heroicBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "massHeal"]}, ".known"]},
-                             {">=": ["divineEnergy", 2]},
-                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".cleric"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeHeroicAction": []},
+                             {"canCastSpell": ["massHeal", "cleric", "divineEnergy", 2]}]},
            "offer": ["castMassHealHeroic"]}
         ],
         "reduce": {
@@ -1988,29 +1538,13 @@
         "page": "Inspire",
         "rules": [
           // Normal: only offered if morale < high (morale raise is the only effect)
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "inspire"]}, ".known"]},
-                             {">=": ["divineEnergy", 3]},
-                             {"!=": ["morale", ".high"]},
-                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".cleric"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
+                             {"canCastSpell": ["inspire", "cleric", "divineEnergy", 3]},
+                             {"!=": ["morale", ".high"]}]},
            "offer": ["castInspireNormal"]},
           // Heroic: always available (DRM is valuable regardless of morale)
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"heroicBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "inspire"]}, ".known"]},
-                             {">=": ["divineEnergy", 3]},
-                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".cleric"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeHeroicAction": []},
+                             {"canCastSpell": ["inspire", "cleric", "divineEnergy", 3]}]},
            "offer": ["castInspireHeroic"]}
         ],
         "reduce": {
@@ -2036,39 +1570,20 @@
       {
         "page": "Divine Wrath",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "divineWrath"]}, ".known"]},
-                             {">=": ["divineEnergy", 3]},
-                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".cleric"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
+                             {"canCastSpell": ["divineWrath", "cleric", "divineEnergy", 3]}]},
            "offer": ["castDivineWrathNormal"],
            "paramFilter": {"and": [{"slotMatchesHeroLocation": ["$slot", "cleric"]},
-                                    {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
-                                    {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]}]}},
+                                    {"armyOnTrack": ["$slot"]}]}},
           // Heroic: two +1 attacks on (possibly different) slots, cleric must be alive
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"heroicBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "divineWrath"]}, ".known"]},
-                             {">=": ["divineEnergy", 3]},
-                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".cleric"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeHeroicAction": []},
+                             {"canCastSpell": ["divineWrath", "cleric", "divineEnergy", 3]}]},
            "offer": ["castDivineWrathHeroic"],
            "paramFilter": {"and": [{"!=": ["$slot1", "$slot2"]},
                                     {"slotMatchesHeroLocation": ["$slot1", "cleric"]},
                                     {"slotMatchesHeroLocation": ["$slot2", "cleric"]},
-                                    {"!=": [{"lookup": ["armyPosition", "$slot1"]}, null]},
-                                    {"<": [{"lookup": ["armyPosition", "$slot1"]}, {"slotMaxSpace": ["$slot1"]}]},
-                                    {"!=": [{"lookup": ["armyPosition", "$slot2"]}, null]},
-                                    {"<": [{"lookup": ["armyPosition", "$slot2"]}, {"slotMaxSpace": ["$slot2"]}]}]}}
+                                    {"armyOnTrack": ["$slot1"]},
+                                    {"armyOnTrack": ["$slot2"]}]}}
         ],
         "reduce": {
           "castDivineWrathNormal": {"seq": [
@@ -2076,13 +1591,9 @@
             {"setEntry": ["spellStatusDict", "divineWrath", ".cast"]},
             {"let": ["roll", {"rollDie": [6]},
               "strength", {"lookup": ["armyStrengthDict", "$slot"]},
-              "drm", {"+": [1, {"if": ["inspireDRMActive", 1, 0]}]},
+              "drm", {"spellAttackDRM": [1]},
               {"seq": [
-                {"if": [{"and": [{"!=": ["$roll", 1]},
-                                  {">": [{"+": ["$roll", "$drm"]}, "$strength"]}]},
-                  {"pushBackArmy": ["$slot"]},
-                  {"log": [{"format": ["Divine Wrath missed {}", "$slot"]}]}
-                ]},
+                {"resolveAttackRoll": ["$roll", "$drm", "$strength", "$slot"]},
                 {"log": [{"format": ["Divine Wrath on {}: rolled {} + {}", "$slot", "$roll", "$drm"]}]}
               ]}
             ]},
@@ -2094,26 +1605,18 @@
             // Attack slot1
             {"let": ["roll1", {"rollDie": [6]},
               "str1", {"lookup": ["armyStrengthDict", "$slot1"]},
-              "drm", {"+": [1, {"if": ["inspireDRMActive", 1, 0]}]},
+              "drm", {"spellAttackDRM": [1]},
               {"seq": [
-                {"if": [{"and": [{"!=": ["$roll1", 1]},
-                                  {">": [{"+": ["$roll1", "$drm"]}, "$str1"]}]},
-                  {"pushBackArmy": ["$slot1"]},
-                  {"log": [{"format": ["Divine Wrath heroic missed {}", "$slot1"]}]}
-                ]},
+                {"resolveAttackRoll": ["$roll1", "$drm", "$str1", "$slot1"]},
                 {"log": [{"format": ["Divine Wrath heroic on {}: rolled {} + {}", "$slot1", "$roll1", "$drm"]}]}
               ]}
             ]},
             // Attack slot2
             {"let": ["roll2", {"rollDie": [6]},
               "str2", {"lookup": ["armyStrengthDict", "$slot2"]},
-              "drm2", {"+": [1, {"if": ["inspireDRMActive", 1, 0]}]},
+              "drm2", {"spellAttackDRM": [1]},
               {"seq": [
-                {"if": [{"and": [{"!=": ["$roll2", 1]},
-                                  {">": [{"+": ["$roll2", "$drm2"]}, "$str2"]}]},
-                  {"pushBackArmy": ["$slot2"]},
-                  {"log": [{"format": ["Divine Wrath heroic missed {}", "$slot2"]}]}
-                ]},
+                {"resolveAttackRoll": ["$roll2", "$drm2", "$str2", "$slot2"]},
                 {"log": [{"format": ["Divine Wrath heroic on {}: rolled {} + {}", "$slot2", "$roll2", "$drm2"]}]}
               ]}
             ]},
@@ -2126,28 +1629,12 @@
       {
         "page": "Raise Dead",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "raiseDead"]}, ".known"]},
-                             {">=": ["divineEnergy", 4]},
-                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".cleric"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
+                             {"canCastSpell": ["raiseDead", "cleric", "divineEnergy", 4]}]},
            "offer": ["castRaiseDeadDefenders", "castRaiseDeadHero"]},
           // Heroic: gain defenders AND return hero, cleric must be alive
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"heroicBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "raiseDead"]}, ".known"]},
-                             {">=": ["divineEnergy", 4]},
-                             {"!=": [{"lookup": ["heroLocationDict", "cleric"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".cleric"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeHeroicAction": []},
+                             {"canCastSpell": ["raiseDead", "cleric", "divineEnergy", 4]}]},
            "offer": ["castRaiseDeadHeroicBoth"]}
         ],
         "reduce": {
@@ -2185,27 +1672,11 @@
       {
         "page": "Cast Chain Lightning",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "chainLightning"]}, ".known"]},
-                             {">=": ["arcaneEnergy", 3]},
-                             {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
+                             {"canCastSpell": ["chainLightning", "wizard", "arcaneEnergy", 3]}]},
            "offer": ["castChainLightningNormal"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"heroicBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "chainLightning"]}, ".known"]},
-                             {">=": ["arcaneEnergy", 3]},
-                             {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeHeroicAction": []},
+                             {"canCastSpell": ["chainLightning", "wizard", "arcaneEnergy", 3]}]},
            "offer": ["castChainLightningHeroic"]}
         ],
         "reduce": {
@@ -2247,13 +1718,9 @@
             "baseDRM", {"if": ["chainLightningHeroic",
               {"-": [3, "chainLightningBoltIndex"]},
               {"-": [2, "chainLightningBoltIndex"]}]},
-            "drm", {"+": ["$baseDRM", {"if": ["inspireDRMActive", 1, 0]}]},
+            "drm", {"spellAttackDRM": ["$baseDRM"]},
             {"seq": [
-              {"if": [{"and": [{"!=": ["$roll", 1]},
-                                {">": [{"+": ["$roll", "$drm"]}, "$strength"]}]},
-                {"pushBackArmy": ["$slot"]},
-                {"log": [{"format": ["Lightning bolt missed {}", "$slot"]}]}
-              ]},
+              {"resolveAttackRoll": ["$roll", "$drm", "$strength", "$slot"]},
               {"increment": ["chainLightningBoltIndex", 1]},
               {"log": [{"format": ["Lightning bolt {}: rolled {} + {} vs {}",
                 "chainLightningBoltIndex", "$roll", "$drm", "$strength"]}]},
@@ -2273,25 +1740,14 @@
       {
         "page": "Cast Fortune",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
+          // Normal Fortune doesn't require wizard — just spell known + energy
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
                              {"==": [{"lookup": ["spellStatusDict", "fortune"]}, ".known"]},
                              {">=": ["arcaneEnergy", 4]}]},
            "offer": ["castFortuneNormal"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"heroicBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"==": [{"lookup": ["spellStatusDict", "fortune"]}, ".known"]},
-                             {">=": ["arcaneEnergy", 4]},
-                             {"!=": [{"lookup": ["heroLocationDict", "wizard"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".wizard"]}]}]},
+          // Heroic Fortune requires wizard alive
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeHeroicAction": []},
+                             {"canCastSpell": ["fortune", "wizard", "arcaneEnergy", 4]}]},
            "offer": ["castFortuneHeroic"]}
         ],
         "reduce": {
@@ -2349,39 +1805,21 @@
       {
         "page": "Heroic",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"heroicBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeHeroicAction": []}]},
            "offer": ["moveHero"],
            "paramFilter": {"and": [
-             {"!=": [{"lookup": ["heroLocationDict", "$hero"]}, null]},
-             {"not": [{"contains": ["heroDead", "$hero"]}]},
+             {"heroAlive": ["$hero"]},
              {"!=": ["$location", {"lookup": ["heroLocationDict", "$hero"]}]}]}},
           // Heroic attack: hero must be on a track (not reserves/dead) with army present
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"heroicBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeHeroicAction": []}]},
            "offer": ["heroicAttack"],
            "paramFilter": {"and": [
-             {"!=": [{"lookup": ["heroLocationDict", "$hero"]}, null]},
-             {"not": [{"contains": ["heroDead", "$hero"]}]},
+             {"heroAlive": ["$hero"]},
              {"!=": [{"lookup": ["heroLocationDict", "$hero"]}, ".reserves"]},
-             {"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
-             {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]},
+             {"armyOnTrack": ["$slot"]},
              {"slotMatchesHeroLocation": ["$slot", "$hero"]}]}},
           // Rally: always available with heroic budget
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {">": [{"heroicBudgetRemaining": []}, 0]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeHeroicAction": []}]},
            "offer": ["rally"]}
         ],
         "reduce": {
@@ -2400,25 +1838,15 @@
         "page": "Quest",
         "rules": [
           // Rule 5.7: quest attempt once per turn — questAction requires action budget
-          {"when": {"and": [{"==": ["phase", ".action"]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
                              {"!=": [{"get": ["currentCard", "questNumber"]}, 0]},
-                             {"not": ["questAttemptedThisTurn"]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {">": [{"actionBudgetRemaining": []}, 0]}]},
+                             {"not": ["questAttemptedThisTurn"]}]},
            "offer": ["questAction"],
            "paramFilter": {"<=": ["$points", {"actionBudgetRemaining": []}]}},
           // questHeroic requires heroic budget
-          {"when": {"and": [{"==": ["phase", ".action"]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeHeroicAction": []},
                              {"!=": [{"get": ["currentCard", "questNumber"]}, 0]},
-                             {"not": ["questAttemptedThisTurn"]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {">": [{"heroicBudgetRemaining": []}, 0]}]},
+                             {"not": ["questAttemptedThisTurn"]}]},
            "offer": ["questHeroic"],
            "paramFilter": {"<=": ["$points", {"heroicBudgetRemaining": []}]}}
         ],
@@ -2565,12 +1993,8 @@
         "page": "Acid Attack",
         "rules": [
           // Rule 6.3.2: free melee attack against an army in the 1 space of a track with acid
-          {"when": {"and": [{"==": ["phase", ".action"]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"inActionPhase": []},
                              {"not": ["acidUsedThisTurn"]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
                              {"anyAcidEligible": []}]},
            "offer": ["acidMeleeAttack"],
            "paramFilter": {"and": [{"==": [{"lookup": ["upgradeDict", "$slot"]}, ".acid"]},
@@ -2581,11 +2005,7 @@
             {"let": ["roll", {"rollDie": [6]},
               "strength", {"lookup": ["armyStrengthDict", "$slot"]},
               {"seq": [
-                {"if": [{"and": [{"!=": ["$roll", 1]},
-                                  {">": ["$roll", "$strength"]}]},
-                  {"pushBackArmy": ["$slot"]},
-                  {"log": [{"format": ["Acid attack missed {}", "$slot"]}]}
-                ]},
+                {"resolveAttackRoll": ["$roll", 0, "$strength", "$slot"]},
                 {"log": [{"format": ["Acid free attack on {}: rolled {} vs {}",
                   "$slot", "$roll", "$strength"]}]}
               ]}
@@ -2599,19 +2019,10 @@
       {
         "page": "General",
         "rules": [
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]},
-                             {"!=": [{"lookup": ["heroLocationDict", "rogue"]}, null]},
-                             {"not": [{"contains": ["heroDead", ".rogue"]}]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"inActionPhase": []},
+                             {"heroAlive": ["rogue"]}]},
            "offer": ["rogueMove"]},
-          {"when": {"and": [{"==": ["phase", ".action"]},
-                             {"not": ["inChainLightning"]},
-                             {"not": ["inDeathAndDespair"]},
-                             {"not": ["inFortune"]},
-                             {"not": ["questRewardPending"]}]},
+          {"when": {"and": [{"==": ["phase", ".action"]}, {"inActionPhase": []}]},
            "offer": ["endPlayerTurn"]}
         ],
         "reduce": {
@@ -2814,6 +2225,144 @@
   // DEFINES
   // ═══════════════════════════════════════════════════════════════
   "defines": [
+    // ── Predicate defines ──────────────────────────────────────
+    {"name": "heroAlive",
+     "params": ["hero"],
+     "body": {"and": [{"!=": [{"lookup": ["heroLocationDict", "$hero"]}, null]},
+                       {"not": [{"contains": ["heroDead", "$hero"]}]}]}},
+
+    {"name": "isEventCard",
+     "params": ["eventNumber"],
+     "body": {"and": [{"==": ["phase", ".event"]},
+                       {"==": [{"get": ["currentCard", "eventNumber"]}, "$eventNumber"]}]}},
+
+    {"name": "inActionPhase",
+     "params": [],
+     "body": {"and": [{"==": ["phase", ".action"]},
+                       {"not": ["inChainLightning"]},
+                       {"not": ["inDeathAndDespair"]},
+                       {"not": ["inFortune"]},
+                       {"not": ["questRewardPending"]}]}},
+
+    {"name": "canTakeAction",
+     "params": [],
+     "body": {"and": [{"==": ["phase", ".action"]},
+                       {">": [{"actionBudgetRemaining": []}, 0]},
+                       {"not": ["inChainLightning"]},
+                       {"not": ["inDeathAndDespair"]},
+                       {"not": ["inFortune"]},
+                       {"not": ["questRewardPending"]}]}},
+
+    {"name": "canTakeHeroicAction",
+     "params": [],
+     "body": {"and": [{"==": ["phase", ".action"]},
+                       {">": [{"heroicBudgetRemaining": []}, 0]},
+                       {"not": ["inChainLightning"]},
+                       {"not": ["inDeathAndDespair"]},
+                       {"not": ["inFortune"]},
+                       {"not": ["questRewardPending"]}]}},
+
+    {"name": "armyOnTrack",
+     "params": ["slot"],
+     "body": {"and": [{"!=": [{"lookup": ["armyPosition", "$slot"]}, null]},
+                       {"<": [{"lookup": ["armyPosition", "$slot"]}, {"slotMaxSpace": ["$slot"]}]}]}},
+
+    {"name": "gateTieBreak",
+     "params": ["slot"],
+     "body": {"or": [
+       {"and": [{"!=": ["$slot", "gate1"]}, {"!=": ["$slot", "gate2"]}]},
+       {"and": [{"==": ["$slot", "gate1"]},
+                {"or": [{"==": [{"lookup": ["armyPosition", "gate2"]}, null]},
+                        {"<=": [{"lookup": ["armyPosition", "gate1"]},
+                                {"lookup": ["armyPosition", "gate2"]}]}]}]},
+       {"and": [{"==": ["$slot", "gate2"]},
+                {"or": [{"==": [{"lookup": ["armyPosition", "gate1"]}, null]},
+                        {"<=": [{"lookup": ["armyPosition", "gate2"]},
+                                {"lookup": ["armyPosition", "gate1"]}]}]}]}
+     ]}},
+
+    {"name": "inMeleeRange",
+     "params": ["slot"],
+     "body": {"and": [
+       {"armyOnTrack": ["$slot"]},
+       {"gateTieBreak": ["$slot"]},
+       {"or": [
+         {"and": [{"or": [{"==": ["$slot", "east"]}, {"==": ["$slot", "west"]},
+                           {"==": ["$slot", "gate1"]}, {"==": ["$slot", "gate2"]}]},
+                  {"<=": [{"lookup": ["armyPosition", "$slot"]}, 3]}]},
+         {"and": [{"==": ["$slot", "sky"]},
+                  {"==": [{"lookup": ["armyPosition", "$slot"]}, 1]}]},
+         {"and": [{"==": ["$slot", "terror"]},
+                  {"<": [{"lookup": ["armyPosition", "$slot"]}, 3]}]}
+       ]}
+     ]}},
+
+    {"name": "canCastSpell",
+     "params": ["spell", "caster", "energyType", "cost"],
+     "body": {"and": [{"==": [{"lookup": ["spellStatusDict", "$spell"]}, ".known"]},
+                       {">=": ["$energyType", "$cost"]},
+                       {"heroAlive": ["$caster"]}]}},
+
+    // ── DRM defines ──────────────────────────────────────────
+    {"name": "commonAttackDRM",
+     "params": ["slot"],
+     "body": {"+": [
+       "eventAttackDRMBonus",
+       {"+": [{"if": ["inspireDRMActive", 1, 0]},
+              {"if": [{"==": ["currentCard", null]}, 0,
+                {"if": [{"==": ["$slot", "terror"]}, 0,
+                  {"get": ["currentCard", "actionAttackDRM"]}]}]}]}
+     ]}},
+
+    {"name": "meleeDRM",
+     "params": ["slot"],
+     "body": {"+": [{"commonAttackDRM": ["$slot"]},
+       {"+": [{"if": [{"==": ["currentCard", null]}, 0, {"get": ["currentCard", "actionMeleeDRM"]}]},
+         {"+": [{"getTrackDRM": ["$slot"]},
+           {"+": [{"getUpgradeMeleeDRM": ["$slot"]},
+                  {"if": ["magicSwordActive", 1, 0]}]}]}]}]}},
+
+    {"name": "rangedDRM",
+     "params": ["slot"],
+     "body": {"+": [{"commonAttackDRM": ["$slot"]},
+       {"+": [{"if": [{"==": ["currentCard", null]}, 0, {"get": ["currentCard", "actionRangedDRM"]}]},
+         {"+": [{"getTrackDRM": ["$slot"]},
+           {"+": [{"getUpgradeRangedDRM": ["$slot"]},
+                  {"if": ["magicBowActive", 1, 0]}]}]}]}]}},
+
+    {"name": "heroicAttackDRM",
+     "params": ["hero"],
+     "body": {"+": [{"heroCombatDRM": ["$hero"]},
+       {"+": [{"if": [{"==": ["currentCard", null]}, 0,
+                 {"get": ["currentCard", "heroicAttackDRM"]}]},
+              {"if": ["inspireDRMActive", 1, 0]}]}]}},
+
+    {"name": "spellAttackDRM",
+     "params": ["baseDRM"],
+     "body": {"+": ["$baseDRM", {"if": ["inspireDRMActive", 1, 0]}]}},
+
+    // ── Shared reducer defines ─────────────────────────────────
+    {"name": "bloodyBattleCost",
+     "params": ["slot"],
+     "body": {"if": [{"and": [{"!=": ["bloodyBattleArmy", null]},
+                               {"==": [{"slotMatchesBloodyBattle": ["$slot"]}, true]},
+                               {"not": ["bloodyBattlePaidThisTurn"]}]},
+       {"seq": [
+         {"increment": ["defenderLossesPending", 1]},
+         {"set": ["bloodyBattlePaidThisTurn", true]},
+         {"log": [{"format": ["Bloody battle cost paid attacking {}", "$slot"]}]}
+       ]}
+     ]}},
+
+    {"name": "resolveAttackRoll",
+     "params": ["roll", "drm", "strength", "slot"],
+     "body": {"if": [{"and": [{"!=": ["$roll", 1]},
+                               {">": [{"+": ["$roll", "$drm"]}, "$strength"]}]},
+       {"pushBackArmy": ["$slot"]},
+       {"log": [{"format": ["Attack missed {}", "$slot"]}]}
+     ]}},
+
+    // ── Existing defines ───────────────────────────────────────
     // Whether time position draws from day deck (dawn/day spaces)
     {"name": "drawsFromDayDeck",
      "params": [],
@@ -3467,86 +3016,8 @@
      ]}},
 
     // Resolve melee attack on a given slot
-    {"name": "resolveMeleeAttack",
-     "params": ["slot"],
-     "body": {"let": ["roll", {"rollDie": [6]},
-       "strength", {"lookup": ["armyStrengthDict", "$slot"]},
-       // Rule: actionAttackDRM applies to all tracks except terror
-       "cardDRM", {"if": [{"==": ["currentCard", null]}, 0,
-         {"+": [{"if": [{"==": ["$slot", "terror"]}, 0,
-                   {"get": ["currentCard", "actionAttackDRM"]}]},
-                {"get": ["currentCard", "actionMeleeDRM"]}]}]},
-       "trackDRM", {"getTrackDRM": ["$slot"]},
-       "upgradeDRM", {"getUpgradeMeleeDRM": ["$slot"]},
-       "swordDRM", {"if": ["magicSwordActive", 1, 0]},
-       "drm", {"+": ["$cardDRM", {"+": ["$trackDRM", {"+": ["$upgradeDRM",
-                {"+": ["$swordDRM", {"+": ["eventAttackDRMBonus",
-                {"if": ["inspireDRMActive", 1, 0]}]}]}]}]}]},
-       {"seq": [
-         // Consume magic sword after use
-         {"if": ["magicSwordActive", {"set": ["magicSwordActive", false]}]},
-         // Bloody battle cost: first attack on BB army costs 1 defender (player chooses)
-         {"if": [{"and": [{"!=": ["bloodyBattleArmy", null]},
-                            {"==": [{"slotMatchesBloodyBattle": ["$slot"]}, true]},
-                            {"not": ["bloodyBattlePaidThisTurn"]}]},
-           {"seq": [
-             {"increment": ["defenderLossesPending", 1]},
-             {"set": ["bloodyBattlePaidThisTurn", true]},
-             {"log": [{"format": ["Bloody battle cost paid attacking {}", "$slot"]}]}
-           ]}
-         ]},
-         {"if": [{"and": [{"!=": ["$roll", 1]},
-                            {">": [{"+": ["$roll", "$drm"]}, "$strength"]}]},
-           {"pushBackArmy": ["$slot"]},
-           {"log": [{"format": ["Melee attack missed {}", "$slot"]}]}
-         ]},
-         {"increment": ["actionPointsSpent", 1]},
-         {"increment": ["meleeAttacksThisTurn", 1]},
-         {"log": [{"format": ["Melee on {}: rolled {} + {} vs {}",
-           "$slot", "$roll", "$drm", "$strength"]}]}
-       ]}
-     ]}},
-
-    // Resolve ranged attack on a given slot
-    {"name": "resolveRangedAttack",
-     "params": ["slot"],
-     "body": {"let": ["roll", {"rollDie": [6]},
-       "strength", {"lookup": ["armyStrengthDict", "$slot"]},
-       // Rule: actionAttackDRM applies to all tracks except terror
-       "cardDRM", {"if": [{"==": ["currentCard", null]}, 0,
-         {"+": [{"if": [{"==": ["$slot", "terror"]}, 0,
-                   {"get": ["currentCard", "actionAttackDRM"]}]},
-                {"get": ["currentCard", "actionRangedDRM"]}]}]},
-       "trackDRM", {"getTrackDRM": ["$slot"]},
-       "upgradeDRM", {"getUpgradeRangedDRM": ["$slot"]},
-       "bowDRM", {"if": ["magicBowActive", 1, 0]},
-       "drm", {"+": ["$cardDRM", {"+": ["$trackDRM", {"+": ["$upgradeDRM",
-                {"+": ["$bowDRM", {"+": ["eventAttackDRMBonus",
-                {"if": ["inspireDRMActive", 1, 0]}]}]}]}]}]},
-       {"seq": [
-         // Consume magic bow after use
-         {"if": ["magicBowActive", {"set": ["magicBowActive", false]}]},
-         // Bloody battle cost: first attack on BB army costs 1 defender (player chooses)
-         {"if": [{"and": [{"!=": ["bloodyBattleArmy", null]},
-                            {"==": [{"slotMatchesBloodyBattle": ["$slot"]}, true]},
-                            {"not": ["bloodyBattlePaidThisTurn"]}]},
-           {"seq": [
-             {"increment": ["defenderLossesPending", 1]},
-             {"set": ["bloodyBattlePaidThisTurn", true]},
-             {"log": [{"format": ["Bloody battle cost paid attacking {}", "$slot"]}]}
-           ]}
-         ]},
-         {"if": [{"and": [{"!=": ["$roll", 1]},
-                            {">": [{"+": ["$roll", "$drm"]}, "$strength"]}]},
-           {"pushBackArmy": ["$slot"]},
-           {"log": [{"format": ["Ranged attack missed {}", "$slot"]}]}
-         ]},
-         {"increment": ["actionPointsSpent", 1]},
-         {"increment": ["rangedAttacksThisTurn", 1]},
-         {"log": [{"format": ["Ranged on {}: rolled {} + {} vs {}",
-           "$slot", "$roll", "$drm", "$strength"]}]}
-       ]}
-     ]}},
+    // resolveMeleeAttack and resolveRangedAttack deleted — dead code.
+    // initiateMeleeAttack/initiateRangedAttack always go through stored-roll path.
 
     // Resolve build upgrade
     {"name": "resolveBuildUpgrade",
@@ -3840,7 +3311,7 @@
            {"log": [{"format": ["Paladin may reroll melee {} (rolled {})", "$slot", "lastDieRoll"]}]}
          ]},
          {"seq": [
-           {"resolveMeleeWithStoredRoll": ["$slot"]},
+           {"resolveMelee": ["$slot"]},
            {"set": ["pendingRoll", ".none"]},
            {"set": ["pendingSlot", null]}
          ]}
@@ -3848,36 +3319,15 @@
      ]}},
 
     // Resolve melee using lastDieRoll from state
-    {"name": "resolveMeleeWithStoredRoll",
+    {"name": "resolveMelee",
      "params": ["slot"],
      "body": {"let": ["roll", "lastDieRoll",
        "strength", {"lookup": ["armyStrengthDict", "$slot"]},
-       "cardDRM", {"if": [{"==": ["currentCard", null]}, 0,
-         {"+": [{"if": [{"==": ["$slot", "terror"]}, 0,
-                   {"get": ["currentCard", "actionAttackDRM"]}]},
-                {"get": ["currentCard", "actionMeleeDRM"]}]}]},
-       "trackDRM", {"getTrackDRM": ["$slot"]},
-       "upgradeDRM", {"getUpgradeMeleeDRM": ["$slot"]},
-       "swordDRM", {"if": ["magicSwordActive", 1, 0]},
-       "drm", {"+": ["$cardDRM", {"+": ["$trackDRM", {"+": ["$upgradeDRM",
-                {"+": ["$swordDRM", {"+": ["eventAttackDRMBonus",
-                {"if": ["inspireDRMActive", 1, 0]}]}]}]}]}]},
+       "drm", {"meleeDRM": ["$slot"]},
        {"seq": [
          {"if": ["magicSwordActive", {"set": ["magicSwordActive", false]}]},
-         {"if": [{"and": [{"!=": ["bloodyBattleArmy", null]},
-                            {"==": [{"slotMatchesBloodyBattle": ["$slot"]}, true]},
-                            {"not": ["bloodyBattlePaidThisTurn"]}]},
-           {"seq": [
-             {"increment": ["defenderLossesPending", 1]},
-             {"set": ["bloodyBattlePaidThisTurn", true]},
-             {"log": [{"format": ["Bloody battle cost paid attacking {}", "$slot"]}]}
-           ]}
-         ]},
-         {"if": [{"and": [{"!=": ["$roll", 1]},
-                            {">": [{"+": ["$roll", "$drm"]}, "$strength"]}]},
-           {"pushBackArmy": ["$slot"]},
-           {"log": [{"format": ["Melee attack missed {}", "$slot"]}]}
-         ]},
+         {"bloodyBattleCost": ["$slot"]},
+         {"resolveAttackRoll": ["$roll", "$drm", "$strength", "$slot"]},
          {"increment": ["actionPointsSpent", 1]},
          {"increment": ["meleeAttacksThisTurn", 1]},
          {"log": [{"format": ["Melee on {}: rolled {} + {} vs {}",
@@ -3898,7 +3348,7 @@
            {"log": [{"format": ["Paladin may reroll ranged {} (rolled {})", "$slot", "lastDieRoll"]}]}
          ]},
          {"seq": [
-           {"resolveRangedWithStoredRoll": ["$slot"]},
+           {"resolveRanged": ["$slot"]},
            {"set": ["pendingRoll", ".none"]},
            {"set": ["pendingSlot", null]}
          ]}
@@ -3906,36 +3356,15 @@
      ]}},
 
     // Resolve ranged using lastDieRoll from state
-    {"name": "resolveRangedWithStoredRoll",
+    {"name": "resolveRanged",
      "params": ["slot"],
      "body": {"let": ["roll", "lastDieRoll",
        "strength", {"lookup": ["armyStrengthDict", "$slot"]},
-       "cardDRM", {"if": [{"==": ["currentCard", null]}, 0,
-         {"+": [{"if": [{"==": ["$slot", "terror"]}, 0,
-                   {"get": ["currentCard", "actionAttackDRM"]}]},
-                {"get": ["currentCard", "actionRangedDRM"]}]}]},
-       "trackDRM", {"getTrackDRM": ["$slot"]},
-       "upgradeDRM", {"getUpgradeRangedDRM": ["$slot"]},
-       "bowDRM", {"if": ["magicBowActive", 1, 0]},
-       "drm", {"+": ["$cardDRM", {"+": ["$trackDRM", {"+": ["$upgradeDRM",
-                {"+": ["$bowDRM", {"+": ["eventAttackDRMBonus",
-                {"if": ["inspireDRMActive", 1, 0]}]}]}]}]}]},
+       "drm", {"rangedDRM": ["$slot"]},
        {"seq": [
          {"if": ["magicBowActive", {"set": ["magicBowActive", false]}]},
-         {"if": [{"and": [{"!=": ["bloodyBattleArmy", null]},
-                            {"==": [{"slotMatchesBloodyBattle": ["$slot"]}, true]},
-                            {"not": ["bloodyBattlePaidThisTurn"]}]},
-           {"seq": [
-             {"increment": ["defenderLossesPending", 1]},
-             {"set": ["bloodyBattlePaidThisTurn", true]},
-             {"log": [{"format": ["Bloody battle cost paid attacking {}", "$slot"]}]}
-           ]}
-         ]},
-         {"if": [{"and": [{"!=": ["$roll", 1]},
-                            {">": [{"+": ["$roll", "$drm"]}, "$strength"]}]},
-           {"pushBackArmy": ["$slot"]},
-           {"log": [{"format": ["Ranged attack missed {}", "$slot"]}]}
-         ]},
+         {"bloodyBattleCost": ["$slot"]},
+         {"resolveAttackRoll": ["$roll", "$drm", "$strength", "$slot"]},
          {"increment": ["actionPointsSpent", 1]},
          {"increment": ["rangedAttacksThisTurn", 1]},
          {"log": [{"format": ["Ranged on {}: rolled {} + {} vs {}",
@@ -3971,17 +3400,9 @@
      "params": ["hero", "slot"],
      "body": {"let": ["roll", "lastDieRoll",
        "strength", {"lookup": ["armyStrengthDict", "$slot"]},
-       "cardHeroicDRM", {"if": [{"==": ["currentCard", null]}, 0,
-         {"get": ["currentCard", "heroicAttackDRM"]}]},
-       "drm", {"+": [{"heroCombatDRM": ["$hero"]},
-                       {"+": ["$cardHeroicDRM",
-                         {"if": ["inspireDRMActive", 1, 0]}]}]},
+       "drm", {"heroicAttackDRM": ["$hero"]},
        {"seq": [
-         {"if": [{"and": [{"!=": ["$roll", 1]},
-                            {">": [{"+": ["$roll", "$drm"]}, "$strength"]}]},
-           {"pushBackArmy": ["$slot"]},
-           {"log": [{"format": ["Heroic attack by {} missed {}", "$hero", "$slot"]}]}
-         ]},
+         {"resolveAttackRoll": ["$roll", "$drm", "$strength", "$slot"]},
          {"if": [{"and": [{"==": ["$roll", 1]},
                             {"!=": ["$hero", "warrior"]},
                             {"!=": ["$hero", "ranger"]}]},
@@ -4034,13 +3455,13 @@
      "body": {"seq": [
        {"if": [{"==": ["pendingRoll", ".melee"]},
          {"seq": [
-           {"resolveMeleeWithStoredRoll": ["pendingSlot"]},
+           {"resolveMelee": ["pendingSlot"]},
            {"set": ["pendingSlot", null]}
          ]}
        ]},
        {"if": [{"==": ["pendingRoll", ".ranged"]},
          {"seq": [
-           {"resolveRangedWithStoredRoll": ["pendingSlot"]},
+           {"resolveRanged": ["pendingSlot"]},
            {"set": ["pendingSlot", null]}
          ]}
        ]},

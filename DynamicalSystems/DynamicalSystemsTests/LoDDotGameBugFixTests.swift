@@ -25,6 +25,33 @@ struct LoDDotGameBugFixTests {
     actions.first { $0.name == name }
   }
 
+  private static func findAction(
+    _ name: String, param: String, value: String,
+    in actions: [ActionValue]
+  ) -> ActionValue? {
+    actions.first {
+      $0.name == name &&
+      $0.parameters[param]?.displayString == value
+    }
+  }
+
+  private static func hasAction(
+    _ name: String, param: String, value: String,
+    in actions: [ActionValue]
+  ) -> Bool {
+    findAction(name, param: param, value: value, in: actions) != nil
+  }
+
+  private static func hasAction(
+    _ name: String, params: [String: String],
+    in actions: [ActionValue]
+  ) -> Bool {
+    actions.contains { action in
+      action.name == name &&
+      params.allSatisfy { action.parameters[$0.key]?.displayString == $0.value }
+    }
+  }
+
   /// Advance game from newState through initialize, draw, and army advance
   /// until we reach the action phase. Resets spent counters so budget is
   /// available for testing. Returns false if we can't get there in 50 steps.
@@ -254,7 +281,7 @@ struct LoDDotGameBugFixTests {
     state.removeFromSet("breaches", "east")
 
     let actions = game.allowedActions(state: state)
-    let buildEast = Self.findAction("buildGreaseEast", in: actions)
+    let buildEast = Self.findAction("buildUpgrade", param: "track", value: "east", in: actions)
     #expect(
       buildEast == nil,
       "Build should not be offered when army at space 1"
@@ -275,7 +302,7 @@ struct LoDDotGameBugFixTests {
     )
 
     let actions = game.allowedActions(state: state)
-    let buildEast = Self.findAction("buildGreaseEast", in: actions)
+    let buildEast = Self.findAction("buildUpgrade", param: "track", value: "east", in: actions)
     #expect(
       buildEast == nil,
       "Build should not be offered when track already has upgrade"
@@ -295,7 +322,7 @@ struct LoDDotGameBugFixTests {
     state.removeDictEntry("armyPosition", key: "sky")
 
     let actions = game.allowedActions(state: state)
-    let rangedSky = Self.findAction("rangedSky", in: actions)
+    let rangedSky = Self.findAction("ranged", param: "slot", value: "sky", in: actions)
     #expect(
       rangedSky == nil,
       "Ranged sky should not be offered when sky army absent"
@@ -317,7 +344,7 @@ struct LoDDotGameBugFixTests {
     state.removeFromSet("breaches", "gate")
 
     let actions = game.allowedActions(state: state)
-    let barricadeEast = Self.findAction("barricadeEast", in: actions)
+    let barricadeEast = Self.findAction("barricade", param: "track", value: "east", in: actions)
     #expect(
       barricadeEast == nil,
       "Barricade should not be offered without breach"
@@ -1133,20 +1160,19 @@ struct LoDDotGameBugFixTests {
     state.removeFromSet("heroDead", "wizard")
     state.removeFromSet("heroDead", "cleric")
     let actions = game.allowedActions(state: state)
-    let names = actions.map(\.name)
     // Selected heroes should be offered
-    #expect(names.contains("assassinsCreedoWarrior"),
+    #expect(Self.hasAction("assassinsCreedo", param: "hero", value: "warrior", in: actions),
       "Warrior (selected) should be offered")
-    #expect(names.contains("assassinsCreedoWizard"),
+    #expect(Self.hasAction("assassinsCreedo", param: "hero", value: "wizard", in: actions),
       "Wizard (selected) should be offered")
-    #expect(names.contains("assassinsCreedoCleric"),
+    #expect(Self.hasAction("assassinsCreedo", param: "hero", value: "cleric", in: actions),
       "Cleric (selected) should be offered")
     // Non-selected heroes should NOT be offered
-    #expect(!names.contains("assassinsCreedoRanger"),
+    #expect(!Self.hasAction("assassinsCreedo", param: "hero", value: "ranger", in: actions),
       "Ranger (not selected) should not be offered")
-    #expect(!names.contains("assassinsCreedoRogue"),
+    #expect(!Self.hasAction("assassinsCreedo", param: "hero", value: "rogue", in: actions),
       "Rogue (not selected) should not be offered")
-    #expect(!names.contains("assassinsCreedoPaladin"),
+    #expect(!Self.hasAction("assassinsCreedo", param: "hero", value: "paladin", in: actions),
       "Paladin (not selected) should not be offered")
   }
 
@@ -1169,18 +1195,17 @@ struct LoDDotGameBugFixTests {
     )
 
     let actions = game.allowedActions(state: state)
-    let names = actions.map(\.name)
 
     // gate1 is farther — should NOT be targetable
-    #expect(!names.contains("meleeGate1"),
-      "meleeGate1 should not be offered when gate2 is closer")
-    #expect(!names.contains("rangedGate1"),
-      "rangedGate1 should not be offered when gate2 is closer")
+    #expect(!Self.hasAction("melee", param: "slot", value: "gate1", in: actions),
+      "melee gate1 should not be offered when gate2 is closer")
+    #expect(!Self.hasAction("ranged", param: "slot", value: "gate1", in: actions),
+      "ranged gate1 should not be offered when gate2 is closer")
     // gate2 is closest — should be targetable
-    #expect(names.contains("meleeGate2"),
-      "meleeGate2 should be offered for closest army")
-    #expect(names.contains("rangedGate2"),
-      "rangedGate2 should be offered for closest army")
+    #expect(Self.hasAction("melee", param: "slot", value: "gate2", in: actions),
+      "melee gate2 should be offered for closest army")
+    #expect(Self.hasAction("ranged", param: "slot", value: "gate2", in: actions),
+      "ranged gate2 should be offered for closest army")
   }
 
   @Test func gateAttackBothTargetableWhenTied() throws {
@@ -1195,12 +1220,11 @@ struct LoDDotGameBugFixTests {
     state.setDictEntry("armyPosition", key: "gate2", value: .int(2))
 
     let actions = game.allowedActions(state: state)
-    let names = actions.map(\.name)
 
-    #expect(names.contains("meleeGate1"),
-      "meleeGate1 should be offered when tied")
-    #expect(names.contains("meleeGate2"),
-      "meleeGate2 should be offered when tied")
+    #expect(Self.hasAction("melee", param: "slot", value: "gate1", in: actions),
+      "melee gate1 should be offered when tied")
+    #expect(Self.hasAction("melee", param: "slot", value: "gate2", in: actions),
+      "melee gate2 should be offered when tied")
   }
 
   // MARK: - Bug B.3: Double sky advance causes two defender losses
@@ -1270,18 +1294,17 @@ struct LoDDotGameBugFixTests {
     state.setDictEntry("armyPosition", key: "terror", value: .nil)
 
     let actions = game.allowedActions(state: state)
-    let actionNames = Set(actions.map(\.name))
 
     // East at max: no melee or ranged
-    #expect(!actionNames.contains("meleeEast"),
-            "meleeEast should not be offered when army is at max position")
-    #expect(!actionNames.contains("rangedEast"),
-            "rangedEast should not be offered when army is at max position")
+    #expect(!Self.hasAction("melee", param: "slot", value: "east", in: actions),
+            "melee east should not be offered when army is at max position")
+    #expect(!Self.hasAction("ranged", param: "slot", value: "east", in: actions),
+            "ranged east should not be offered when army is at max position")
     // West at 3: melee and ranged should be offered
-    #expect(actionNames.contains("meleeWest"),
-            "meleeWest should be offered when army is within range")
-    #expect(actionNames.contains("rangedWest"),
-            "rangedWest should be offered when army is within range")
+    #expect(Self.hasAction("melee", param: "slot", value: "west", in: actions),
+            "melee west should be offered when army is within range")
+    #expect(Self.hasAction("ranged", param: "slot", value: "west", in: actions),
+            "ranged west should be offered when army is within range")
   }
 
   @Test func heroicAttackNotOfferedForArmyAtMaxPosition() throws {
