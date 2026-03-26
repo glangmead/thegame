@@ -340,6 +340,10 @@ extension JSONExpressionCompiler {
     _ args: [JSONValue],
     negate: Bool
   ) -> Expr {
+    // Try compile-time specialization for field-vs-constant patterns.
+    if let specialized = specializeFieldEqConst(args, negate: negate) {
+      return specialized
+    }
     let lhs = expr(args[0])
     let rhs = expr(args[1])
     return { env in
@@ -347,6 +351,160 @@ extension JSONExpressionCompiler {
         try lhs(env), try rhs(env), interner: env.interner
       )
       return .bool(negate ? !result : result)
+    }
+  }
+
+  // swiftlint:disable:next function_body_length cyclomatic_complexity
+  /// Detect "field == constant" at compile time and emit a fused closure.
+  /// Returns nil if the pattern doesn't match — caller falls back to generic.
+  private func specializeFieldEqConst(
+    _ args: [JSONValue], negate: Bool
+  ) -> Expr? {
+    // Classify each side as either a constant or a state read.
+    let (fieldArg, constArg) = classifyComparison(args[0], args[1])
+      ?? classifyComparison(args[1], args[0])
+      ?? (nil, nil)
+    guard let fieldArg, let constArg else { return nil }
+
+    // Resolve the constant side at compile time.
+    let constVal: DSLValue
+    switch constArg {
+    case .null:
+      constVal = .nil
+    case .bool(let boolVal):
+      constVal = .bool(boolVal)
+    case .int(let intVal):
+      constVal = .int(intVal)
+    case .string(let str):
+      if str.hasPrefix(".") {
+        constVal = .symbol(interner.intern(String(str.dropFirst())))
+      } else if components.isEnumCase(str) != nil {
+        constVal = .symbol(interner.intern(str))
+      } else {
+        constVal = .string(str)
+      }
+    default:
+      return nil
+    }
+
+    // Resolve the field side at compile time.
+    guard case .string(let fieldName) = fieldArg else { return nil }
+
+    // Framework fields: phase, ended, victory, gameAcknowledged
+    switch fieldName {
+    case "phase":
+      if case .symbol(let constFID) = constVal {
+        return { env in
+          let match: Bool
+          if let fid = env.state.phaseFID {
+            match = fid == constFID
+          } else {
+            match = env.interner.intern(env.state.phase) == constFID
+          }
+          return .bool(negate ? !match : match)
+        }
+      }
+      return nil
+    case "ended":
+      if case .bool(let constBool) = constVal {
+        return { env in .bool(negate ? (env.state.ended != constBool) : (env.state.ended == constBool)) }
+      }
+      return nil
+    case "victory":
+      if case .bool(let constBool) = constVal {
+        return { env in .bool(negate ? (env.state.victory != constBool) : (env.state.victory == constBool)) }
+      }
+      return nil
+    case "gameAcknowledged":
+      if case .bool(let constBool) = constVal {
+        return { env in
+          .bool(negate
+            ? (env.state.gameAcknowledged != constBool)
+            : (env.state.gameAcknowledged == constBool))
+        }
+      }
+      return nil
+    default:
+      break
+    }
+
+    // Schema fields
+    guard let def = schema.field(fieldName) else { return nil }
+    let fid = interner.intern(fieldName)
+
+    switch def.kind {
+    case .flag:
+      if case .bool(let constBool) = constVal {
+        return { env in
+          .bool(negate
+            ? (env.state.getFlag(fid) != constBool)
+            : (env.state.getFlag(fid) == constBool))
+        }
+      }
+      return nil
+    case .counter:
+      if case .int(let constInt) = constVal {
+        return { env in
+          .bool(negate
+            ? (env.state.getCounter(fid) != constInt)
+            : (env.state.getCounter(fid) == constInt))
+        }
+      }
+      return nil
+    case .field:
+      if case .symbol(let constFID) = constVal {
+        return { env in
+          let match = env.state.getField(fid).symbolID == constFID
+          return .bool(negate ? !match : match)
+        }
+      }
+      if constVal.isNil {
+        return { env in
+          let match = env.state.getField(fid).isNil
+          return .bool(negate ? !match : match)
+        }
+      }
+      return nil
+    case .optional:
+      if constVal.isNil {
+        return { env in
+          let match = env.state.getOptional(fid).isNil
+          return .bool(negate ? !match : match)
+        }
+      }
+      if case .symbol(let constFID) = constVal {
+        return { env in
+          let match = env.state.getOptional(fid).symbolID == constFID
+          return .bool(negate ? !match : match)
+        }
+      }
+      return nil
+    default:
+      return nil
+    }
+  }
+
+  /// Classify args as (fieldRead, constant) if one is a state field and the
+  /// other is a compile-time constant. Returns nil if pattern doesn't match.
+  private func classifyComparison(
+    _ maybeField: JSONValue, _ maybeConst: JSONValue
+  ) -> (JSONValue, JSONValue)? {
+    // The field side must be a string that resolves to a state field.
+    guard case .string(let name) = maybeField,
+          !name.hasPrefix("$"), !name.hasPrefix("."),
+          (schema.field(name) != nil
+            || name == "phase" || name == "ended"
+            || name == "victory" || name == "gameAcknowledged")
+    else { return nil }
+
+    // The constant side must be a literal.
+    switch maybeConst {
+    case .null, .bool, .int: return (maybeField, maybeConst)
+    case .string(let str):
+      if str.hasPrefix("$") { return nil } // binding — runtime
+      if schema.field(str) != nil { return nil } // another field — runtime
+      return (maybeField, maybeConst)
+    default: return nil
     }
   }
 

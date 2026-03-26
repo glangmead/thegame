@@ -9,13 +9,15 @@ struct InterpretedState: @unchecked Sendable {
   // Copying InterpretedState retains one pointer instead of 11 dictionaries.
   // Mutation triggers copy-on-write via ensureUnique().
   final class Storage {
-    var counters: [FieldID: Int]
-    var flags: [FieldID: Bool]
-    var fields: [FieldID: DSLValue]
-    var dicts: [FieldID: [FieldID: DSLValue]]
-    var sets: [FieldID: Set<FieldID>]
-    var decks: [FieldID: [DSLValue]]
-    var optionals: [FieldID: DSLValue?]
+    // Flat arrays indexed by FieldID.rawValue — O(1) with zero hashing.
+    var counterArr: [Int]
+    var flagArr: [Bool]
+    var fieldArr: [DSLValue]
+    var dictArr: [[FieldID: DSLValue]]
+    var setArr: [Set<FieldID>]
+    var deckArr: [[DSLValue]]
+    var optionalArr: [DSLValue?]
+    // Runtime-keyed (piece names are dynamic).
     var positions: [FieldID: DSLValue]
     var pieceTypes: [FieldID: FieldID]
     var history: [ActionValue]
@@ -25,14 +27,14 @@ struct InterpretedState: @unchecked Sendable {
     var victory: Bool
     var gameAcknowledged: Bool
 
-    init() {
-      counters = [:]
-      flags = [:]
-      fields = [:]
-      dicts = [:]
-      sets = [:]
-      decks = [:]
-      optionals = [:]
+    init(size: Int) {
+      counterArr = [Int](repeating: 0, count: size)
+      flagArr = [Bool](repeating: false, count: size)
+      fieldArr = [DSLValue](repeating: .nil, count: size)
+      dictArr = [[FieldID: DSLValue]](repeating: [:], count: size)
+      setArr = [Set<FieldID>](repeating: [], count: size)
+      deckArr = [[DSLValue]](repeating: [], count: size)
+      optionalArr = [DSLValue?](repeating: .some(.nil), count: size)
       positions = [:]
       pieceTypes = [:]
       history = []
@@ -43,14 +45,14 @@ struct InterpretedState: @unchecked Sendable {
     }
 
     func copy() -> Storage {
-      let new = Storage()
-      new.counters = counters
-      new.flags = flags
-      new.fields = fields
-      new.dicts = dicts
-      new.sets = sets
-      new.decks = decks
-      new.optionals = optionals
+      let new = Storage(size: 0)
+      new.counterArr = counterArr
+      new.flagArr = flagArr
+      new.fieldArr = fieldArr
+      new.dictArr = dictArr
+      new.setArr = setArr
+      new.deckArr = deckArr
+      new.optionalArr = optionalArr
       new.positions = positions
       new.pieceTypes = pieceTypes
       new.history = history
@@ -145,60 +147,56 @@ struct InterpretedState: @unchecked Sendable {
   init(schema: StateSchema, interner: StringInterner) {
     self.schema = schema
     self.interner = interner
-    self._storage = Storage()
+    self._storage = Storage(size: interner.count)
     for (name, field) in schema.fields {
-      let fid = interner.intern(name)
+      let idx = interner.intern(name).rawValue
       switch field.kind {
       case .counter(let min, _):
-        _storage.counters[fid] = min
+        _storage.counterArr[idx] = min
       case .flag:
-        // Framework flags have dedicated storage; skip to avoid stale duplicates.
-        if name != "ended" && name != "victory" && name != "gameAcknowledged" {
-          _storage.flags[fid] = false
-        }
+        break // defaults to false; framework flags use dedicated properties
       case .field:
-        _storage.fields[fid] = .nil
+        break // defaults to .nil
       case .dict:
-        _storage.dicts[fid] = [:]
+        break // defaults to [:]
       case .set:
-        _storage.sets[fid] = []
+        break // defaults to []
       case .deck:
-        _storage.decks[fid] = []
+        break // defaults to []
       case .optional:
-        _storage.optionals[fid] = .some(.nil)
+        break // defaults to .some(.nil)
       }
     }
   }
 
-  // MARK: - FieldID hot-path getters
+  // MARK: - FieldID hot-path getters (array-indexed, zero hashing)
 
   func getCounter(_ fid: FieldID) -> Int {
-    _storage.counters[fid] ?? 0
+    _storage.counterArr[fid.rawValue]
   }
 
   func getFlag(_ fid: FieldID) -> Bool {
-    _storage.flags[fid] ?? false
+    _storage.flagArr[fid.rawValue]
   }
 
   func getField(_ fid: FieldID) -> DSLValue {
-    _storage.fields[fid] ?? .nil
+    _storage.fieldArr[fid.rawValue]
   }
 
   func getDict(_ fid: FieldID) -> [FieldID: DSLValue] {
-    _storage.dicts[fid] ?? [:]
+    _storage.dictArr[fid.rawValue]
   }
 
   func getSet(_ fid: FieldID) -> Set<FieldID> {
-    _storage.sets[fid] ?? []
+    _storage.setArr[fid.rawValue]
   }
 
   func getDeck(_ fid: FieldID) -> [DSLValue] {
-    _storage.decks[fid] ?? []
+    _storage.deckArr[fid.rawValue]
   }
 
   func getOptional(_ fid: FieldID) -> DSLValue {
-    if let value = _storage.optionals[fid] { return value ?? .nil }
-    return .nil
+    _storage.optionalArr[fid.rawValue] ?? .nil
   }
 
   func getPosition(_ fid: FieldID) -> DSLValue {
@@ -207,22 +205,20 @@ struct InterpretedState: @unchecked Sendable {
 
   // MARK: - Direct access helpers
 
-  /// O(1) lookup into a nested dict without copying the intermediate dictionary.
   func lookupInDict(_ dictFID: FieldID, key: FieldID) -> DSLValue {
-    _storage.dicts[dictFID]?[key] ?? .nil
+    _storage.dictArr[dictFID.rawValue][key] ?? .nil
   }
 
-  /// O(1) membership test without copying the set.
   func containsInSet(_ setFID: FieldID, _ element: FieldID) -> Bool {
-    _storage.sets[setFID]?.contains(element) ?? false
+    _storage.setArr[setFID.rawValue].contains(element)
   }
 
   func deckCount(_ fid: FieldID) -> Int {
-    _storage.decks[fid]?.count ?? 0
+    _storage.deckArr[fid.rawValue].count
   }
 
   func isDeckEmpty(_ fid: FieldID) -> Bool {
-    _storage.decks[fid]?.isEmpty ?? true
+    _storage.deckArr[fid.rawValue].isEmpty
   }
 
   var positionsByFieldID: [FieldID: DSLValue] { _storage.positions }
@@ -231,75 +227,70 @@ struct InterpretedState: @unchecked Sendable {
 
   mutating func setCounter(_ fid: FieldID, _ value: Int, min: Int, max: Int) {
     ensureUnique()
-    _storage.counters[fid] = Swift.min(Swift.max(value, min), max)
+    _storage.counterArr[fid.rawValue] = Swift.min(Swift.max(value, min), max)
   }
 
   mutating func setFlag(_ fid: FieldID, _ value: Bool) {
     ensureUnique()
-    _storage.flags[fid] = value
+    _storage.flagArr[fid.rawValue] = value
   }
 
   mutating func setField(_ fid: FieldID, _ value: DSLValue) {
     ensureUnique()
-    _storage.fields[fid] = value
+    _storage.fieldArr[fid.rawValue] = value
   }
 
   mutating func setDictEntry(_ dictFID: FieldID, key: FieldID, value: DSLValue) {
     ensureUnique()
-    _storage.dicts[dictFID, default: [:]][key] = value
+    _storage.dictArr[dictFID.rawValue][key] = value
   }
 
   mutating func removeDictEntry(_ dictFID: FieldID, key: FieldID) {
     ensureUnique()
-    _storage.dicts[dictFID]?.removeValue(forKey: key)
+    _storage.dictArr[dictFID.rawValue].removeValue(forKey: key)
   }
 
   mutating func insertIntoSet(_ fid: FieldID, _ element: FieldID) {
     ensureUnique()
-    _storage.sets[fid, default: []].insert(element)
+    _storage.setArr[fid.rawValue].insert(element)
   }
 
   mutating func removeFromSet(_ fid: FieldID, _ element: FieldID) {
     ensureUnique()
-    _storage.sets[fid]?.remove(element)
+    _storage.setArr[fid.rawValue].remove(element)
   }
 
   mutating func setOptional(_ fid: FieldID, _ value: DSLValue?) {
     ensureUnique()
-    _storage.optionals[fid] = value
+    _storage.optionalArr[fid.rawValue] = value
   }
 
   mutating func drawFromDeck(_ fid: FieldID) -> DSLValue? {
-    guard var deck = _storage.decks[fid], !deck.isEmpty else { return nil }
-    let card = deck.removeFirst()
+    guard !_storage.deckArr[fid.rawValue].isEmpty else { return nil }
     ensureUnique()
-    _storage.decks[fid] = deck
-    return card
+    return _storage.deckArr[fid.rawValue].removeFirst()
   }
 
   mutating func shuffleDeck(_ fid: FieldID) {
-    if var deck = _storage.decks[fid] {
-      GameRNG.shuffle(&deck)
-      ensureUnique()
-      _storage.decks[fid] = deck
-    }
+    ensureUnique()
+    GameRNG.shuffle(&_storage.deckArr[fid.rawValue])
   }
 
   mutating func appendToDeck(_ fid: FieldID, _ card: DSLValue) {
     ensureUnique()
-    _storage.decks[fid, default: []].append(card)
+    _storage.deckArr[fid.rawValue].append(card)
   }
 
   mutating func removeDeckItem(_ fid: FieldID, at index: Int) {
-    guard var deck = _storage.decks[fid], index >= 0, index < deck.count else { return }
-    deck.remove(at: index)
+    let idx = fid.rawValue
+    guard index >= 0, index < _storage.deckArr[idx].count else { return }
     ensureUnique()
-    _storage.decks[fid] = deck
+    _storage.deckArr[idx].remove(at: index)
   }
 
   mutating func clearDeck(_ fid: FieldID) {
     ensureUnique()
-    _storage.decks[fid] = []
+    _storage.deckArr[fid.rawValue] = []
   }
 
   // MARK: - Positions (FieldID)
@@ -333,10 +324,9 @@ struct InterpretedState: @unchecked Sendable {
   }
 
   func getDict(_ name: String) -> [String: DSLValue] {
-    let fid = interner.intern(name)
-    let dict = _storage.dicts[fid] ?? [:]
+    let idx = interner.intern(name).rawValue
     var result: [String: DSLValue] = [:]
-    for (key, value) in dict {
+    for (key, value) in _storage.dictArr[idx] {
       result[interner.resolve(key)] = value
     }
     return result
@@ -347,9 +337,8 @@ struct InterpretedState: @unchecked Sendable {
   }
 
   func getSet(_ name: String) -> Set<String> {
-    let fid = interner.intern(name)
-    let set = _storage.sets[fid] ?? []
-    return Set(set.map { interner.resolve($0) })
+    let idx = interner.intern(name).rawValue
+    return Set(_storage.setArr[idx].map { interner.resolve($0) })
   }
 
   func containsInSet(_ setName: String, _ element: String) -> Bool {
@@ -382,12 +371,16 @@ struct InterpretedState: @unchecked Sendable {
   func get(_ name: String) -> DSLValue {
     if let fwk = getFrameworkFlag(name) { return .bool(fwk) }
     if let fwk = getFrameworkField(name) { return fwk }
-    let fid = interner.intern(name)
-    if let value = _storage.counters[fid] { return .int(value) }
-    if let value = _storage.flags[fid] { return .bool(value) }
-    if let value = _storage.fields[fid] { return value }
-    if let value = _storage.optionals[fid] { return value ?? .nil }
-    return .nil
+    // Fall back to schema lookup for type dispatch.
+    guard let def = schema.field(name) else { return .nil }
+    let idx = interner.intern(name).rawValue
+    switch def.kind {
+    case .counter: return .int(_storage.counterArr[idx])
+    case .flag: return .bool(_storage.flagArr[idx])
+    case .field: return _storage.fieldArr[idx]
+    case .optional: return _storage.optionalArr[idx] ?? .nil
+    default: return .nil
+    }
   }
 
   // MARK: - String-keyed cold-path setters
@@ -400,13 +393,13 @@ struct InterpretedState: @unchecked Sendable {
 
   mutating func incrementCounter(_ name: String, by amount: Int) {
     let fid = interner.intern(name)
-    let current = _storage.counters[fid] ?? 0
+    let current = _storage.counterArr[fid.rawValue]
     setCounter(name, current + amount)
   }
 
   mutating func decrementCounter(_ name: String, by amount: Int) {
     let fid = interner.intern(name)
-    let current = _storage.counters[fid] ?? 0
+    let current = _storage.counterArr[fid.rawValue]
     setCounter(name, current - amount)
   }
 
@@ -472,18 +465,17 @@ struct InterpretedState: @unchecked Sendable {
 
   var counters: [String: Int] {
     var result: [String: Int] = [:]
-    for (fid, value) in _storage.counters {
-      result[interner.resolve(fid)] = value
+    for (name, def) in schema.fields where def.kind.isCounter {
+      result[name] = _storage.counterArr[interner.intern(name).rawValue]
     }
     return result
   }
 
   var flags: [String: Bool] {
     var result: [String: Bool] = [:]
-    for (fid, value) in _storage.flags {
-      result[interner.resolve(fid)] = value
+    for (name, def) in schema.fields where def.kind.isFlag {
+      result[name] = _storage.flagArr[interner.intern(name).rawValue]
     }
-    // Framework flags have dedicated storage; override stale dict entries.
     result["ended"] = ended
     result["victory"] = victory
     result["gameAcknowledged"] = gameAcknowledged
@@ -492,44 +484,44 @@ struct InterpretedState: @unchecked Sendable {
 
   var fields: [String: DSLValue] {
     var result: [String: DSLValue] = [:]
-    for (fid, value) in _storage.fields {
-      result[interner.resolve(fid)] = value
+    for (name, def) in schema.fields where def.kind.isField {
+      result[name] = _storage.fieldArr[interner.intern(name).rawValue]
     }
     return result
   }
 
   var dicts: [String: [String: DSLValue]] {
     var result: [String: [String: DSLValue]] = [:]
-    for (fid, dict) in _storage.dicts {
-      var inner: [String: DSLValue] = [:]
-      for (key, value) in dict {
-        inner[interner.resolve(key)] = value
-      }
-      result[interner.resolve(fid)] = inner
+    for (name, def) in schema.fields where def.kind.isDict {
+      let inner = _storage.dictArr[interner.intern(name).rawValue]
+      var converted: [String: DSLValue] = [:]
+      for (key, value) in inner { converted[interner.resolve(key)] = value }
+      result[name] = converted
     }
     return result
   }
 
   var sets: [String: Set<String>] {
     var result: [String: Set<String>] = [:]
-    for (fid, set) in _storage.sets {
-      result[interner.resolve(fid)] = Set(set.map { interner.resolve($0) })
+    for (name, def) in schema.fields where def.kind.isSet {
+      let inner = _storage.setArr[interner.intern(name).rawValue]
+      result[name] = Set(inner.map { interner.resolve($0) })
     }
     return result
   }
 
   var decks: [String: [DSLValue]] {
     var result: [String: [DSLValue]] = [:]
-    for (fid, deck) in _storage.decks {
-      result[interner.resolve(fid)] = deck
+    for (name, def) in schema.fields where def.kind.isDeck {
+      result[name] = _storage.deckArr[interner.intern(name).rawValue]
     }
     return result
   }
 
   var optionals: [String: DSLValue?] {
     var result: [String: DSLValue?] = [:]
-    for (fid, value) in _storage.optionals {
-      result[interner.resolve(fid)] = value
+    for (name, def) in schema.fields where def.kind.isOptional {
+      result[name] = _storage.optionalArr[interner.intern(name).rawValue]
     }
     return result
   }
@@ -563,13 +555,13 @@ extension InterpretedState: HistoryTracking {
 extension InterpretedState: Equatable {
   static func == (lhs: InterpretedState, rhs: InterpretedState) -> Bool {
     if lhs._storage === rhs._storage { return true }
-    return lhs._storage.counters == rhs._storage.counters &&
-    lhs._storage.flags == rhs._storage.flags &&
-    lhs._storage.fields == rhs._storage.fields &&
-    lhs._storage.dicts == rhs._storage.dicts &&
-    lhs._storage.sets == rhs._storage.sets &&
-    lhs._storage.decks == rhs._storage.decks &&
-    lhs._storage.optionals == rhs._storage.optionals &&
+    return lhs._storage.counterArr == rhs._storage.counterArr &&
+    lhs._storage.flagArr == rhs._storage.flagArr &&
+    lhs._storage.fieldArr == rhs._storage.fieldArr &&
+    lhs._storage.dictArr == rhs._storage.dictArr &&
+    lhs._storage.setArr == rhs._storage.setArr &&
+    lhs._storage.deckArr == rhs._storage.deckArr &&
+    lhs._storage.optionalArr == rhs._storage.optionalArr &&
     lhs._storage.history == rhs._storage.history &&
     lhs._storage.phase == rhs._storage.phase &&
     lhs._storage.ended == rhs._storage.ended &&
@@ -626,7 +618,8 @@ extension InterpretedState: GameState {
 
   func redeterminize() -> InterpretedState {
     var new = self
-    for fid in new._storage.decks.keys.sorted() {
+    for (name, def) in schema.fields where def.kind.isDeck {
+      let fid = interner.intern(name)
       new.shuffleDeck(fid)
     }
     return new

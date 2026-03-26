@@ -11,6 +11,16 @@ enum FieldKind: Equatable, Sendable {
   case optional(valueType: String)
 }
 
+extension FieldKind {
+  var isCounter: Bool { if case .counter = self { return true }; return false }
+  var isFlag: Bool { if case .flag = self { return true }; return false }
+  var isField: Bool { if case .field = self { return true }; return false }
+  var isDict: Bool { if case .dict = self { return true }; return false }
+  var isSet: Bool { if case .set = self { return true }; return false }
+  var isDeck: Bool { if case .deck = self { return true }; return false }
+  var isOptional: Bool { if case .optional = self { return true }; return false }
+}
+
 // MARK: - FieldDefinition
 
 /// A single named field inside a `StateSchema`.

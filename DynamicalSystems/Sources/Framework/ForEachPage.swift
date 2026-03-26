@@ -61,15 +61,20 @@ extension ForEachPage {
     return RulePage(
       name: name,
       rules: [
-        // Single rule: compute remaining() once, branch on empty/non-empty.
         GameRule(
-          condition: { state in page.isActive(state) },
+          condition: { state in
+            page.isActive(state) && !page.remaining(state).isEmpty
+          },
           actions: { state in
-            let rem = page.remaining(state)
-            if rem.isEmpty {
-              return [page.transitionAction]
-            }
-            return rem.flatMap { page.actionsFor(state, $0) }
+            page.remaining(state).flatMap { page.actionsFor(state, $0) }
+          }
+        ),
+        GameRule(
+          condition: { state in
+            page.isActive(state) && page.remaining(state).isEmpty
+          },
+          actions: { _ in
+            [page.transitionAction]
           }
         )
       ],
