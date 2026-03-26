@@ -1333,18 +1333,11 @@
            "offer": ["chant"]},
           // Rule 6.6: Memorize only if a face-down arcane spell exists
           {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
-                             {"or": [{"==": [{"lookup": ["spellStatusDict", "fireball"]}, ".faceDown"]},
-                                     {"==": [{"lookup": ["spellStatusDict", "slow"]}, ".faceDown"]},
-                                     {"==": [{"lookup": ["spellStatusDict", "chainLightning"]}, ".faceDown"]},
-                                     {"==": [{"lookup": ["spellStatusDict", "fortune"]}, ".faceDown"]}]}]},
+                             {"anyFaceDownArcane": []}]},
            "offer": ["memorize"]},
           // Rule 6.7: Pray only if a face-down divine spell exists
           {"when": {"and": [{"==": ["phase", ".action"]}, {"canTakeAction": []},
-                             {"or": [{"==": [{"lookup": ["spellStatusDict", "cureWounds"]}, ".faceDown"]},
-                                     {"==": [{"lookup": ["spellStatusDict", "massHeal"]}, ".faceDown"]},
-                                     {"==": [{"lookup": ["spellStatusDict", "divineWrath"]}, ".faceDown"]},
-                                     {"==": [{"lookup": ["spellStatusDict", "inspire"]}, ".faceDown"]},
-                                     {"==": [{"lookup": ["spellStatusDict", "raiseDead"]}, ".faceDown"]}]}]},
+                             {"anyFaceDownDivine": []}]},
            "offer": ["pray"]}
         ],
         "reduce": {
@@ -1397,8 +1390,7 @@
         ],
         "reduce": {
           "castFireball": {"seq": [
-            {"set": ["arcaneEnergy", {"-": ["arcaneEnergy", 1]}]},
-            {"setEntry": ["spellStatusDict", "fireball", ".cast"]},
+            {"castSpell": ["fireball", "arcaneEnergy", 1]},
             {"let": ["roll", {"rollDie": [6]},
               "strength", {"lookup": ["armyStrengthDict", "$slot"]},
               "drm", {"spellAttackDRM": [2]},
@@ -1410,8 +1402,7 @@
             {"increment": ["actionPointsSpent", 1]}
           ]},
           "castFireballHeroic": {"seq": [
-            {"set": ["arcaneEnergy", {"-": ["arcaneEnergy", 1]}]},
-            {"setEntry": ["spellStatusDict", "fireball", ".cast"]},
+            {"castSpell": ["fireball", "arcaneEnergy", 1]},
             {"let": ["roll", {"rollDie": [6]},
               "strength", {"lookup": ["armyStrengthDict", "$slot"]},
               "drm", {"spellAttackDRM": [2]},
@@ -1453,15 +1444,13 @@
         ],
         "reduce": {
           "castSlowNormal": {"seq": [
-            {"set": ["arcaneEnergy", {"-": ["arcaneEnergy", 2]}]},
-            {"setEntry": ["spellStatusDict", "slow", ".cast"]},
+            {"castSpell": ["slow", "arcaneEnergy", 2]},
             {"set": ["slowedArmy", "$slot"]},
             {"log": [{"format": ["Slow placed on {}", "$slot"]}]},
             {"increment": ["actionPointsSpent", 1]}
           ]},
           "castSlowHeroic": {"seq": [
-            {"set": ["arcaneEnergy", {"-": ["arcaneEnergy", 2]}]},
-            {"setEntry": ["spellStatusDict", "slow", ".cast"]},
+            {"castSpell": ["slow", "arcaneEnergy", 2]},
             // Heroic: retreat army one space first
             {"pushBackArmy": ["$slot"]},
             {"set": ["slowedArmy", "$slot"]},
@@ -1485,15 +1474,13 @@
         ],
         "reduce": {
           "castCureWoundsNormal": {"seq": [
-            {"set": ["divineEnergy", {"-": ["divineEnergy", 1]}]},
-            {"setEntry": ["spellStatusDict", "cureWounds", ".cast"]},
+            {"castSpell": ["cureWounds", "divineEnergy", 1]},
             {"removeFrom": ["heroWounded", "$hero"]},
             {"log": [{"format": ["Cure Wounds: healed {}", "$hero"]}]},
             {"increment": ["actionPointsSpent", 1]}
           ]},
           "castCureWoundsHeroic": {"seq": [
-            {"set": ["divineEnergy", {"-": ["divineEnergy", 1]}]},
-            {"setEntry": ["spellStatusDict", "cureWounds", ".cast"]},
+            {"castSpell": ["cureWounds", "divineEnergy", 1]},
             {"removeFrom": ["heroWounded", "$hero1"]},
             {"removeFrom": ["heroWounded", "$hero2"]},
             {"log": [{"format": ["Cure Wounds (heroic): healed {} and {}", "$hero1", "$hero2"]}]},
@@ -1516,15 +1503,13 @@
         ],
         "reduce": {
           "castMassHealNormal": {"seq": [
-            {"set": ["divineEnergy", {"-": ["divineEnergy", 2]}]},
-            {"setEntry": ["spellStatusDict", "massHeal", ".cast"]},
+            {"castSpell": ["massHeal", "divineEnergy", 2]},
             {"gainDefender": ["$defType"]},
             {"log": [{"format": ["Mass Heal: +1 {}", "$defType"]}]},
             {"increment": ["actionPointsSpent", 1]}
           ]},
           "castMassHealHeroic": {"seq": [
-            {"set": ["divineEnergy", {"-": ["divineEnergy", 2]}]},
-            {"setEntry": ["spellStatusDict", "massHeal", ".cast"]},
+            {"castSpell": ["massHeal", "divineEnergy", 2]},
             {"gainDefender": ["$def1"]},
             {"gainDefender": ["$def2"]},
             {"log": [{"format": ["Mass Heal (heroic): +1 {} and +1 {}", "$def1", "$def2"]}]},
@@ -1549,15 +1534,13 @@
         ],
         "reduce": {
           "castInspireNormal": {"seq": [
-            {"set": ["divineEnergy", {"-": ["divineEnergy", 3]}]},
-            {"setEntry": ["spellStatusDict", "inspire", ".cast"]},
+            {"castSpell": ["inspire", "divineEnergy", 3]},
             {"raiseMorale": []},
             {"log": ["Inspire: morale raised"]},
             {"increment": ["actionPointsSpent", 1]}
           ]},
           "castInspireHeroic": {"seq": [
-            {"set": ["divineEnergy", {"-": ["divineEnergy", 3]}]},
-            {"setEntry": ["spellStatusDict", "inspire", ".cast"]},
+            {"castSpell": ["inspire", "divineEnergy", 3]},
             {"raiseMorale": []},
             {"set": ["inspireDRMActive", true]},
             {"log": ["Inspire (heroic): morale raised, +1 DRM active"]},
@@ -1587,8 +1570,7 @@
         ],
         "reduce": {
           "castDivineWrathNormal": {"seq": [
-            {"set": ["divineEnergy", {"-": ["divineEnergy", 3]}]},
-            {"setEntry": ["spellStatusDict", "divineWrath", ".cast"]},
+            {"castSpell": ["divineWrath", "divineEnergy", 3]},
             {"let": ["roll", {"rollDie": [6]},
               "strength", {"lookup": ["armyStrengthDict", "$slot"]},
               "drm", {"spellAttackDRM": [1]},
@@ -1600,8 +1582,7 @@
             {"increment": ["actionPointsSpent", 1]}
           ]},
           "castDivineWrathHeroic": {"seq": [
-            {"set": ["divineEnergy", {"-": ["divineEnergy", 3]}]},
-            {"setEntry": ["spellStatusDict", "divineWrath", ".cast"]},
+            {"castSpell": ["divineWrath", "divineEnergy", 3]},
             // Attack slot1
             {"let": ["roll1", {"rollDie": [6]},
               "str1", {"lookup": ["armyStrengthDict", "$slot1"]},
@@ -1639,24 +1620,21 @@
         ],
         "reduce": {
           "castRaiseDeadDefenders": {"seq": [
-            {"set": ["divineEnergy", {"-": ["divineEnergy", 4]}]},
-            {"setEntry": ["spellStatusDict", "raiseDead", ".cast"]},
+            {"castSpell": ["raiseDead", "divineEnergy", 4]},
             {"gainDefender": ["$def1"]},
             {"gainDefender": ["$def2"]},
             {"log": [{"format": ["Raise Dead: +1 {} and +1 {}", "$def1", "$def2"]}]},
             {"increment": ["actionPointsSpent", 1]}
           ]},
           "castRaiseDeadHero": {"seq": [
-            {"set": ["divineEnergy", {"-": ["divineEnergy", 4]}]},
-            {"setEntry": ["spellStatusDict", "raiseDead", ".cast"]},
+            {"castSpell": ["raiseDead", "divineEnergy", 4]},
             {"removeFrom": ["heroDead", "$hero"]},
             {"setEntry": ["heroLocationDict", "$hero", ".reserves"]},
             {"log": [{"format": ["Raise Dead: returned {} to reserves", "$hero"]}]},
             {"increment": ["actionPointsSpent", 1]}
           ]},
           "castRaiseDeadHeroicBoth": {"seq": [
-            {"set": ["divineEnergy", {"-": ["divineEnergy", 4]}]},
-            {"setEntry": ["spellStatusDict", "raiseDead", ".cast"]},
+            {"castSpell": ["raiseDead", "divineEnergy", 4]},
             {"gainDefender": ["$def1"]},
             {"gainDefender": ["$def2"]},
             {"removeFrom": ["heroDead", "$hero"]},
@@ -1681,8 +1659,7 @@
         ],
         "reduce": {
           "castChainLightningNormal": {"seq": [
-            {"set": ["arcaneEnergy", {"-": ["arcaneEnergy", 3]}]},
-            {"setEntry": ["spellStatusDict", "chainLightning", ".cast"]},
+            {"castSpell": ["chainLightning", "arcaneEnergy", 3]},
             {"set": ["inChainLightning", true]},
             {"set": ["chainLightningHeroic", false]},
             {"set": ["chainLightningBoltIndex", 0]},
@@ -1690,8 +1667,7 @@
             {"log": ["Chain Lightning: choose bolt targets"]}
           ]},
           "castChainLightningHeroic": {"seq": [
-            {"set": ["arcaneEnergy", {"-": ["arcaneEnergy", 3]}]},
-            {"setEntry": ["spellStatusDict", "chainLightning", ".cast"]},
+            {"castSpell": ["chainLightning", "arcaneEnergy", 3]},
             {"set": ["inChainLightning", true]},
             {"set": ["chainLightningHeroic", true]},
             {"set": ["chainLightningBoltIndex", 0]},
@@ -1752,8 +1728,7 @@
         ],
         "reduce": {
           "castFortuneNormal": {"seq": [
-            {"set": ["arcaneEnergy", {"-": ["arcaneEnergy", 4]}]},
-            {"setEntry": ["spellStatusDict", "fortune", ".cast"]},
+            {"castSpell": ["fortune", "arcaneEnergy", 4]},
             {"set": ["inFortune", true]},
             {"set": ["fortuneHeroic", false]},
             {"set": ["fortuneDiscardDone", true]},
@@ -1761,8 +1736,7 @@
             {"log": ["Fortune: viewing top cards"]}
           ]},
           "castFortuneHeroic": {"seq": [
-            {"set": ["arcaneEnergy", {"-": ["arcaneEnergy", 4]}]},
-            {"setEntry": ["spellStatusDict", "fortune", ".cast"]},
+            {"castSpell": ["fortune", "arcaneEnergy", 4]},
             {"set": ["inFortune", true]},
             {"set": ["fortuneHeroic", true]},
             {"set": ["fortuneDiscardDone", false]},
@@ -2362,6 +2336,40 @@
        {"log": [{"format": ["Attack missed {}", "$slot"]}]}
      ]}},
 
+    // ── Slot/Track/Spell helpers ──────────────────────────────
+    // Map ArmySlot → Track (gate1/gate2 both map to gate)
+    {"name": "slotToTrack",
+     "params": ["slot"],
+     "body": {"if": [{"==": ["$slot", "east"]}, "east",
+       {"if": [{"==": ["$slot", "west"]}, "west",
+         {"if": [{"or": [{"==": ["$slot", "gate1"]}, {"==": ["$slot", "gate2"]}]}, "gate",
+           {"if": [{"==": ["$slot", "sky"]}, "sky", "terror"]}]}]}]}},
+
+    // Whether any face-down arcane spell exists (for memorize availability)
+    {"name": "anyFaceDownArcane",
+     "params": [],
+     "body": {"or": [{"==": [{"lookup": ["spellStatusDict", "fireball"]}, ".faceDown"]},
+                      {"==": [{"lookup": ["spellStatusDict", "slow"]}, ".faceDown"]},
+                      {"==": [{"lookup": ["spellStatusDict", "chainLightning"]}, ".faceDown"]},
+                      {"==": [{"lookup": ["spellStatusDict", "fortune"]}, ".faceDown"]}]}},
+
+    // Whether any face-down divine spell exists (for pray availability)
+    {"name": "anyFaceDownDivine",
+     "params": [],
+     "body": {"or": [{"==": [{"lookup": ["spellStatusDict", "cureWounds"]}, ".faceDown"]},
+                      {"==": [{"lookup": ["spellStatusDict", "massHeal"]}, ".faceDown"]},
+                      {"==": [{"lookup": ["spellStatusDict", "divineWrath"]}, ".faceDown"]},
+                      {"==": [{"lookup": ["spellStatusDict", "inspire"]}, ".faceDown"]},
+                      {"==": [{"lookup": ["spellStatusDict", "raiseDead"]}, ".faceDown"]}]}},
+
+    // Drain energy and mark spell as cast
+    {"name": "castSpell",
+     "params": ["spell", "energyType", "cost"],
+     "body": {"seq": [
+       {"set": ["$energyType", {"-": ["$energyType", "$cost"]}]},
+       {"setEntry": ["spellStatusDict", "$spell", ".cast"]}
+     ]}},
+
     // ── Existing defines ───────────────────────────────────────
     // Whether time position draws from day deck (dawn/day spaces)
     {"name": "drawsFromDayDeck",
@@ -2449,11 +2457,7 @@
     // Upgrade melee DRM: oil = +1, lava = +2 on the slot's track (only if army at space 1)
     {"name": "getUpgradeMeleeDRM",
      "params": ["slot"],
-     "body": {"let": ["track",
-       {"if": [{"==": ["$slot", "east"]}, "east",
-         {"if": [{"==": ["$slot", "west"]}, "west",
-           {"if": [{"or": [{"==": ["$slot", "gate1"]}, {"==": ["$slot", "gate2"]}]}, "gate",
-             {"if": [{"==": ["$slot", "sky"]}, "sky", "terror"]}]}]}]},
+     "body": {"let": ["track", {"slotToTrack": ["$slot"]},
        "upgrade", {"lookup": ["upgradeDict", "$track"]},
        {"if": [{"or": [{"==": ["$upgrade", null]},
                         {"!=": [{"lookup": ["armyPosition", "$slot"]}, 1]}]}, 0,
@@ -2466,11 +2470,7 @@
     // Upgrade ranged DRM: oil = +1 only (lava does not apply to ranged), only if army at space 1
     {"name": "getUpgradeRangedDRM",
      "params": ["slot"],
-     "body": {"let": ["track",
-       {"if": [{"==": ["$slot", "east"]}, "east",
-         {"if": [{"==": ["$slot", "west"]}, "west",
-           {"if": [{"or": [{"==": ["$slot", "gate1"]}, {"==": ["$slot", "gate2"]}]}, "gate",
-             {"if": [{"==": ["$slot", "sky"]}, "sky", "terror"]}]}]}]},
+     "body": {"let": ["track", {"slotToTrack": ["$slot"]},
        "upgrade", {"lookup": ["upgradeDict", "$track"]},
        {"if": [{"or": [{"==": ["$upgrade", null]},
                         {"!=": [{"lookup": ["armyPosition", "$slot"]}, 1]}]}, 0,
@@ -2623,12 +2623,7 @@
     {"name": "pushBackArmy",
      "params": ["slot"],
      "body": {"let": ["pos", {"lookup": ["armyPosition", "$slot"]},
-       "maxSpace", {"if": [{"==": ["$slot", "east"]}, 6,
-                     {"if": [{"==": ["$slot", "west"]}, 6,
-                       {"if": [{"or": [{"==": ["$slot", "gate1"]}, {"==": ["$slot", "gate2"]}]}, 4,
-                         {"if": [{"==": ["$slot", "sky"]}, 6, 3]}
-                       ]}
-                     ]}]},
+       "maxSpace", {"slotMaxSpace": ["$slot"]},
        {"if": [{"!=": ["$pos", null]},
          {"let": ["newPos", {"min": [{"+": ["$pos", 1]}, "$maxSpace"]},
            {"seq": [
@@ -2690,8 +2685,7 @@
      "params": ["slot"],
      "body": {"let": ["track", {"if": [{"==": ["$slot", "east"]}, ".east",
                                   {"if": [{"==": ["$slot", "west"]}, ".west", ".gate"]}]},
-       "trackKey", {"if": [{"==": ["$slot", "east"]}, "east",
-                     {"if": [{"==": ["$slot", "west"]}, "west", "gate"]}]},
+       "trackKey", {"slotToTrack": ["$slot"]},
        // Grease: Rule 6.3.2 — roll d6, 1-2 prevents breach, 3-6 breach happens. Grease consumed only on failure.
        {"if": [{"==": [{"lookup": ["upgradeDict", "$trackKey"]}, ".grease"]},
          {"let": ["greaseRoll", {"rollDie": [6]},
