@@ -6,6 +6,8 @@ import CoreGraphics
 // swiftlint:disable:next type_body_length
 struct SiteOperationsTests {
 
+  let interner = StringInterner()
+
   private func makeCompiler(
     graph: SiteGraph = SiteGraph()
   ) throws -> (JSONExpressionCompiler, StateSchema) {
@@ -24,7 +26,8 @@ struct SiteOperationsTests {
     return (
       JSONExpressionCompiler(
         components: registry, schema: schema,
-        graph: graph, defines: defines
+        graph: graph, defines: defines,
+        interner: interner
       ),
       schema
     )
@@ -35,7 +38,7 @@ struct SiteOperationsTests {
     let json: JSONValue = .object(["site": .array([.string("road"), .int(0)])])
     let compiled = compiler.expr(json)
     let env = ExpressionCompiler.Env(
-      state: InterpretedState(schema: schema)
+      state: InterpretedState(schema: schema, interner: interner)
     )
     let result = try compiled(env)
     #expect(result == .site(track: "road", index: 0))
@@ -55,7 +58,7 @@ struct SiteOperationsTests {
     ])
     let compiled = compiler.expr(json)
     let env = ExpressionCompiler.Env(
-      state: InterpretedState(schema: schema)
+      state: InterpretedState(schema: schema, interner: interner)
     )
     let result = try compiled(env)
     #expect(result == .site(track: "road", index: 1))
@@ -85,10 +88,11 @@ struct SiteOperationsTests {
     let defines = try JSONDefineExpander(.array([]))
     let compiler = JSONExpressionCompiler(
       components: registry, schema: schema,
-      graph: graph, defines: defines
+      graph: graph, defines: defines,
+      interner: interner
     )
 
-    var state = InterpretedState(schema: schema)
+    var state = InterpretedState(schema: schema, interner: interner)
     state.place(
       "corps", at: .site(track: "road", index: 0), enumType: "Piece"
     )
@@ -130,13 +134,13 @@ struct SiteOperationsTests {
       ])
     ]))
     let found = try pieceAtExpr(env)
-    #expect(found.asEnumValue == "corps")
+    #expect(found.displayString(interner: interner) == "corps")
   }
 
   @Test func trackOfAndIndexOf() throws {
     let (compiler, schema) = try makeCompiler()
     let env = ExpressionCompiler.Env(
-      state: InterpretedState(schema: schema)
+      state: InterpretedState(schema: schema, interner: interner)
     )
     let trackExpr = compiler.expr(.object([
       "trackOf": .array([
@@ -175,9 +179,10 @@ struct SiteOperationsTests {
     let defines = try JSONDefineExpander(.array([]))
     let compiler = JSONExpressionCompiler(
       components: registry, schema: schema,
-      graph: graph, defines: defines
+      graph: graph, defines: defines,
+      interner: interner
     )
-    var state = InterpretedState(schema: schema)
+    var state = InterpretedState(schema: schema, interner: interner)
     state.place(
       "ally",
       at: .site(track: "allied", index: 0),
@@ -200,7 +205,7 @@ struct SiteOperationsTests {
     let resID = graph.addSite(position: .zero, displayName: "reserves")
     let (compiler, schema) = try makeCompiler(graph: graph)
     let env = ExpressionCompiler.Env(
-      state: InterpretedState(schema: schema)
+      state: InterpretedState(schema: schema, interner: interner)
     )
 
     let json: JSONValue = .object([
@@ -242,7 +247,7 @@ struct SiteOperationsTests {
     let site1 = graph.addSite(position: CGPoint(x: 0, y: 40))
     graph.addTrack("road", sites: [site0, site1])
 
-    var state = InterpretedState(schema: schema)
+    var state = InterpretedState(schema: schema, interner: interner)
     state.place(
       "corps", at: .site(track: "road", index: 0), enumType: "Piece"
     )
@@ -293,10 +298,11 @@ struct SiteOperationsTests {
     let defines = try JSONDefineExpander(.array([]))
     let compiler = JSONExpressionCompiler(
       components: registry, schema: schema,
-      graph: graph, defines: defines
+      graph: graph, defines: defines,
+      interner: interner
     )
 
-    let state = InterpretedState(schema: schema)
+    let state = InterpretedState(schema: schema, interner: interner)
     let env = ExpressionCompiler.Env(state: state)
 
     // place

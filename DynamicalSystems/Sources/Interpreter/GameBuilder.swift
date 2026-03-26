@@ -33,9 +33,20 @@ enum GameBuilder {
       try JSONGraphBuilder.build($0)
     } ?? SiteGraph()
 
+    let interner = StringInterner()
+    for name in schema.allFieldNames { interner.intern(name) }
+    for def in components.enums.values {
+      for caseName in def.cases { interner.intern(caseName) }
+    }
+    interner.intern("ended")
+    interner.intern("victory")
+    interner.intern("gameAcknowledged")
+    interner.intern("phase")
+
     let compiler = JSONExpressionCompiler(
       components: components, schema: schema,
-      graph: graph, defines: defines
+      graph: graph, defines: defines,
+      interner: interner
     )
     let rulesResult = try root["rules"].map {
       try JSONPageBuilder.buildRules(
@@ -77,7 +88,7 @@ enum GameBuilder {
       pages: rulesResult?.pages ?? [],
       priorities: rulesResult?.priorities ?? [],
       makeInitialState: {
-        var state = InterpretedState(schema: schema)
+        var state = InterpretedState(schema: schema, interner: interner)
         if let first = capturedPhases.first {
           state.phase = first
         }
@@ -118,7 +129,7 @@ enum GameBuilder {
     game.stateEvaluator = root["metadata"].flatMap {
       JSONMetadataBuilder.buildHeuristic(
         $0, components: components, defines: defines,
-        schema: schema, graph: graph
+        schema: schema, graph: graph, interner: interner
       )
     }
     return game

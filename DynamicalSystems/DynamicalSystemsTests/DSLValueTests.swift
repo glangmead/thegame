@@ -4,15 +4,21 @@ import Testing
 @Suite("DSLValue")
 struct DSLValueTests {
 
+  let interner = StringInterner()
+
+  private func sym(_ name: String) -> DSLValue {
+    .symbol(interner.intern(name))
+  }
+
   @Test func intEquality() {
     #expect(DSLValue.int(5) == DSLValue.int(5))
     #expect(DSLValue.int(5) != DSLValue.int(6))
   }
 
-  @Test func enumCaseEquality() {
-    let east = DSLValue.enumCase(type: "Direction", value: "east")
-    let east2 = DSLValue.enumCase(type: "Direction", value: "east")
-    let west = DSLValue.enumCase(type: "Direction", value: "west")
+  @Test func symbolEquality() {
+    let east = sym("east")
+    let east2 = sym("east")
+    let west = sym("west")
     #expect(east == east2)
     #expect(east != west)
   }
@@ -45,8 +51,8 @@ struct DSLValueTests {
 
   @Test func displayString() {
     #expect(DSLValue.int(42).displayString == "42")
-    let enumVal = DSLValue.enumCase(type: "Direction", value: "east")
-    #expect(enumVal.displayString == "east")
+    let symbolVal = sym("east")
+    #expect(symbolVal.displayString(interner: interner) == "east")
     let lst = DSLValue.list([.int(1), .int(2)])
     #expect(lst.displayString == "[1, 2]")
     #expect(DSLValue.bool(true).displayString == "true")

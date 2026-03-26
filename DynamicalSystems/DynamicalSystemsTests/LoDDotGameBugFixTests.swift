@@ -25,30 +25,42 @@ struct LoDDotGameBugFixTests {
     actions.first { $0.name == name }
   }
 
+  private static func sym(
+    _ value: String, _ interner: StringInterner
+  ) -> DSLValue {
+    .symbol(interner.intern(value))
+  }
+
   private static func findAction(
     _ name: String, param: String, value: String,
-    in actions: [ActionValue]
+    interner: StringInterner, in actions: [ActionValue]
   ) -> ActionValue? {
     actions.first {
       $0.name == name &&
-      $0.parameters[param]?.displayString == value
+      $0.parameters[param]?.displayString(interner: interner) == value
     }
   }
 
   private static func hasAction(
     _ name: String, param: String, value: String,
-    in actions: [ActionValue]
+    interner: StringInterner, in actions: [ActionValue]
   ) -> Bool {
-    findAction(name, param: param, value: value, in: actions) != nil
+    findAction(
+      name, param: param, value: value,
+      interner: interner, in: actions
+    ) != nil
   }
 
   private static func hasAction(
     _ name: String, params: [String: String],
-    in actions: [ActionValue]
+    interner: StringInterner, in actions: [ActionValue]
   ) -> Bool {
     actions.contains { action in
       action.name == name &&
-      params.allSatisfy { action.parameters[$0.key]?.displayString == $0.value }
+      params.allSatisfy {
+        action.parameters[$0.key]?
+          .displayString(interner: interner) == $0.value
+      }
     }
   }
 
@@ -90,13 +102,13 @@ struct LoDDotGameBugFixTests {
     // Set up Inspire known with enough energy; ensure cleric is alive
     state.setDictEntry(
       "spellStatusDict", key: "inspire",
-      value: .enumCase(type: "SpellStatus", value: "known")
+      value: Self.sym("known", state.interner)
     )
     state.setCounter("divineEnergy", 6)
-    state.setField("morale", .enumCase(type: "Morale", value: "normal"))
+    state.setField("morale", Self.sym("normal", state.interner))
     state.setDictEntry(
       "heroLocationDict", key: "cleric",
-      value: .enumCase(type: "HeroLocation", value: "reserves")
+      value: Self.sym("reserves", state.interner)
     )
     state.removeFromSet("heroDead", "cleric")
 
@@ -125,13 +137,13 @@ struct LoDDotGameBugFixTests {
     }
     state.setDictEntry(
       "spellStatusDict", key: "inspire",
-      value: .enumCase(type: "SpellStatus", value: "known")
+      value: Self.sym("known", state.interner)
     )
     state.setCounter("divineEnergy", 6)
-    state.setField("morale", .enumCase(type: "Morale", value: "high"))
+    state.setField("morale", Self.sym("high", state.interner))
     state.setDictEntry(
       "heroLocationDict", key: "cleric",
-      value: .enumCase(type: "HeroLocation", value: "reserves")
+      value: Self.sym("reserves", state.interner)
     )
     state.removeFromSet("heroDead", "cleric")
 
@@ -181,7 +193,7 @@ struct LoDDotGameBugFixTests {
       _ = game.reduce(into: &state, action: drawAction)
     }
     state.phase = "event"
-    state.setField("morale", .enumCase(type: "Morale", value: "low"))
+    state.setField("morale", Self.sym("low", state.interner))
     let card = state.getOptional("currentCard")
     if case .structValue(let type, var fields) = card {
       fields["eventNumber"] = .int(33)
@@ -281,7 +293,10 @@ struct LoDDotGameBugFixTests {
     state.removeFromSet("breaches", "east")
 
     let actions = game.allowedActions(state: state)
-    let buildEast = Self.findAction("buildUpgrade", param: "track", value: "east", in: actions)
+    let buildEast = Self.findAction(
+      "buildUpgrade", param: "track", value: "east",
+      interner: state.interner, in: actions
+    )
     #expect(
       buildEast == nil,
       "Build should not be offered when army at space 1"
@@ -298,11 +313,14 @@ struct LoDDotGameBugFixTests {
     state.setDictEntry("armyPosition", key: "east", value: .int(1))
     state.setDictEntry(
       "upgradeDict", key: "east",
-      value: .enumCase(type: "UpgradeType", value: "oil")
+      value: Self.sym("oil", state.interner)
     )
 
     let actions = game.allowedActions(state: state)
-    let buildEast = Self.findAction("buildUpgrade", param: "track", value: "east", in: actions)
+    let buildEast = Self.findAction(
+      "buildUpgrade", param: "track", value: "east",
+      interner: state.interner, in: actions
+    )
     #expect(
       buildEast == nil,
       "Build should not be offered when track already has upgrade"
@@ -322,7 +340,7 @@ struct LoDDotGameBugFixTests {
     state.removeDictEntry("armyPosition", key: "sky")
 
     let actions = game.allowedActions(state: state)
-    let rangedSky = Self.findAction("ranged", param: "slot", value: "sky", in: actions)
+    let rangedSky = Self.findAction("ranged", param: "slot", value: "sky", interner: state.interner, in: actions)
     #expect(
       rangedSky == nil,
       "Ranged sky should not be offered when sky army absent"
@@ -344,7 +362,10 @@ struct LoDDotGameBugFixTests {
     state.removeFromSet("breaches", "gate")
 
     let actions = game.allowedActions(state: state)
-    let barricadeEast = Self.findAction("barricade", param: "track", value: "east", in: actions)
+    let barricadeEast = Self.findAction(
+      "barricade", param: "track", value: "east",
+      interner: state.interner, in: actions
+    )
     #expect(
       barricadeEast == nil,
       "Barricade should not be offered without breach"
@@ -479,12 +500,12 @@ struct LoDDotGameBugFixTests {
     }
     state.setDictEntry(
       "spellStatusDict", key: "fireball",
-      value: .enumCase(type: "SpellStatus", value: "known")
+      value: Self.sym("known", state.interner)
     )
     state.setCounter("arcaneEnergy", 3)
     state.setDictEntry(
       "heroLocationDict", key: "wizard",
-      value: .enumCase(type: "HeroLocation", value: "east")
+      value: Self.sym("east", state.interner)
     )
     state.removeFromSet("heroDead", "wizard")
     // Ensure west has an army but wizard is NOT there
@@ -500,7 +521,7 @@ struct LoDDotGameBugFixTests {
     for action in heroicActions {
       let slot = action.parameters["slot"]
       #expect(
-        slot == .enumCase(type: "ArmySlot", value: "east"),
+        slot == Self.sym("east", state.interner),
         "castFireballHeroic should only target east (wizard location), got \(String(describing: slot))"
       )
     }
@@ -517,13 +538,13 @@ struct LoDDotGameBugFixTests {
     }
     state.setDictEntry(
       "spellStatusDict", key: "divineWrath",
-      value: .enumCase(type: "SpellStatus", value: "known")
+      value: Self.sym("known", state.interner)
     )
     state.setCounter("divineEnergy", 6)
     // Cleric at gate (covers gate1 + gate2)
     state.setDictEntry(
       "heroLocationDict", key: "cleric",
-      value: .enumCase(type: "HeroLocation", value: "gate")
+      value: Self.sym("gate", state.interner)
     )
     state.removeFromSet("heroDead", "cleric")
     state.setDictEntry("armyPosition", key: "gate1", value: .int(3))
@@ -554,12 +575,12 @@ struct LoDDotGameBugFixTests {
     }
     state.setDictEntry(
       "spellStatusDict", key: "fireball",
-      value: .enumCase(type: "SpellStatus", value: "known")
+      value: Self.sym("known", state.interner)
     )
     state.setCounter("arcaneEnergy", 3)
     state.setDictEntry(
       "heroLocationDict", key: "wizard",
-      value: .enumCase(type: "HeroLocation", value: "east")
+      value: Self.sym("east", state.interner)
     )
     state.removeFromSet("heroDead", "wizard")
     // Remove the east army entirely
@@ -584,13 +605,13 @@ struct LoDDotGameBugFixTests {
     // East has acid, army at pos 1
     state.setDictEntry(
       "upgradeDict", key: "east",
-      value: .enumCase(type: "UpgradeType", value: "acid")
+      value: Self.sym("acid", state.interner)
     )
     state.setDictEntry("armyPosition", key: "east", value: .int(1))
     // West has acid but army NOT at pos 1
     state.setDictEntry(
       "upgradeDict", key: "west",
-      value: .enumCase(type: "UpgradeType", value: "acid")
+      value: Self.sym("acid", state.interner)
     )
     state.setDictEntry("armyPosition", key: "west", value: .int(3))
     state.setFlag("acidUsedThisTurn", false)
@@ -600,7 +621,7 @@ struct LoDDotGameBugFixTests {
     for action in acidActions {
       let slot = action.parameters["slot"]
       #expect(
-        slot == .enumCase(type: "ArmySlot", value: "east"),
+        slot == Self.sym("east", state.interner),
         "acidMeleeAttack should only target east (acid + pos 1), got \(String(describing: slot))"
       )
     }
@@ -710,7 +731,7 @@ struct LoDDotGameBugFixTests {
     }
     state.setDictEntry(
       "heroLocationDict", key: "warrior",
-      value: .enumCase(type: "HeroLocation", value: "east")
+      value: Self.sym("east", state.interner)
     )
     state.removeFromSet("heroDead", "warrior")
     state.setCounter("heroicPointsSpent", 0)
@@ -718,12 +739,12 @@ struct LoDDotGameBugFixTests {
     let actions = game.allowedActions(state: state)
     let moveActions = actions.filter { $0.name == "moveHero" }
     let warriorMoves = moveActions.filter {
-      $0.parameters["hero"] == .enumCase(type: "HeroType", value: "warrior")
+      $0.parameters["hero"] == Self.sym("warrior", state.interner)
     }
     for action in warriorMoves {
       let location = action.parameters["location"]
       #expect(
-        location != .enumCase(type: "HeroLocation", value: "east"),
+        location != Self.sym("east", state.interner),
         "moveHero should not offer warrior's current location (east)"
       )
     }
@@ -813,7 +834,7 @@ struct LoDDotGameBugFixTests {
     }
     state.setDictEntry(
       "heroLocationDict", key: "warrior",
-      value: .enumCase(type: "HeroLocation", value: "east")
+      value: Self.sym("east", state.interner)
     )
     state.removeFromSet("heroDead", "warrior")
     state.removeFromSet("heroWounded", "warrior")
@@ -828,8 +849,8 @@ struct LoDDotGameBugFixTests {
     let actionNames = actions.map(\.description)
     let heroicAttacks = actions.filter { $0.name == "heroicAttack" }
     let warriorEast = heroicAttacks.filter {
-      $0.parameters["hero"] == .enumCase(type: "HeroType", value: "warrior") &&
-      $0.parameters["slot"] == .enumCase(type: "ArmySlot", value: "east")
+      $0.parameters["hero"] == Self.sym("warrior", state.interner) &&
+      $0.parameters["slot"] == Self.sym("east", state.interner)
     }
     #expect(
       !warriorEast.isEmpty,
@@ -848,12 +869,12 @@ struct LoDDotGameBugFixTests {
     }
     state.setDictEntry(
       "spellStatusDict", key: "fireball",
-      value: .enumCase(type: "SpellStatus", value: "known")
+      value: Self.sym("known", state.interner)
     )
     state.setCounter("arcaneEnergy", 3)
     state.setDictEntry(
       "heroLocationDict", key: "wizard",
-      value: .enumCase(type: "HeroLocation", value: "east")
+      value: Self.sym("east", state.interner)
     )
     state.removeFromSet("heroDead", "wizard")
     state.setDictEntry("armyPosition", key: "east", value: .int(3))
@@ -888,7 +909,7 @@ struct LoDDotGameBugFixTests {
       // Install grease on east track
       state.setDictEntry(
         "upgradeDict", key: "east",
-        value: .enumCase(type: "UpgradeType", value: "grease")
+        value: Self.sym("grease", state.interner)
       )
       // Ensure no existing breach on east
       state.removeFromSet("breaches", "east")
@@ -923,7 +944,7 @@ struct LoDDotGameBugFixTests {
         // Grease held — upgrade must still be present
         let upgrade = state.getDict("upgradeDict")["east"]
         #expect(
-          upgrade == .enumCase(type: "UpgradeType", value: "grease"),
+          upgrade == Self.sym("grease", state.interner),
           "Grease should persist when it holds (roll <= 2), but upgradeDict[east] = \(String(describing: upgrade))"
         )
         sawGreaseHold = true
@@ -1006,7 +1027,7 @@ struct LoDDotGameBugFixTests {
       // Install grease on gate track
       state.setDictEntry(
         "upgradeDict", key: "gate",
-        value: .enumCase(type: "UpgradeType", value: "grease")
+        value: Self.sym("grease", state.interner)
       )
       // No existing breach or barricade
       state.removeFromSet("breaches", "gate")
@@ -1034,7 +1055,7 @@ struct LoDDotGameBugFixTests {
         // Grease held — upgrade must still be present
         let upgrade = state.getDict("upgradeDict")["gate"]
         #expect(
-          upgrade == .enumCase(type: "UpgradeType", value: "grease"),
+          upgrade == Self.sym("grease", state.interner),
           "Grease should persist when it holds, got \(String(describing: upgrade))"
         )
         // gate2 must also be at position 1
@@ -1105,13 +1126,13 @@ struct LoDDotGameBugFixTests {
       return
     }
     // Simulate: morale was normal when snapshot was taken (budget=4 from card)
-    state.setField("morale", .enumCase(type: "Morale", value: "normal"))
+    state.setField("morale", Self.sym("normal", state.interner))
     state.setCounter("snapshotActionBudget", 4)
     state.setFlag("snapshotTaken", true)
     state.setCounter("actionPointsSpent", 0)
 
     // Now Inspire raises morale to high mid-turn
-    state.setField("morale", .enumCase(type: "Morale", value: "high"))
+    state.setField("morale", Self.sym("high", state.interner))
 
     // Budget remaining should still be 4 (from snapshot), not 5
     let actions = game.allowedActions(state: state)
@@ -1161,18 +1182,18 @@ struct LoDDotGameBugFixTests {
     state.removeFromSet("heroDead", "cleric")
     let actions = game.allowedActions(state: state)
     // Selected heroes should be offered
-    #expect(Self.hasAction("assassinsCreedo", param: "hero", value: "warrior", in: actions),
+    #expect(Self.hasAction("assassinsCreedo", param: "hero", value: "warrior", interner: state.interner, in: actions),
       "Warrior (selected) should be offered")
-    #expect(Self.hasAction("assassinsCreedo", param: "hero", value: "wizard", in: actions),
+    #expect(Self.hasAction("assassinsCreedo", param: "hero", value: "wizard", interner: state.interner, in: actions),
       "Wizard (selected) should be offered")
-    #expect(Self.hasAction("assassinsCreedo", param: "hero", value: "cleric", in: actions),
+    #expect(Self.hasAction("assassinsCreedo", param: "hero", value: "cleric", interner: state.interner, in: actions),
       "Cleric (selected) should be offered")
     // Non-selected heroes should NOT be offered
-    #expect(!Self.hasAction("assassinsCreedo", param: "hero", value: "ranger", in: actions),
+    #expect(!Self.hasAction("assassinsCreedo", param: "hero", value: "ranger", interner: state.interner, in: actions),
       "Ranger (not selected) should not be offered")
-    #expect(!Self.hasAction("assassinsCreedo", param: "hero", value: "rogue", in: actions),
+    #expect(!Self.hasAction("assassinsCreedo", param: "hero", value: "rogue", interner: state.interner, in: actions),
       "Rogue (not selected) should not be offered")
-    #expect(!Self.hasAction("assassinsCreedo", param: "hero", value: "paladin", in: actions),
+    #expect(!Self.hasAction("assassinsCreedo", param: "hero", value: "paladin", interner: state.interner, in: actions),
       "Paladin (not selected) should not be offered")
   }
 
@@ -1191,20 +1212,20 @@ struct LoDDotGameBugFixTests {
     // Ensure archers upgrade so ranged attacks are available
     state.setDictEntry(
       "upgradeDict", key: "gate",
-      value: .enumCase(type: "UpgradeType", value: "archers")
+      value: Self.sym("archers", state.interner)
     )
 
     let actions = game.allowedActions(state: state)
 
     // gate1 is farther — should NOT be targetable
-    #expect(!Self.hasAction("melee", param: "slot", value: "gate1", in: actions),
+    #expect(!Self.hasAction("melee", param: "slot", value: "gate1", interner: state.interner, in: actions),
       "melee gate1 should not be offered when gate2 is closer")
-    #expect(!Self.hasAction("ranged", param: "slot", value: "gate1", in: actions),
+    #expect(!Self.hasAction("ranged", param: "slot", value: "gate1", interner: state.interner, in: actions),
       "ranged gate1 should not be offered when gate2 is closer")
     // gate2 is closest — should be targetable
-    #expect(Self.hasAction("melee", param: "slot", value: "gate2", in: actions),
+    #expect(Self.hasAction("melee", param: "slot", value: "gate2", interner: state.interner, in: actions),
       "melee gate2 should be offered for closest army")
-    #expect(Self.hasAction("ranged", param: "slot", value: "gate2", in: actions),
+    #expect(Self.hasAction("ranged", param: "slot", value: "gate2", interner: state.interner, in: actions),
       "ranged gate2 should be offered for closest army")
   }
 
@@ -1221,9 +1242,9 @@ struct LoDDotGameBugFixTests {
 
     let actions = game.allowedActions(state: state)
 
-    #expect(Self.hasAction("melee", param: "slot", value: "gate1", in: actions),
+    #expect(Self.hasAction("melee", param: "slot", value: "gate1", interner: state.interner, in: actions),
       "melee gate1 should be offered when tied")
-    #expect(Self.hasAction("melee", param: "slot", value: "gate2", in: actions),
+    #expect(Self.hasAction("melee", param: "slot", value: "gate2", interner: state.interner, in: actions),
       "melee gate2 should be offered when tied")
   }
 
@@ -1296,14 +1317,14 @@ struct LoDDotGameBugFixTests {
     let actions = game.allowedActions(state: state)
 
     // East at max: no melee or ranged
-    #expect(!Self.hasAction("melee", param: "slot", value: "east", in: actions),
+    #expect(!Self.hasAction("melee", param: "slot", value: "east", interner: state.interner, in: actions),
             "melee east should not be offered when army is at max position")
-    #expect(!Self.hasAction("ranged", param: "slot", value: "east", in: actions),
+    #expect(!Self.hasAction("ranged", param: "slot", value: "east", interner: state.interner, in: actions),
             "ranged east should not be offered when army is at max position")
     // West at 3: melee and ranged should be offered
-    #expect(Self.hasAction("melee", param: "slot", value: "west", in: actions),
+    #expect(Self.hasAction("melee", param: "slot", value: "west", interner: state.interner, in: actions),
             "melee west should be offered when army is within range")
-    #expect(Self.hasAction("ranged", param: "slot", value: "west", in: actions),
+    #expect(Self.hasAction("ranged", param: "slot", value: "west", interner: state.interner, in: actions),
             "ranged west should be offered when army is within range")
   }
 
@@ -1323,7 +1344,7 @@ struct LoDDotGameBugFixTests {
     // Place warrior on east track, east army at max position (6)
     state.setDictEntry(
       "heroLocationDict", key: "warrior",
-      value: .enumCase(type: "HeroLocation", value: "east")
+      value: Self.sym("east", state.interner)
     )
     state.removeFromSet("heroDead", "warrior")
     state.removeFromSet("heroWounded", "warrior")

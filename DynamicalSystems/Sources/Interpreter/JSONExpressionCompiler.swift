@@ -10,6 +10,7 @@ struct JSONExpressionCompiler {
   let schema: StateSchema
   let graph: SiteGraph
   let defines: JSONDefineExpander
+  let interner: StringInterner
 
   typealias Expr = ExpressionCompiler.Expr
   typealias Stmt = ExpressionCompiler.Stmt
@@ -60,11 +61,10 @@ struct JSONExpressionCompiler {
         throw DSLError.undefinedField("$\(name)")
       }
     }
-    // .enumCase — resolve the type via ComponentRegistry
+    // .symbol — intern the case name
     if str.hasPrefix(".") {
       let caseName = String(str.dropFirst())
-      let enumType = components.isEnumCase(caseName) ?? ""
-      let val: DSLValue = .enumCase(type: enumType, value: caseName)
+      let val: DSLValue = .symbol(interner.intern(caseName))
       return { _ in val }
     }
     // Schema field
@@ -72,8 +72,8 @@ struct JSONExpressionCompiler {
       return compileFieldAccess(str)
     }
     // Known enum case
-    if let enumType = components.isEnumCase(str) {
-      let val: DSLValue = .enumCase(type: enumType, value: str)
+    if components.isEnumCase(str) != nil {
+      let val: DSLValue = .symbol(interner.intern(str))
       return { _ in val }
     }
     // Bare string literal
@@ -95,19 +95,21 @@ extension JSONExpressionCompiler {
       return { env in .bool(env.state.gameAcknowledged) }
     case "phase":
       return { env in
-        .enumCase(type: "Phase", value: env.state.phase)
+        if let fid = env.state.phaseFID { return .symbol(fid) }
+        return .symbol(env.interner.intern(env.state.phase))
       }
     default: break
     }
     guard let def = schema.field(name) else {
       return { _ in .nil }
     }
+    let fid = interner.intern(name)
     switch def.kind {
-    case .counter: return { env in .int(env.state.getCounter(name)) }
-    case .flag: return { env in .bool(env.state.getFlag(name)) }
-    case .field: return { env in env.state.getField(name) }
-    case .optional: return { env in env.state.getOptional(name) }
-    default: return { env in env.state.get(name) }
+    case .counter: return { env in .int(env.state.getCounter(fid)) }
+    case .flag: return { env in .bool(env.state.getFlag(fid)) }
+    case .field: return { env in env.state.getField(fid) }
+    case .optional: return { env in env.state.getOptional(fid) }
+    default: return { env in env.state.getField(fid) }
     }
   }
 }
@@ -190,7 +192,8 @@ extension JSONExpressionCompiler {
       if let name = args[0].stringValue,
         !name.hasPrefix("$"), !name.hasPrefix(".") {
         // Literal deck name — fast path
-        return { env in .int(env.state.deckCount(name)) }
+        let fid = interner.intern(name)
+        return { env in .int(env.state.deckCount(fid)) }
       }
       let compiled = expr(args[0])
       return { env in
@@ -202,7 +205,8 @@ extension JSONExpressionCompiler {
       if let name = args[0].stringValue,
         !name.hasPrefix("$"), !name.hasPrefix(".") {
         // Literal deck name — fast path
-        return { env in .bool(env.state.isDeckEmpty(name)) }
+        let fid = interner.intern(name)
+        return { env in .bool(env.state.isDeckEmpty(fid)) }
       }
       let compiled = expr(args[0])
       return { env in
@@ -302,22 +306,25 @@ extension JSONExpressionCompiler {
   }
 
   /// Compare with cross-type coercion: `.string("x")` equals
-  /// `.enumCase(_, "x")` so card-stored strings match enum literals.
-  /// Hand-written to avoid the synthesized == which compares enum type
-  /// strings unnecessarily (dslEqual ignores type on enumCase).
-  static func dslEqual(_ lhs: DSLValue, _ rhs: DSLValue) -> Bool {
+  /// `.symbol(fid)` when the resolved string matches.
+  /// Hand-written to avoid synthesized == overhead.
+  static func dslEqual(
+    _ lhs: DSLValue, _ rhs: DSLValue,
+    interner: StringInterner
+  ) -> Bool {
     switch (lhs, rhs) {
     case (.int(let left), .int(let right)): return left == right
     case (.float(let left), .float(let right)): return left == right
     case (.bool(let left), .bool(let right)): return left == right
     case (.nil, .nil): return true
-    // enumCase: compare value only, ignore type
-    case (.enumCase(_, let left), .enumCase(_, let right)):
+    // symbol: integer compare
+    case (.symbol(let left), .symbol(let right)):
       return left == right
-    // Cross-type: string ↔ enumCase
-    case (.string(let str), .enumCase(_, let val)),
-      (.enumCase(_, let val), .string(let str)):
-      return str == val
+    // Cross-type: string ↔ symbol
+    case (.string(let str), .symbol(let sid)):
+      return interner.resolve(sid) == str
+    case (.symbol(let sid), .string(let str)):
+      return interner.resolve(sid) == str
     case (.string(let left), .string(let right)): return left == right
     case (.site(let track1, let idx1), .site(let track2, let idx2)):
       return idx1 == idx2 && track1 == track2
@@ -336,7 +343,9 @@ extension JSONExpressionCompiler {
     let lhs = expr(args[0])
     let rhs = expr(args[1])
     return { env in
-      let result = Self.dslEqual(try lhs(env), try rhs(env))
+      let result = Self.dslEqual(
+        try lhs(env), try rhs(env), interner: env.interner
+      )
       return .bool(negate ? !result : result)
     }
   }
@@ -365,25 +374,25 @@ extension JSONExpressionCompiler {
   }
 
   private func compileContains(_ args: [JSONValue]) -> Expr {
-    let setName = args[0].stringValue ?? ""
+    let setFID = interner.intern(args[0].stringValue ?? "")
     let elementExpr = expr(args[1])
     return { env in
       let element = try elementExpr(env)
       return .bool(
         env.state.containsInSet(
-          setName, element.asEnumValue ?? element.displayString
+          setFID, element.toFieldID(env.interner)
         )
       )
     }
   }
 
   private func compileLookup(_ args: [JSONValue]) -> Expr {
-    let dictName = args[0].stringValue ?? ""
+    let dictFID = interner.intern(args[0].stringValue ?? "")
     let keyExpr = expr(args[1])
     return { env in
       let keyVal = try keyExpr(env)
       return env.state.lookupInDict(
-        dictName, key: keyVal.asEnumValue ?? keyVal.displayString
+        dictFID, key: keyVal.toFieldID(env.interner)
       )
     }
   }
@@ -462,7 +471,9 @@ extension JSONExpressionCompiler {
       for item in compiled {
         let val = try item(env)
         if let range = result.range(of: "{}") {
-          result.replaceSubrange(range, with: val.displayString)
+          result.replaceSubrange(
+            range, with: val.displayString(interner: env.interner)
+          )
         }
       }
       return .string(result)
@@ -669,8 +680,8 @@ extension JSONExpressionCompiler {
     let pieceExpr = expr(args[0])
     return { env in
       let piece = try pieceExpr(env)
-      let name = piece.asEnumValue ?? piece.displayString
-      return env.state.getPosition(name)
+      let fid = piece.toFieldID(env.interner)
+      return env.state.getPosition(fid)
     }
   }
 
@@ -770,12 +781,9 @@ extension JSONExpressionCompiler {
     return { env in
       let targetSite = try siteExpr(env)
       if targetSite.isNil { return .nil }
-      for (name, pos) in env.state.positions
-      where pos == targetSite {
-        if let enumType = env.state.pieceTypes[name] {
-          return .enumCase(type: enumType, value: name)
-        }
-        return .string(name)
+      for (nameFID, pos) in env.state.positionsByFieldID
+      where Self.dslEqual(pos, targetSite, interner: env.interner) {
+        return .symbol(nameFID)
       }
       return .nil
     }
@@ -788,7 +796,7 @@ extension JSONExpressionCompiler {
     let capturedComponents = components
     return { env in
       let arg = try argExpr(env)
-      let argKey = arg.asEnumValue ?? arg.displayString
+      let argKey = arg.displayString(interner: env.interner)
       if let result = capturedComponents.lookupFn(
         tag, argument: argKey
       ) {
@@ -819,7 +827,7 @@ extension JSONExpressionCompiler {
       return { env in
         let rowVal = try rowExpr(env)
         let dieRoll = try dieExpr(env).asInt ?? 0
-        let rowKey = rowVal.asEnumValue ?? rowVal.displayString
+        let rowKey = rowVal.displayString(interner: env.interner)
         guard let values = crt.lookup(
           row: rowKey, dieRoll: dieRoll
         ) else {
@@ -914,37 +922,71 @@ extension JSONExpressionCompiler {
 
 extension JSONExpressionCompiler {
 
+  private static let frameworkFlags: Set<String> = [
+    "ended", "victory", "gameAcknowledged"
+  ]
+  private static let frameworkFields: Set<String> = ["phase"]
+
   private func compileSet(_ args: [JSONValue]) -> Stmt {
     let fieldName = args[0].stringValue ?? ""
     let valueExpr = expr(args[1])
-    guard let def = schema.field(fieldName) else {
-      return { _ in ReduceResult(logs: [], followUps: []) }
-    }
-    switch def.kind {
-    case .counter:
-      return { env in
-        env.state.setCounter(
-          fieldName, try valueExpr(env).asInt ?? 0
-        )
-        return ReduceResult(logs: [], followUps: [])
-      }
-    case .flag:
+    // Framework flags/fields have dedicated storage on InterpretedState,
+    // so always route through the cold-path string setter which knows
+    // to update _storage.ended / .victory / .gameAcknowledged / .phase
+    // rather than the generic _storage.flags or _storage.fields dicts.
+    if Self.frameworkFlags.contains(fieldName) {
       return { env in
         env.state.setFlag(
           fieldName, try valueExpr(env).asBool ?? false
         )
         return ReduceResult(logs: [], followUps: [])
       }
-    case .field:
+    }
+    if Self.frameworkFields.contains(fieldName) {
       return { env in
         env.state.setField(fieldName, try valueExpr(env))
+        return ReduceResult(logs: [], followUps: [])
+      }
+    }
+    guard let def = schema.field(fieldName) else {
+      // Unknown field — try generic set
+      return { env in
+        let value = try valueExpr(env)
+        if let boolVal = value.asBool {
+          env.state.setFlag(fieldName, boolVal)
+        } else {
+          env.state.setField(fieldName, value)
+        }
+        return ReduceResult(logs: [], followUps: [])
+      }
+    }
+    let fid = interner.intern(fieldName)
+    switch def.kind {
+    case .counter(let min, let max):
+      return { env in
+        env.state.setCounter(
+          fid, try valueExpr(env).asInt ?? 0,
+          min: min, max: max
+        )
+        return ReduceResult(logs: [], followUps: [])
+      }
+    case .flag:
+      return { env in
+        env.state.setFlag(
+          fid, try valueExpr(env).asBool ?? false
+        )
+        return ReduceResult(logs: [], followUps: [])
+      }
+    case .field:
+      return { env in
+        env.state.setField(fid, try valueExpr(env))
         return ReduceResult(logs: [], followUps: [])
       }
     case .optional:
       return { env in
         let value = try valueExpr(env)
         env.state.setOptional(
-          fieldName, value.isNil ? nil : value
+          fid, value.isNil ? nil : value
         )
         return ReduceResult(logs: [], followUps: [])
       }
@@ -958,51 +1000,55 @@ extension JSONExpressionCompiler {
   ) -> Stmt {
     let fieldName = args[0].stringValue ?? ""
     let amountExpr = expr(args[1])
+    guard let def = schema.field(fieldName),
+          case .counter(let min, let max) = def.kind else {
+      return { _ in ReduceResult(logs: [], followUps: []) }
+    }
+    let fid = interner.intern(fieldName)
     return { env in
       let amount = try amountExpr(env).asInt ?? 1
-      if increment {
-        env.state.incrementCounter(fieldName, by: amount)
-      } else {
-        env.state.decrementCounter(fieldName, by: amount)
-      }
+      let current = env.state.getCounter(fid)
+      let newVal = increment
+        ? current + amount : current - amount
+      env.state.setCounter(fid, newVal, min: min, max: max)
       return ReduceResult(logs: [], followUps: [])
     }
   }
 
   private func compileInsertInto(_ args: [JSONValue]) -> Stmt {
-    let setName = args[0].stringValue ?? ""
+    let setFID = interner.intern(args[0].stringValue ?? "")
     let elementExpr = expr(args[1])
     return { env in
       let element = try elementExpr(env)
       env.state.insertIntoSet(
-        setName, element.asEnumValue ?? element.displayString
+        setFID, element.toFieldID(env.interner)
       )
       return ReduceResult(logs: [], followUps: [])
     }
   }
 
   private func compileRemoveFrom(_ args: [JSONValue]) -> Stmt {
-    let setName = args[0].stringValue ?? ""
+    let setFID = interner.intern(args[0].stringValue ?? "")
     let elementExpr = expr(args[1])
     return { env in
       let element = try elementExpr(env)
       env.state.removeFromSet(
-        setName, element.asEnumValue ?? element.displayString
+        setFID, element.toFieldID(env.interner)
       )
       return ReduceResult(logs: [], followUps: [])
     }
   }
 
   private func compileSetEntry(_ args: [JSONValue]) -> Stmt {
-    let dictName = args[0].stringValue ?? ""
+    let dictFID = interner.intern(args[0].stringValue ?? "")
     let keyExpr = expr(args[1])
     let valueExpr = expr(args[2])
     return { env in
       let key = try keyExpr(env)
       let value = try valueExpr(env)
       env.state.setDictEntry(
-        dictName,
-        key: key.asEnumValue ?? key.displayString,
+        dictFID,
+        key: key.toFieldID(env.interner),
         value: value
       )
       return ReduceResult(logs: [], followUps: [])
@@ -1010,12 +1056,12 @@ extension JSONExpressionCompiler {
   }
 
   private func compileRemoveEntry(_ args: [JSONValue]) -> Stmt {
-    let dictName = args[0].stringValue ?? ""
+    let dictFID = interner.intern(args[0].stringValue ?? "")
     let keyExpr = expr(args[1])
     return { env in
       let key = try keyExpr(env)
       env.state.removeDictEntry(
-        dictName, key: key.asEnumValue ?? key.displayString
+        dictFID, key: key.toFieldID(env.interner)
       )
       return ReduceResult(logs: [], followUps: [])
     }
@@ -1024,20 +1070,22 @@ extension JSONExpressionCompiler {
   // JSON: {"draw": ["deckName", "optionalName"]}
   // Source first, destination second
   private func compileDraw(_ args: [JSONValue]) -> Stmt {
-    let deckName = args[0].stringValue ?? ""
-    let optName = args.count > 1 ? (args[1].stringValue ?? "") : ""
+    let deckFID = interner.intern(args[0].stringValue ?? "")
+    let optFID = interner.intern(
+      args.count > 1 ? (args[1].stringValue ?? "") : ""
+    )
     return { env in
-      if let card = env.state.drawFromDeck(deckName) {
-        env.state.setOptional(optName, card)
+      if let card = env.state.drawFromDeck(deckFID) {
+        env.state.setOptional(optFID, card)
       }
       return ReduceResult(logs: [], followUps: [])
     }
   }
 
   private func compileShuffle(_ args: [JSONValue]) -> Stmt {
-    let deckName = args[0].stringValue ?? ""
+    let deckFID = interner.intern(args[0].stringValue ?? "")
     return { env in
-      env.state.shuffleDeck(deckName)
+      env.state.shuffleDeck(deckFID)
       return ReduceResult(logs: [], followUps: [])
     }
   }
@@ -1045,43 +1093,44 @@ extension JSONExpressionCompiler {
   // JSON: {"discard": ["optionalName", "deckName"]}
   // Source first, destination second
   private func compileDiscard(_ args: [JSONValue]) -> Stmt {
-    let optName = args[0].stringValue ?? ""
-    let deckName = args.count > 1
-      ? (args[1].stringValue ?? "") : ""
+    let optFID = interner.intern(args[0].stringValue ?? "")
+    let deckFID = interner.intern(
+      args.count > 1 ? (args[1].stringValue ?? "") : ""
+    )
     return { env in
-      let card = env.state.getOptional(optName)
+      let card = env.state.getOptional(optFID)
       if !card.isNil {
-        env.state.appendToDeck(deckName, card)
-        env.state.setOptional(optName, .nil)
+        env.state.appendToDeck(deckFID, card)
+        env.state.setOptional(optFID, .nil)
       }
       return ReduceResult(logs: [], followUps: [])
     }
   }
 
   private func compileAppendTo(_ args: [JSONValue]) -> Stmt {
-    let listName = args[0].stringValue ?? ""
+    let listFID = interner.intern(args[0].stringValue ?? "")
     let elementExpr = expr(args[1])
     return { env in
       let element = try elementExpr(env)
-      env.state.appendToDeck(listName, element)
+      env.state.appendToDeck(listFID, element)
       return ReduceResult(logs: [], followUps: [])
     }
   }
 
   private func compileRemoveAt(_ args: [JSONValue]) -> Stmt {
-    let listName = args[0].stringValue ?? ""
+    let listFID = interner.intern(args[0].stringValue ?? "")
     let indexExpr = expr(args[1])
     return { env in
       let index = try indexExpr(env).asInt ?? 0
-      env.state.removeDeckItem(listName, at: index)
+      env.state.removeDeckItem(listFID, at: index)
       return ReduceResult(logs: [], followUps: [])
     }
   }
 
   private func compileClearList(_ args: [JSONValue]) -> Stmt {
-    let listName = args[0].stringValue ?? ""
+    let listFID = interner.intern(args[0].stringValue ?? "")
     return { env in
-      env.state.clearDeck(listName)
+      env.state.clearDeck(listFID)
       return ReduceResult(logs: [], followUps: [])
     }
   }
@@ -1090,7 +1139,7 @@ extension JSONExpressionCompiler {
     let phaseExpr = expr(args[0])
     return { env in
       let phase = try phaseExpr(env)
-      env.state.phase = phase.asEnumValue ?? phase.displayString
+      env.state.phase = phase.displayString(interner: env.interner)
       return ReduceResult(logs: [], followUps: [])
     }
   }
@@ -1108,15 +1157,15 @@ extension JSONExpressionCompiler {
   private func compilePlace(_ args: [JSONValue]) -> Stmt {
     let pieceExpr = expr(args[0])
     let siteExpr = expr(args[1])
-    let staticEnumType = args[0].stringValue.flatMap {
-      components.isEnumCase($0)
+    let staticTypeFID: FieldID? = args[0].stringValue.flatMap { name in
+      components.isEnumCase(name).map { interner.intern($0) }
     }
     return { env in
       let piece = try pieceExpr(env)
       let site = try siteExpr(env)
-      let name = piece.asEnumValue ?? piece.displayString
-      let enumType = staticEnumType ?? piece.asEnumType ?? ""
-      env.state.place(name, at: site, enumType: enumType)
+      let nameFID = piece.toFieldID(env.interner)
+      let typeFID = staticTypeFID ?? FieldID(rawValue: 0)
+      env.state.place(nameFID, at: site, enumType: typeFID)
       return ReduceResult(logs: [], followUps: [])
     }
   }
@@ -1124,15 +1173,15 @@ extension JSONExpressionCompiler {
   private func compileMove(_ args: [JSONValue]) -> Stmt {
     let pieceExpr = expr(args[0])
     let siteExpr = expr(args[1])
-    let staticEnumType = args[0].stringValue.flatMap {
-      components.isEnumCase($0)
+    let staticTypeFID: FieldID? = args[0].stringValue.flatMap { name in
+      components.isEnumCase(name).map { interner.intern($0) }
     }
     return { env in
       let piece = try pieceExpr(env)
       let site = try siteExpr(env)
-      let name = piece.asEnumValue ?? piece.displayString
-      let enumType = staticEnumType ?? piece.asEnumType ?? ""
-      env.state.place(name, at: site, enumType: enumType)
+      let nameFID = piece.toFieldID(env.interner)
+      let typeFID = staticTypeFID ?? FieldID(rawValue: 0)
+      env.state.place(nameFID, at: site, enumType: typeFID)
       return ReduceResult(logs: [], followUps: [])
     }
   }
@@ -1141,8 +1190,8 @@ extension JSONExpressionCompiler {
     let pieceExpr = expr(args[0])
     return { env in
       let piece = try pieceExpr(env)
-      let name = piece.asEnumValue ?? piece.displayString
-      env.state.removePiece(name)
+      let fid = piece.toFieldID(env.interner)
+      env.state.removePiece(fid)
       return ReduceResult(logs: [], followUps: [])
     }
   }
@@ -1249,7 +1298,8 @@ extension JSONExpressionCompiler {
     return { env in
       let message = try messageExpr(env)
       return ReduceResult(
-        logs: [Log(msg: message.displayString)], followUps: []
+        logs: [Log(msg: message.displayString(interner: env.interner))],
+        followUps: []
       )
     }
   }

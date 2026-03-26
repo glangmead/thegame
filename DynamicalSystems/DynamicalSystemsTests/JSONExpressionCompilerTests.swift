@@ -5,18 +5,23 @@ import Testing
 @Suite("JSONExpressionCompiler")
 struct JSONExpressionCompilerTests {
 
+  let interner = StringInterner()
+
   private func makeCompiler() throws -> JSONExpressionCompiler {
     let components = ComponentRegistry.empty()
     let schema = StateSchema.empty()
     let defines = try JSONDefineExpander(.array([]))
     return JSONExpressionCompiler(
       components: components, schema: schema,
-      graph: SiteGraph(), defines: defines
+      graph: SiteGraph(), defines: defines,
+      interner: interner
     )
   }
 
   private func makeEnv() -> ExpressionCompiler.Env {
-    let state = InterpretedState(schema: StateSchema.empty())
+    let state = InterpretedState(
+      schema: StateSchema.empty(), interner: interner
+    )
     return ExpressionCompiler.Env(state: state)
   }
 
@@ -172,7 +177,7 @@ struct JSONExpressionCompilerTests {
     let compiler = try makeCompiler()
     let compiled = compiler.expr(.string(".fog"))
     let result = try compiled(makeEnv())
-    #expect(result.asEnumValue == "fog")
+    #expect(result.displayString(interner: interner) == "fog")
   }
 
   @Test func compileVariableReference() throws {
@@ -348,14 +353,17 @@ struct JSONExpressionCompilerTests {
     let defines = try JSONDefineExpander(.array([]))
     return JSONExpressionCompiler(
       components: components, schema: schema,
-      graph: SiteGraph(), defines: defines
+      graph: SiteGraph(), defines: defines,
+      interner: interner
     )
   }
 
   private func makeStmtEnv(
     schema: StateSchema
   ) -> ExpressionCompiler.Env {
-    ExpressionCompiler.Env(state: InterpretedState(schema: schema))
+    ExpressionCompiler.Env(
+      state: InterpretedState(schema: schema, interner: interner)
+    )
   }
 
   // MARK: - Statements
@@ -397,7 +405,7 @@ struct JSONExpressionCompilerTests {
     )
     _ = try compiled(env)
     let value = env.state.getField("weather")
-    #expect(value.asEnumValue == "sunny")
+    #expect(value.displayString(interner: interner) == "sunny")
   }
 
   @Test func stmtIncrement() throws {
@@ -949,14 +957,14 @@ struct JSONExpressionCompilerTests {
     ])
     let compiled = compiler.expr(json)
     let result = try compiled(env)
-    #expect(result.asEnumValue == "combat")
+    #expect(result.displayString(interner: interner) == "combat")
   }
 
   @Test func paramAccess() throws {
     let schema = makeSchema([])
     let compiler = try makeStmtCompiler(schema: schema)
     let env = ExpressionCompiler.Env(
-      state: InterpretedState(schema: schema),
+      state: InterpretedState(schema: schema, interner: interner),
       actionParams: ["target": .string("goblin")]
     )
     let json = JSONValue.object([
@@ -997,7 +1005,7 @@ struct JSONExpressionCompilerTests {
     ])
     let compiled = compiler.expr(json)
     let env = ExpressionCompiler.Env(
-      state: InterpretedState(schema: StateSchema.empty()),
+      state: InterpretedState(schema: StateSchema.empty(), interner: interner),
       randomSource: RandomSource([3])
     )
     let result = try compiled(env)
@@ -1026,10 +1034,11 @@ struct JSONExpressionCompilerTests {
     let defines = try JSONDefineExpander(.array([]))
     let compiler = JSONExpressionCompiler(
       components: components, schema: schema,
-      graph: SiteGraph(), defines: defines
+      graph: SiteGraph(), defines: defines,
+      interner: interner
     )
     let env = ExpressionCompiler.Env(
-      state: InterpretedState(schema: schema),
+      state: InterpretedState(schema: schema, interner: interner),
       randomSource: RandomSource([5])
     )
     // 1D CRT: {"combat": [dieRoll]}
@@ -1052,7 +1061,7 @@ struct JSONExpressionCompilerTests {
     ])
     let compiled = compiler.expr(json)
     let env = ExpressionCompiler.Env(
-      state: InterpretedState(schema: StateSchema.empty()),
+      state: InterpretedState(schema: StateSchema.empty(), interner: interner),
       randomSource: RandomSource([2])
     )
     let result = try compiled(env)

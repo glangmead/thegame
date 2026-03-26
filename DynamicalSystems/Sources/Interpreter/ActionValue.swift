@@ -10,6 +10,14 @@ struct ActionValue: Hashable, Sendable, CustomStringConvertible {
     return "\(name)(\(params))"
   }
 
+  func description(interner: StringInterner) -> String {
+    if parameters.isEmpty { return name }
+    let params = parameters.map {
+      "\($0.key):\($0.value.displayString(interner: interner))"
+    }.joined(separator: ",")
+    return "\(name)(\(params))"
+  }
+
   init(_ name: String, _ parameters: [String: DSLValue] = [:]) {
     self.name = name
     self.parameters = parameters
@@ -18,10 +26,18 @@ struct ActionValue: Hashable, Sendable, CustomStringConvertible {
   /// Human-readable display name derived from camelCase splitting.
   /// Parameter values are resolved via the `lookup` closure, which
   /// typically maps enum case names to their `displayNames:` value.
-  func displayName(lookup: (String) -> String? = { _ in nil }) -> String {
+  func displayName(
+    interner: StringInterner? = nil,
+    lookup: (String) -> String? = { _ in nil }
+  ) -> String {
     var words = Self.camelCaseWords(name).map { $0.lowercased() }
     for (_, value) in parameters.sorted(by: { $0.key < $1.key }) {
-      let raw = value.asEnumValue ?? value.asString ?? value.displayString
+      let raw: String
+      if let interner, let fid = value.symbolID {
+        raw = interner.resolve(fid)
+      } else {
+        raw = value.asString ?? value.displayString
+      }
       if let display = lookup(raw) {
         words.append(display)
       } else {

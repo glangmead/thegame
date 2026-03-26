@@ -4,13 +4,16 @@ import CoreGraphics
 
 @Suite("InterpretedState")
 struct InterpretedStateTests {
+
+  let interner = StringInterner()
+
   @Test func constructFromSchema() throws {
     let schema = StateSchema(fields: [
       "energy": FieldDefinition(name: "energy", kind: .counter(min: 0, max: 6)),
       "ended": FieldDefinition(name: "ended", kind: .flag),
       "breaches": FieldDefinition(name: "breaches", kind: .set(elementType: "Track"))
     ])
-    let state = InterpretedState(schema: schema)
+    let state = InterpretedState(schema: schema, interner: interner)
     #expect(state.getCounter("energy") == 0)
     #expect(state.getFlag("ended") == false)
     #expect(state.getSet("breaches").isEmpty)
@@ -20,7 +23,7 @@ struct InterpretedStateTests {
     let schema = StateSchema(fields: [
       "energy": FieldDefinition(name: "energy", kind: .counter(min: 0, max: 6))
     ])
-    var state = InterpretedState(schema: schema)
+    var state = InterpretedState(schema: schema, interner: interner)
     state.setCounter("energy", 10)
     #expect(state.getCounter("energy") == 6)
     state.setCounter("energy", -5)
@@ -31,7 +34,7 @@ struct InterpretedStateTests {
     let schema = StateSchema(fields: [
       "breaches": FieldDefinition(name: "breaches", kind: .set(elementType: "Track"))
     ])
-    var state = InterpretedState(schema: schema)
+    var state = InterpretedState(schema: schema, interner: interner)
     state.insertIntoSet("breaches", "east")
     #expect(state.getSet("breaches").contains("east"))
     state.removeFromSet("breaches", "east")
@@ -45,7 +48,7 @@ struct InterpretedStateTests {
         kind: .dict(keyType: "ArmySlot", valueType: "Int")
       )
     ])
-    var state = InterpretedState(schema: schema)
+    var state = InterpretedState(schema: schema, interner: interner)
     state.setDictEntry("armyPosition", key: "east", value: .int(5))
     #expect(state.getDict("armyPosition")["east"] == .int(5))
     state.removeDictEntry("armyPosition", key: "east")
@@ -56,7 +59,7 @@ struct InterpretedStateTests {
     let schema = StateSchema(fields: [
       "energy": FieldDefinition(name: "energy", kind: .counter(min: 0, max: 6))
     ])
-    var state = InterpretedState(schema: schema)
+    var state = InterpretedState(schema: schema, interner: interner)
     state.history.append(ActionValue("drawCard"))
     state.phase = "card"
     #expect(state.history.count == 1)
@@ -67,7 +70,7 @@ struct InterpretedStateTests {
     let schema = StateSchema(fields: [
       "energy": FieldDefinition(name: "energy", kind: .counter(min: 0, max: 6))
     ])
-    var state = InterpretedState(schema: schema)
+    var state = InterpretedState(schema: schema, interner: interner)
 
     // Initially no positions
     #expect(state.positions.isEmpty)

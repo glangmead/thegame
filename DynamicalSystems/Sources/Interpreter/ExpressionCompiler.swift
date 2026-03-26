@@ -31,6 +31,7 @@ struct ExpressionCompiler {
   /// One allocation per top-level condition/reduce call.
   final class Env {
     var state: InterpretedState
+    let interner: StringInterner
     let actionParams: [String: DSLValue]
     var bindings: [String: DSLValue]
     let randomSource: RandomSource?
@@ -42,10 +43,9 @@ struct ExpressionCompiler {
       randomSource: RandomSource? = nil
     ) {
       self.state = state
+      self.interner = state.interner
       self.actionParams = actionParams
       self.randomSource = randomSource
-      // Seed locals from action params so $piece etc. work without
-      // an explicit (let piece (param piece)) wrapper.
       var merged = actionParams
       for (key, value) in bindings { merged[key] = value }
       self.bindings = merged

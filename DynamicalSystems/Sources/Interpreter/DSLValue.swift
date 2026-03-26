@@ -6,7 +6,8 @@ enum DSLValue: Hashable, Sendable {
   case float(Float)
   case bool(Bool)
   case string(String)
-  case enumCase(type: String, value: String)
+  /// Interned identifier — integer equality, no heap allocation.
+  case symbol(FieldID)
   case list([DSLValue])
   case structValue(type: String, fields: [String: DSLValue])
   case site(track: String, index: Int)
@@ -17,7 +18,6 @@ enum DSLValue: Hashable, Sendable {
 
 extension DSLValue {
 
-  /// Extract Int. Also converts from float if the value is whole.
   var asInt: Int? {
     switch self {
     case .int(let intVal): return intVal
@@ -26,7 +26,6 @@ extension DSLValue {
     }
   }
 
-  /// Extract Float. Also converts from int.
   var asFloat: Float? {
     switch self {
     case .float(let floatVal): return floatVal
@@ -35,62 +34,63 @@ extension DSLValue {
     }
   }
 
-  /// Extract Bool.
   var asBool: Bool? {
     guard case .bool(let boolVal) = self else { return nil }
     return boolVal
   }
 
-  /// Extract String.
   var asString: String? {
     guard case .string(let strVal) = self else { return nil }
     return strVal
   }
 
-  /// Extract enum case value string.
-  var asEnumValue: String? {
-    guard case .enumCase(_, let caseVal) = self else { return nil }
-    return caseVal
+  /// Extract the interned FieldID from .symbol.
+  var symbolID: FieldID? {
+    guard case .symbol(let fid) = self else { return nil }
+    return fid
   }
 
-  /// Extract enum type name.
-  var asEnumType: String? {
-    guard case .enumCase(let typeName, _) = self else { return nil }
-    return typeName
+  /// Obtain a FieldID, interning on the fly if not already a symbol.
+  func toFieldID(_ interner: StringInterner) -> FieldID {
+    switch self {
+    case .symbol(let fid): return fid
+    case .string(let str): return interner.intern(str)
+    case .int(let num): return interner.intern(String(num))
+    default: return interner.intern(displayString)
+    }
   }
 
-  /// Extract list.
   var asList: [DSLValue]? {
     guard case .list(let items) = self else { return nil }
     return items
   }
 
-  /// Extract struct type and fields.
   var asStruct: (type: String, fields: [String: DSLValue])? {
-    guard case .structValue(let typeName, let fields) = self else { return nil }
+    guard case .structValue(let typeName, let fields) = self else {
+      return nil
+    }
     return (type: typeName, fields: fields)
   }
 
-  /// Extract site track and index.
   var asSite: (track: String, index: Int)? {
     guard case .site(let track, let index) = self else { return nil }
     return (track, index)
   }
 
-  /// True only for the `.nil` case.
   var isNil: Bool {
     if case .nil = self { return true }
     return false
   }
 
-  /// Human-readable representation for logging.
+  /// Human-readable representation. For .symbol, shows placeholder.
+  /// Use displayString(interner:) for resolved text.
   var displayString: String {
     switch self {
     case .int(let intVal): return "\(intVal)"
     case .float(let floatVal): return "\(floatVal)"
     case .bool(let boolVal): return boolVal ? "true" : "false"
     case .string(let strVal): return strVal
-    case .enumCase(_, let caseVal): return caseVal
+    case .symbol(let fid): return "#\(fid.rawValue)"
     case .list(let items):
       let inner = items.map(\.displayString).joined(separator: ", ")
       return "[\(inner)]"
@@ -104,6 +104,14 @@ extension DSLValue {
     case .nil:
       return "nil"
     }
+  }
+
+  /// Resolved human-readable representation.
+  func displayString(interner: StringInterner) -> String {
+    if case .symbol(let fid) = self {
+      return interner.resolve(fid)
+    }
+    return displayString
   }
 }
 

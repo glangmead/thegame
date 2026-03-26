@@ -119,7 +119,9 @@ struct InterpretedGameView: View {
           MCTSActionSection(
             model: model,
             actions: model.allowedActions,
-            displayName: { $0.displayName { names[$0] } },
+            displayName: {
+              $0.displayName(interner: model.state.interner) { names[$0] }
+            },
             onAction: { action in
               model.perform(action)
               syncScene()

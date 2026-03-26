@@ -4,6 +4,12 @@ import Testing
 @Suite("ActionValue")
 struct ActionValueTests {
 
+  let interner = StringInterner()
+
+  private func sym(_ name: String) -> DSLValue {
+    .symbol(interner.intern(name))
+  }
+
   // MARK: - camelCaseWords
 
   @Test func splitSimple() {
@@ -44,21 +50,23 @@ struct ActionValueTests {
 
   @Test func displayNameWithLookup() {
     let action = ActionValue(
-      "airdrop", ["piece": .enumCase(type: "AllyPiece", value: "allied101st")]
+      "airdrop", ["piece": sym("allied101st")]
     )
     let lookup: (String) -> String? = { name in
       name == "allied101st" ? "101st" : nil
     }
-    #expect(action.displayName(lookup: lookup) == "Airdrop 101st")
+    #expect(
+      action.displayName(interner: interner, lookup: lookup) == "Airdrop 101st"
+    )
   }
 
   @Test func displayNameFallbackSplitParam() {
     let action = ActionValue(
       "reinforceGerman",
-      ["piece": .enumCase(type: "GermanPiece", value: "germanEindhoven")]
+      ["piece": sym("germanEindhoven")]
     )
     #expect(
-      action.displayName()
+      action.displayName(interner: interner)
         == "Reinforce german german eindhoven"
     )
   }

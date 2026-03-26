@@ -4,14 +4,16 @@ enum JSONMetadataBuilder {
     components: ComponentRegistry,
     defines: JSONDefineExpander,
     schema: StateSchema,
-    graph: SiteGraph
+    graph: SiteGraph,
+    interner: StringInterner
   ) -> ((InterpretedState) -> Float)? {
     guard case .object(let dict) = json,
           case .object(let aiDict) = dict["ai"],
           let heurExpr = aiDict["heuristic"] else { return nil }
     let compiler = JSONExpressionCompiler(
       components: components, schema: schema,
-      graph: graph, defines: defines
+      graph: graph, defines: defines,
+      interner: interner
     )
     let compiled = compiler.expr(heurExpr)
     return { state in

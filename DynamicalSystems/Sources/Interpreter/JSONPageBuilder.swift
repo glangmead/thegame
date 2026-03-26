@@ -160,7 +160,7 @@ enum JSONPageBuilder {
         }
         return expandParameters(
           actionName: name, params: def.parameters,
-          components: components
+          components: components, interner: compiler.interner
         )
       }
 
@@ -193,14 +193,15 @@ enum JSONPageBuilder {
   private static func expandParameters(
     actionName: String,
     params: [ActionParameter],
-    components: ComponentRegistry
+    components: ComponentRegistry,
+    interner: StringInterner
   ) -> [ActionValue] {
     // Build list of (paramName, [(caseName, DSLValue)]) for each param
     var paramOptions: [(String, [(String, DSLValue)])] = []
     for param in params {
       if let cases = components.enumCases(param.type) {
         let options = cases.map { caseName in
-          (caseName, DSLValue.enumCase(type: param.type, value: caseName))
+          (caseName, DSLValue.symbol(interner.intern(caseName)))
         }
         paramOptions.append((param.name, options))
       } else if param.type == "Int",
@@ -270,7 +271,7 @@ enum JSONPageBuilder {
     actionSchema: ActionSchema,
     components: ComponentRegistry,
     compiler: JSONExpressionCompiler
-  ) throws -> ForEachPage<InterpretedState, String> {
+  ) throws -> ForEachPage<InterpretedState, FieldID> {
     guard case .object(let dict) = json else {
       throw DSLError.malformed("forEachPage must be an object")
     }
@@ -288,7 +289,6 @@ enum JSONPageBuilder {
       dict["reduce"], compiler: compiler
     )
     let capturedActionSchema = actionSchema
-    let capturedComponents = components
 
     return ForEachPage(
       name: name,
@@ -301,19 +301,13 @@ enum JSONPageBuilder {
         guard let check = compiledItems else { return [] }
         let env = ExpressionCompiler.Env(state: state)
         let result = try? check(env)
-        return result?.asList?.compactMap(\.displayString) ?? []
+        return result?.asList?.compactMap(\.symbolID) ?? []
       },
       actionsFor: { _, item in
         compiledReducers.keys.map { actionName in
           let paramName = capturedActionSchema.action(actionName)?
             .parameters.first?.name ?? "item"
-          let value: DSLValue
-          if let enumType = capturedComponents.isEnumCase(item) {
-            value = .enumCase(type: enumType, value: item)
-          } else {
-            value = .string(item)
-          }
-          return ActionValue(actionName, [paramName: value])
+          return ActionValue(actionName, [paramName: .symbol(item)])
         }
       },
       itemFrom: { action in
@@ -321,7 +315,7 @@ enum JSONPageBuilder {
           return nil
         }
         let val = action.parameters.values.first
-        return val?.asEnumValue ?? val?.asString
+        return val?.symbolID
       },
       transitionAction: transition,
       isPhaseEntry: { action in

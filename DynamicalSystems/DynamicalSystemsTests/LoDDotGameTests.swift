@@ -35,7 +35,10 @@ struct LoDDotGameTests {
     #expect(state.getDict("armyPosition")["east"] != nil)
     #expect(state.getDict("armyPosition")["west"] != nil)
     // Heroes should be in reserves
-    #expect(state.getDict("heroLocationDict")["warrior"]?.displayString == "reserves")
+    #expect(
+      state.getDict("heroLocationDict")["warrior"]?
+        .displayString(interner: state.interner) == "reserves"
+    )
   }
 
   @Test func drawCardAndAdvance() throws {
