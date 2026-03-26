@@ -1,21 +1,105 @@
-struct InterpretedState: Sendable {
+// swiftlint:disable file_length
+struct InterpretedState: @unchecked Sendable {
   let schema: StateSchema
-  private(set) var counters: [String: Int] = [:]
-  private(set) var flags: [String: Bool] = [:]
-  private(set) var fields: [String: DSLValue] = [:]
-  private(set) var dicts: [String: [String: DSLValue]] = [:]
-  private(set) var sets: [String: Set<String>] = [:]
-  private(set) var decks: [String: [DSLValue]] = [:]
-  private(set) var optionals: [String: DSLValue?] = [:]
-  private(set) var positions: [String: DSLValue] = [:]
-  private(set) var pieceTypes: [String: String] = [:]
-  var history: [ActionValue] = []
-  var phase: String = ""
 
-  // Framework fields
-  var ended: Bool = false
-  var victory: Bool = false
-  var gameAcknowledged: Bool = false
+  // MARK: - CoW storage
+
+  // All mutable state lives in a reference-counted box.
+  // Copying InterpretedState retains one pointer instead of 11 dictionaries.
+  // Mutation triggers copy-on-write via ensureUnique().
+  final class Storage {
+    var counters: [String: Int]
+    var flags: [String: Bool]
+    var fields: [String: DSLValue]
+    var dicts: [String: [String: DSLValue]]
+    var sets: [String: Set<String>]
+    var decks: [String: [DSLValue]]
+    var optionals: [String: DSLValue?]
+    var positions: [String: DSLValue]
+    var pieceTypes: [String: String]
+    var history: [ActionValue]
+    var phase: String
+    var ended: Bool
+    var victory: Bool
+    var gameAcknowledged: Bool
+
+    init() {
+      counters = [:]
+      flags = [:]
+      fields = [:]
+      dicts = [:]
+      sets = [:]
+      decks = [:]
+      optionals = [:]
+      positions = [:]
+      pieceTypes = [:]
+      history = []
+      phase = ""
+      ended = false
+      victory = false
+      gameAcknowledged = false
+    }
+
+    func copy() -> Storage {
+      let new = Storage()
+      new.counters = counters
+      new.flags = flags
+      new.fields = fields
+      new.dicts = dicts
+      new.sets = sets
+      new.decks = decks
+      new.optionals = optionals
+      new.positions = positions
+      new.pieceTypes = pieceTypes
+      new.history = history
+      new.phase = phase
+      new.ended = ended
+      new.victory = victory
+      new.gameAcknowledged = gameAcknowledged
+      return new
+    }
+  }
+
+  private var _storage: Storage
+
+  private mutating func ensureUnique() {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _storage.copy()
+    }
+  }
+
+  // MARK: - Forwarded properties
+
+  var counters: [String: Int] { _storage.counters }
+  var flags: [String: Bool] { _storage.flags }
+  var fields: [String: DSLValue] { _storage.fields }
+  var dicts: [String: [String: DSLValue]] { _storage.dicts }
+  var sets: [String: Set<String>] { _storage.sets }
+  var decks: [String: [DSLValue]] { _storage.decks }
+  var optionals: [String: DSLValue?] { _storage.optionals }
+  var positions: [String: DSLValue] { _storage.positions }
+  var pieceTypes: [String: String] { _storage.pieceTypes }
+
+  var history: [ActionValue] {
+    get { _storage.history }
+    set { ensureUnique(); _storage.history = newValue }
+  }
+  var phase: String {
+    get { _storage.phase }
+    set { ensureUnique(); _storage.phase = newValue }
+  }
+  var ended: Bool {
+    get { _storage.ended }
+    set { ensureUnique(); _storage.ended = newValue }
+  }
+  var victory: Bool {
+    get { _storage.victory }
+    set { ensureUnique(); _storage.victory = newValue }
+  }
+  var gameAcknowledged: Bool {
+    get { _storage.gameAcknowledged }
+    set { ensureUnique(); _storage.gameAcknowledged = newValue }
+  }
 
   // Centralized framework field access.
   // Add new framework flags/fields here only.
@@ -58,22 +142,23 @@ struct InterpretedState: Sendable {
 
   init(schema: StateSchema) {
     self.schema = schema
+    self._storage = Storage()
     for (name, field) in schema.fields {
       switch field.kind {
       case .counter(let min, _):
-        counters[name] = min
+        _storage.counters[name] = min
       case .flag:
-        flags[name] = false
+        _storage.flags[name] = false
       case .field:
-        fields[name] = .nil
+        _storage.fields[name] = .nil
       case .dict:
-        dicts[name] = [:]
+        _storage.dicts[name] = [:]
       case .set:
-        sets[name] = []
+        _storage.sets[name] = []
       case .deck:
-        decks[name] = []
+        _storage.decks[name] = []
       case .optional:
-        optionals[name] = .some(.nil)
+        _storage.optionals[name] = .some(.nil)
       }
     }
   }
@@ -81,33 +166,51 @@ struct InterpretedState: Sendable {
   // MARK: - Getters
 
   func getCounter(_ name: String) -> Int {
-    counters[name] ?? 0
+    _storage.counters[name] ?? 0
   }
 
   func getFlag(_ name: String) -> Bool {
     if let fwk = getFrameworkFlag(name) { return fwk }
-    return flags[name] ?? false
+    return _storage.flags[name] ?? false
   }
 
   func getField(_ name: String) -> DSLValue {
     if let fwk = getFrameworkField(name) { return fwk }
-    return fields[name] ?? .nil
+    return _storage.fields[name] ?? .nil
   }
 
   func getDict(_ name: String) -> [String: DSLValue] {
-    dicts[name] ?? [:]
+    _storage.dicts[name] ?? [:]
+  }
+
+  /// O(1) lookup into a nested dict without copying the intermediate dictionary.
+  func lookupInDict(_ dictName: String, key: String) -> DSLValue {
+    _storage.dicts[dictName]?[key] ?? .nil
   }
 
   func getSet(_ name: String) -> Set<String> {
-    sets[name] ?? []
+    _storage.sets[name] ?? []
+  }
+
+  /// O(1) membership test without copying the set.
+  func containsInSet(_ setName: String, _ element: String) -> Bool {
+    _storage.sets[setName]?.contains(element) ?? false
   }
 
   func getDeck(_ name: String) -> [DSLValue] {
-    decks[name] ?? []
+    _storage.decks[name] ?? []
+  }
+
+  func deckCount(_ name: String) -> Int {
+    _storage.decks[name]?.count ?? 0
+  }
+
+  func isDeckEmpty(_ name: String) -> Bool {
+    _storage.decks[name]?.isEmpty ?? true
   }
 
   func getOptional(_ name: String) -> DSLValue {
-    if let value = optionals[name] { return value ?? .nil }
+    if let value = _storage.optionals[name] { return value ?? .nil }
     return .nil
   }
 
@@ -117,10 +220,10 @@ struct InterpretedState: Sendable {
   func get(_ name: String) -> DSLValue {
     if let fwk = getFrameworkFlag(name) { return .bool(fwk) }
     if let fwk = getFrameworkField(name) { return fwk }
-    if let value = counters[name] { return .int(value) }
-    if let value = flags[name] { return .bool(value) }
-    if let value = fields[name] { return value }
-    if let value = optionals[name] { return value ?? .nil }
+    if let value = _storage.counters[name] { return .int(value) }
+    if let value = _storage.flags[name] { return .bool(value) }
+    if let value = _storage.fields[name] { return value }
+    if let value = _storage.optionals[name] { return value ?? .nil }
     return .nil
   }
 
@@ -129,92 +232,107 @@ struct InterpretedState: Sendable {
   mutating func setCounter(_ name: String, _ value: Int) {
     guard let field = schema.field(name),
           case .counter(let min, let max) = field.kind else { return }
-    counters[name] = Swift.min(Swift.max(value, min), max)
+    ensureUnique()
+    _storage.counters[name] = Swift.min(Swift.max(value, min), max)
   }
 
   mutating func incrementCounter(_ name: String, by amount: Int) {
-    let current = counters[name] ?? 0
+    let current = _storage.counters[name] ?? 0
     setCounter(name, current + amount)
   }
 
   mutating func decrementCounter(_ name: String, by amount: Int) {
-    let current = counters[name] ?? 0
+    let current = _storage.counters[name] ?? 0
     setCounter(name, current - amount)
   }
 
   mutating func setFlag(_ name: String, _ value: Bool) {
     if setFrameworkFlag(name, value) { return }
-    flags[name] = value
+    ensureUnique()
+    _storage.flags[name] = value
   }
 
   mutating func setField(_ name: String, _ value: DSLValue) {
     if setFrameworkField(name, value) { return }
-    fields[name] = value
+    ensureUnique()
+    _storage.fields[name] = value
   }
 
   mutating func setDictEntry(_ dictName: String, key: String, value: DSLValue) {
-    dicts[dictName, default: [:]][key] = value
+    ensureUnique()
+    _storage.dicts[dictName, default: [:]][key] = value
   }
 
   mutating func removeDictEntry(_ dictName: String, key: String) {
-    dicts[dictName]?.removeValue(forKey: key)
+    ensureUnique()
+    _storage.dicts[dictName]?.removeValue(forKey: key)
   }
 
   mutating func insertIntoSet(_ name: String, _ element: String) {
-    sets[name, default: []].insert(element)
+    ensureUnique()
+    _storage.sets[name, default: []].insert(element)
   }
 
   mutating func removeFromSet(_ name: String, _ element: String) {
-    sets[name]?.remove(element)
+    ensureUnique()
+    _storage.sets[name]?.remove(element)
   }
 
   mutating func setOptional(_ name: String, _ value: DSLValue?) {
-    optionals[name] = value
+    ensureUnique()
+    _storage.optionals[name] = value
   }
 
   // Deck operations
   mutating func drawFromDeck(_ deckName: String) -> DSLValue? {
-    guard var deck = decks[deckName], !deck.isEmpty else { return nil }
+    guard var deck = _storage.decks[deckName], !deck.isEmpty else { return nil }
     let card = deck.removeFirst()
-    decks[deckName] = deck
+    ensureUnique()
+    _storage.decks[deckName] = deck
     return card
   }
 
   mutating func shuffleDeck(_ deckName: String) {
-    if var deck = decks[deckName] {
+    if var deck = _storage.decks[deckName] {
       GameRNG.shuffle(&deck)
-      decks[deckName] = deck
+      ensureUnique()
+      _storage.decks[deckName] = deck
     }
   }
 
   mutating func appendToDeck(_ deckName: String, _ card: DSLValue) {
-    decks[deckName, default: []].append(card)
+    ensureUnique()
+    _storage.decks[deckName, default: []].append(card)
   }
 
   mutating func removeDeckItem(_ deckName: String, at index: Int) {
-    guard var deck = decks[deckName], index >= 0, index < deck.count else { return }
+    guard var deck = _storage.decks[deckName], index >= 0, index < deck.count else { return }
     deck.remove(at: index)
-    decks[deckName] = deck
+    ensureUnique()
+    _storage.decks[deckName] = deck
   }
 
   mutating func clearDeck(_ deckName: String) {
-    decks[deckName] = []
+    ensureUnique()
+    _storage.decks[deckName] = []
   }
 
   // MARK: - Positions
 
   mutating func place(_ pieceName: String, at site: DSLValue, enumType: String) {
-    positions[pieceName] = site
-    pieceTypes[pieceName] = enumType
+    ensureUnique()
+    _storage.positions[pieceName] = site
+    _storage.pieceTypes[pieceName] = enumType
   }
 
   mutating func removePiece(_ pieceName: String) {
-    positions.removeValue(forKey: pieceName)
-    pieceTypes.removeValue(forKey: pieceName)
+    ensureUnique()
+    _storage.positions.removeValue(forKey: pieceName)
+    _storage.pieceTypes.removeValue(forKey: pieceName)
   }
 
   func getPosition(_ pieceName: String) -> DSLValue {
-    positions[pieceName] ?? .nil
+    _storage.positions[pieceName] ?? .nil
   }
 }
 
@@ -229,19 +347,20 @@ extension InterpretedState: HistoryTracking {
 
 extension InterpretedState: Equatable {
   static func == (lhs: InterpretedState, rhs: InterpretedState) -> Bool {
-    lhs.counters == rhs.counters &&
-    lhs.flags == rhs.flags &&
-    lhs.fields == rhs.fields &&
-    lhs.dicts == rhs.dicts &&
-    lhs.sets == rhs.sets &&
-    lhs.decks == rhs.decks &&
-    lhs.optionals == rhs.optionals &&
-    lhs.history == rhs.history &&
-    lhs.phase == rhs.phase &&
-    lhs.ended == rhs.ended &&
-    lhs.victory == rhs.victory &&
-    lhs.positions == rhs.positions &&
-    lhs.pieceTypes == rhs.pieceTypes
+    if lhs._storage === rhs._storage { return true }
+    return lhs._storage.counters == rhs._storage.counters &&
+    lhs._storage.flags == rhs._storage.flags &&
+    lhs._storage.fields == rhs._storage.fields &&
+    lhs._storage.dicts == rhs._storage.dicts &&
+    lhs._storage.sets == rhs._storage.sets &&
+    lhs._storage.decks == rhs._storage.decks &&
+    lhs._storage.optionals == rhs._storage.optionals &&
+    lhs._storage.history == rhs._storage.history &&
+    lhs._storage.phase == rhs._storage.phase &&
+    lhs._storage.ended == rhs._storage.ended &&
+    lhs._storage.victory == rhs._storage.victory &&
+    lhs._storage.positions == rhs._storage.positions &&
+    lhs._storage.pieceTypes == rhs._storage.pieceTypes
   }
 }
 
@@ -281,7 +400,7 @@ extension InterpretedState: GameState {
   var position: [String: String] {
     get {
       var result: [String: String] = [:]
-      for (name, value) in positions {
+      for (name, value) in _storage.positions {
         result[name] = value.displayString
       }
       return result
@@ -292,7 +411,7 @@ extension InterpretedState: GameState {
 
   func redeterminize() -> InterpretedState {
     var new = self
-    for name in new.decks.keys.sorted() {
+    for name in new._storage.decks.keys.sorted() {
       new.shuffleDeck(name)
     }
     return new
@@ -325,3 +444,4 @@ extension InterpretedState: TextTableAble {
     }
   }
 }
+// swiftlint:enable file_length

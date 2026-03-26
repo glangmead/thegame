@@ -190,7 +190,7 @@ extension JSONExpressionCompiler {
       if let name = args[0].stringValue,
         !name.hasPrefix("$"), !name.hasPrefix(".") {
         // Literal deck name — fast path
-        return { env in .int(env.state.getDeck(name).count) }
+        return { env in .int(env.state.deckCount(name)) }
       }
       let compiled = expr(args[0])
       return { env in
@@ -202,7 +202,7 @@ extension JSONExpressionCompiler {
       if let name = args[0].stringValue,
         !name.hasPrefix("$"), !name.hasPrefix(".") {
         // Literal deck name — fast path
-        return { env in .bool(env.state.getDeck(name).isEmpty) }
+        return { env in .bool(env.state.isDeckEmpty(name)) }
       }
       let compiled = expr(args[0])
       return { env in
@@ -303,18 +303,29 @@ extension JSONExpressionCompiler {
 
   /// Compare with cross-type coercion: `.string("x")` equals
   /// `.enumCase(_, "x")` so card-stored strings match enum literals.
+  /// Hand-written to avoid the synthesized == which compares enum type
+  /// strings unnecessarily (dslEqual ignores type on enumCase).
   static func dslEqual(_ lhs: DSLValue, _ rhs: DSLValue) -> Bool {
-    if lhs == rhs { return true }
     switch (lhs, rhs) {
+    case (.int(let left), .int(let right)): return left == right
+    case (.float(let left), .float(let right)): return left == right
+    case (.bool(let left), .bool(let right)): return left == right
+    case (.nil, .nil): return true
+    // enumCase: compare value only, ignore type
+    case (.enumCase(_, let left), .enumCase(_, let right)):
+      return left == right
+    // Cross-type: string ↔ enumCase
     case (.string(let str), .enumCase(_, let val)),
       (.enumCase(_, let val), .string(let str)):
       return str == val
-    case (.enumCase(_, let val1), .enumCase(_, let val2)):
-      // Compare by value, ignoring type — same case name in different
-      // enums (e.g. ArmySlot.east vs HeroLocation.east) should match.
-      return val1 == val2
-    default:
-      return false
+    case (.string(let left), .string(let right)): return left == right
+    case (.site(let track1, let idx1), .site(let track2, let idx2)):
+      return idx1 == idx2 && track1 == track2
+    case (.list(let left), .list(let right)): return left == right
+    case (.structValue(let type1, let flds1),
+          .structValue(let type2, let flds2)):
+      return type1 == type2 && flds1 == flds2
+    default: return false
     }
   }
 
@@ -358,9 +369,10 @@ extension JSONExpressionCompiler {
     let elementExpr = expr(args[1])
     return { env in
       let element = try elementExpr(env)
-      let set = env.state.getSet(setName)
       return .bool(
-        set.contains(element.asEnumValue ?? element.displayString)
+        env.state.containsInSet(
+          setName, element.asEnumValue ?? element.displayString
+        )
       )
     }
   }
@@ -370,10 +382,9 @@ extension JSONExpressionCompiler {
     let keyExpr = expr(args[1])
     return { env in
       let keyVal = try keyExpr(env)
-      let dict = env.state.getDict(dictName)
-      return dict[
-        keyVal.asEnumValue ?? keyVal.displayString
-      ] ?? .nil
+      return env.state.lookupInDict(
+        dictName, key: keyVal.asEnumValue ?? keyVal.displayString
+      )
     }
   }
 
