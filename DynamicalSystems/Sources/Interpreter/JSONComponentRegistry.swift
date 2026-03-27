@@ -67,7 +67,9 @@ enum JSONComponentRegistry {
         for (key, val) in mappingObj {
           mapping[key] = jsonValueToDSLValue(val)
         }
-        functions[name] = EnumFunction(name: name, domain: domain, mapping: mapping)
+        functions[name] = EnumFunction(
+          name: name, domain: domain, mapping: mapping, fidMapping: [:]
+        )
       }
     }
 

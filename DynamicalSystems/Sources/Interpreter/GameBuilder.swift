@@ -19,7 +19,7 @@ enum GameBuilder {
       throw DSLError.expectedForm("root object")
     }
     let gameName = root["game"]?.stringValue ?? "Untitled"
-    let components = try root["components"].map {
+    var components = try root["components"].map {
       try JSONComponentRegistry.build($0)
     } ?? ComponentRegistry.empty()
     let schema = try root["state"].map {
@@ -42,6 +42,8 @@ enum GameBuilder {
     interner.intern("victory")
     interner.intern("gameAcknowledged")
     interner.intern("phase")
+
+    components.populateFIDMappings(interner)
 
     let compiler = JSONExpressionCompiler(
       components: components, schema: schema,

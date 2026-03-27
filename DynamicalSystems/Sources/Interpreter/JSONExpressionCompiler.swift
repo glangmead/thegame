@@ -320,11 +320,11 @@ extension JSONExpressionCompiler {
     // symbol: integer compare
     case (.symbol(let left), .symbol(let right)):
       return left == right
-    // Cross-type: string ↔ symbol
+    // Cross-type: string ↔ symbol — use integer compare via lookup.
     case (.string(let str), .symbol(let sid)):
-      return interner.resolve(sid) == str
+      return interner.lookup(str) == sid
     case (.symbol(let sid), .string(let str)):
-      return interner.resolve(sid) == str
+      return interner.lookup(str) == sid
     case (.string(let left), .string(let right)): return left == right
     case (.site(let track1, let idx1), .site(let track2, let idx2)):
       return idx1 == idx2 && track1 == track2
@@ -954,6 +954,14 @@ extension JSONExpressionCompiler {
     let capturedComponents = components
     return { env in
       let arg = try argExpr(env)
+      // Fast path: if arg is already a symbol, use integer-hashed lookup.
+      if let fid = arg.symbolID,
+         let result = capturedComponents.lookupFn(
+           tag, argumentFID: fid
+         ) {
+        return result
+      }
+      // Fallback: string-based lookup.
       let argKey = arg.displayString(interner: env.interner)
       if let result = capturedComponents.lookupFn(
         tag, argument: argKey

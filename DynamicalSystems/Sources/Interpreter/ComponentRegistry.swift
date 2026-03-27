@@ -16,6 +16,8 @@ struct EnumFunction: Sendable {
   let name: String
   let domain: String
   let mapping: [String: DSLValue] // case name -> value
+  /// FieldID-keyed mapping for O(1) integer-hashed lookup at runtime.
+  let fidMapping: [FieldID: DSLValue]
 }
 
 // MARK: - CRT Definitions
@@ -75,6 +77,22 @@ struct ComponentRegistry: Sendable {
     self.playerIndex = playerIndex
   }
 
+  /// Populate FieldID-keyed function mappings after interner is ready.
+  mutating func populateFIDMappings(_ interner: StringInterner) {
+    for (name, enumFn) in functions {
+      var fidMap = [FieldID: DSLValue](
+        minimumCapacity: enumFn.mapping.count
+      )
+      for (key, value) in enumFn.mapping {
+        fidMap[interner.intern(key)] = value
+      }
+      functions[name] = EnumFunction(
+        name: enumFn.name, domain: enumFn.domain,
+        mapping: enumFn.mapping, fidMapping: fidMap
+      )
+    }
+  }
+
   // MARK: - Queries
 
   func enumCases(_ name: String) -> [String]? {
@@ -87,6 +105,10 @@ struct ComponentRegistry: Sendable {
 
   func lookupFn(_ name: String, argument: String) -> DSLValue? {
     functions[name]?.mapping[argument]
+  }
+
+  func lookupFn(_ name: String, argumentFID: FieldID) -> DSLValue? {
+    functions[name]?.fidMapping[argumentFID]
   }
 
   func isEnumCase(_ value: String) -> String? {
