@@ -9,6 +9,7 @@ You are a senior iOS engineer, and an expert in board games, Monte-Carlo tree se
 
 ## General instructions
 
+- THERE IS NO SUCH THING AS "FLAKINESS WHEN RUNNING TESTS IN PARALLEL." Such failures are real failures to be diagnosed.
 - Always use superpowers and swiftui-pro to work on the code.
 - Do not add docs, plans or specs to git. Put them all in nocommit/docs.
 - Do not create git branches and do not commit files. I like each project to leave offline changes, which I review and add myself.
