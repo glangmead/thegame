@@ -262,24 +262,37 @@ struct GameRunner<
     var numWins = 0
     var numLosses = 0
     var numGames = 0
-    let skipProperties: Set<String> = [
-      "history", "pieceTypes", "schema", "decks"
-    ]
     while !done {
       if let action = getAction(state: state, auto: false) {
         let beforeState = state
         let logs = reducer.reduce(into: &state, action: action)
         state.printTable(to: &stdout)
         for log in logs { print(log.msg) }
-        // Print colored diff
-        let diffs = mirrorDiff(beforeState, state)
-        let filtered = diffs.filter { line in
-          !skipProperties.contains(where: { line.hasPrefix($0) })
-        }
-        if !filtered.isEmpty {
+        // Print colored diff of visible state
+        var beforeText = ""
+        beforeState.printTable(to: &beforeText)
+        var afterText = ""
+        state.printTable(to: &afterText)
+        let beforeLines = beforeText.split(
+          separator: "\n", omittingEmptySubsequences: false
+        ).map(String.init)
+        let afterLines = afterText.split(
+          separator: "\n", omittingEmptySubsequences: false
+        ).map(String.init)
+        let beforeSet = Set(beforeLines)
+        let afterSet = Set(afterLines)
+        let removed = beforeLines.filter { !afterSet.contains($0) }
+        let added = afterLines.filter { !beforeSet.contains($0) }
+        if !removed.isEmpty || !added.isEmpty {
+          let red = "\u{1B}[31m"
+          let green = "\u{1B}[32m"
+          let reset = "\u{1B}[0m"
           print("")
-          for diff in filtered {
-            printColoredDiff(diff)
+          for line in removed {
+            print("\(red)- \(line)\(reset)")
+          }
+          for line in added {
+            print("\(green)+ \(line)\(reset)")
           }
         }
       } else {
@@ -408,12 +421,28 @@ where Reducer.State: GameState & TextTableAble & Sendable & CustomStringConverti
     traceWriter?.writeHeader()
     traceWriter?.writeStep0(interpreted)
   }
+
+  // Lightweight action log: works for both compiled Swift and JSONC.
+  var actionLogHandle: FileHandle?
+  if !traceDir.isEmpty {
+    let fm = FileManager.default
+    try? fm.createDirectory(
+      atPath: traceDir, withIntermediateDirectories: true
+    )
+    let logPath = (traceDir as NSString).appendingPathComponent(
+      "actions_\(gameName)_\(trialIndex).txt"
+    )
+    fm.createFile(atPath: logPath, contents: nil)
+    actionLogHandle = FileHandle(forWritingAtPath: logPath)
+  }
+
   var step = 0
 
   while !reducer.isTerminal(state: state) {
     let actions = reducer.allowedActions(state: state)
     guard !actions.isEmpty else {
       traceWriter?.writeResult("DEADLOCK")
+      actionLogHandle?.write(Data("DEADLOCK\n".utf8))
       break
     }
     let action: Reducer.Action
@@ -442,6 +471,15 @@ where Reducer.State: GameState & TextTableAble & Sendable & CustomStringConverti
     let logs = reducer.reduce(into: &state, action: action)
     step += 1
 
+    // Write lightweight action log line
+    if let handle = actionLogHandle {
+      let auto = isAuto ? " [auto]" : ""
+      let offered = actions.map { "\($0)" }
+        .sorted().joined(separator: ", ")
+      let line = "\(step)\(auto) -> \(action) | \(offered)\n"
+      handle.write(Data(line.utf8))
+    }
+
     if let traceWriter = traceWriter,
        let before = beforeState as? InterpretedState,
        let after = state as? InterpretedState {
@@ -463,19 +501,25 @@ where Reducer.State: GameState & TextTableAble & Sendable & CustomStringConverti
     }
   }
 
+  let result: String
+  if state.endedInVictoryFor.contains(player) {
+    result = "WIN"
+  } else if state.endedInDefeatFor.contains(player) {
+    result = "LOSS"
+  } else if reducer.isTerminal(state: state) {
+    result = "DRAW"
+  } else {
+    result = "INTERRUPTED"
+  }
+
   if let traceWriter = traceWriter {
-    let result: String
-    if state.endedInVictoryFor.contains(player) {
-      result = "WIN"
-    } else if state.endedInDefeatFor.contains(player) {
-      result = "LOSS"
-    } else if reducer.isTerminal(state: state) {
-      result = "DRAW"
-    } else {
-      result = "INTERRUPTED"
-    }
     traceWriter.writeResult(result)
     traceWriter.close()
+  }
+
+  if let handle = actionLogHandle {
+    handle.write(Data("=== \(result) at step \(step) ===\n".utf8))
+    handle.closeFile()
   }
 
   var tableString = ""

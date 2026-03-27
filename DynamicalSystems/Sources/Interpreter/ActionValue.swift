@@ -3,7 +3,22 @@ struct ActionValue: Hashable, Sendable, CustomStringConvertible {
   let name: String
   let parameters: [String: DSLValue]
 
+  /// Pre-computed human-readable name. Empty means fall back to raw format.
+  /// Excluded from Hashable/Equatable — two ActionValues with the same
+  /// name+parameters are equal regardless of display text.
+  var display: String = ""
+
+  static func == (lhs: ActionValue, rhs: ActionValue) -> Bool {
+    lhs.name == rhs.name && lhs.parameters == rhs.parameters
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine(name)
+    hasher.combine(parameters)
+  }
+
   var description: String {
+    if !display.isEmpty { return display }
     if parameters.isEmpty { return name }
     let params = parameters.map { "\($0.key):\($0.value.displayString)" }
       .joined(separator: ",")
@@ -11,6 +26,7 @@ struct ActionValue: Hashable, Sendable, CustomStringConvertible {
   }
 
   func description(interner: StringInterner) -> String {
+    if !display.isEmpty { return display }
     if parameters.isEmpty { return name }
     let params = parameters.map {
       "\($0.key):\($0.value.displayString(interner: interner))"

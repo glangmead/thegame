@@ -350,7 +350,26 @@
       {"name": "pendingSlot", "type": "ArmySlot"},
       {"name": "pendingHero", "type": "HeroType"}
     ],
-    "lists": []
+    "lists": [],
+    "hidden": [
+      "ended", "victory", "gameAcknowledged",
+      "paladinRerollUsed", "bloodyBattlePaidThisTurn",
+      "acidUsedThisTurn", "questAttemptedThisTurn",
+      "questPenaltyAppliedThisTurn", "questRewardPending",
+      "chainLightningHeroic", "inChainLightning",
+      "inDeathAndDespair", "inFortune", "fortuneHeroic",
+      "fortuneDiscardDone", "snapshotTaken",
+      "bloodyBattleGateTied", "inspireDRMActive",
+      "noMeleeThisTurn", "woundedHeroesCannotAct",
+      "actionPointsSpent", "heroicPointsSpent",
+      "meleeAttacksThisTurn", "rangedAttacksThisTurn",
+      "snapshotActionBudget", "eventAttackDRMBonus",
+      "chainLightningBoltIndex", "deathDespairDieRoll",
+      "deathDespairSacrifices", "defenderLossesPending",
+      "lastDieRoll",
+      "pendingRoll", "pendingSlot", "pendingHero",
+      "bloodyBattleArmy", "slowedArmy"
+    ]
   },
 
   // ═══════════════════════════════════════════════════════════════

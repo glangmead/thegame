@@ -18,8 +18,18 @@ extension LoD.State {
     shuffledDayCards: [LoD.Card]? = nil,
     shuffledNightCards: [LoD.Card]? = nil
   ) {
-    dayDrawPile = shuffledDayCards ?? LoD.dayCards.shuffled()
-    nightDrawPile = shuffledNightCards ?? LoD.nightCards.shuffled()
+    if let shuffledDayCards {
+      dayDrawPile = shuffledDayCards
+    } else {
+      dayDrawPile = LoD.dayCards
+      GameRNG.shuffle(&dayDrawPile)
+    }
+    if let shuffledNightCards {
+      nightDrawPile = shuffledNightCards
+    } else {
+      nightDrawPile = LoD.nightCards
+      GameRNG.shuffle(&nightDrawPile)
+    }
     dayDiscardPile = []
     nightDiscardPile = []
     currentCard = nil
@@ -44,7 +54,8 @@ extension LoD.State {
     if drawsFromDayDeck {
       // Reshuffle discard into draw pile if empty
       if dayDrawPile.isEmpty && !dayDiscardPile.isEmpty {
-        dayDrawPile = dayDiscardPile.shuffled()
+        dayDrawPile = dayDiscardPile
+        GameRNG.shuffle(&dayDrawPile)
         dayDiscardPile = []
       }
       guard !dayDrawPile.isEmpty else { return nil }
@@ -52,7 +63,8 @@ extension LoD.State {
     } else {
       // Reshuffle discard into draw pile if empty
       if nightDrawPile.isEmpty && !nightDiscardPile.isEmpty {
-        nightDrawPile = nightDiscardPile.shuffled()
+        nightDrawPile = nightDiscardPile
+        GameRNG.shuffle(&nightDrawPile)
         nightDiscardPile = []
       }
       guard !nightDrawPile.isEmpty else { return nil }
@@ -79,14 +91,24 @@ extension LoD.State {
 
     if drawsFromDayDeck {
       if dayDrawPile.isEmpty && !dayDiscardPile.isEmpty {
-        dayDrawPile = reshuffleOrder ?? dayDiscardPile.shuffled()
+        if let reshuffleOrder {
+          dayDrawPile = reshuffleOrder
+        } else {
+          dayDrawPile = dayDiscardPile
+          GameRNG.shuffle(&dayDrawPile)
+        }
         dayDiscardPile = []
       }
       guard !dayDrawPile.isEmpty else { return nil }
       currentCard = dayDrawPile.removeFirst()
     } else {
       if nightDrawPile.isEmpty && !nightDiscardPile.isEmpty {
-        nightDrawPile = reshuffleOrder ?? nightDiscardPile.shuffled()
+        if let reshuffleOrder {
+          nightDrawPile = reshuffleOrder
+        } else {
+          nightDrawPile = nightDiscardPile
+          GameRNG.shuffle(&nightDrawPile)
+        }
         nightDiscardPile = []
       }
       guard !nightDrawPile.isEmpty else { return nil }

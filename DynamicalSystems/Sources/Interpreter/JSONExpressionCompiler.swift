@@ -1448,13 +1448,16 @@ extension JSONExpressionCompiler {
             let (key, val) = dict.first else { return nil }
       return (key, expr(val))
     }
+    let capturedInterner = interner
     return { env in
       var params: [String: DSLValue] = [:]
       for (key, valueExpr) in paramPairs {
         params[key] = try valueExpr(env)
       }
+      var action = ActionValue(actionName, params)
+      action.display = action.displayName(interner: capturedInterner)
       return ReduceResult(
-        logs: [], followUps: [ActionValue(actionName, params)]
+        logs: [], followUps: [action]
       )
     }
   }

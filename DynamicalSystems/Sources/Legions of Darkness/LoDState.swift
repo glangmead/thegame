@@ -376,8 +376,10 @@ extension LoD {
     // MARK: - Redeterminize (information-set MCTS)
 
     func redeterminize() -> Self {
-      var rng = SystemRandomNumberGenerator()
-      return redeterminize(using: &rng)
+      var copy = self
+      GameRNG.shuffle(&copy.dayDrawPile)
+      GameRNG.shuffle(&copy.nightDrawPile)
+      return copy
     }
 
     func redeterminize(using generator: inout some RandomNumberGenerator) -> Self {

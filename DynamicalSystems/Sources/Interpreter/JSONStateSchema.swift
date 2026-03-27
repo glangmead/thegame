@@ -110,6 +110,14 @@ enum JSONStateSchema {
       }
     }
 
-    return StateSchema(fields: fields)
+    // hidden → field names suppressed in text UI
+    let hidden: Set<String>
+    if let arr = dict["hidden"]?.arrayValue {
+      hidden = Set(arr.compactMap(\.stringValue))
+    } else {
+      hidden = []
+    }
+
+    return StateSchema(fields: fields, hidden: hidden)
   }
 }

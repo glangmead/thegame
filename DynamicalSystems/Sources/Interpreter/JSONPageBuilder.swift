@@ -151,12 +151,16 @@ enum JSONPageBuilder {
     let compiledCondition: JSONExpressionCompiler.Expr? = dict["when"].map {
       compiler.expr($0)
     }
+    let lookup = displayLookup(components)
     let precomputedActions: [ActionValue] =
       (dict["offer"]?.arrayValue ?? []).flatMap { offerItem -> [ActionValue] in
         let name = offerItem.stringValue ?? ""
         guard let def = actionSchema.action(name),
               !def.parameters.isEmpty else {
-          return [ActionValue(name)]
+          return [withDisplay(
+            ActionValue(name),
+            interner: compiler.interner, lookup: lookup
+          )]
         }
         return expandParameters(
           actionName: name, params: def.parameters,
@@ -189,6 +193,32 @@ enum JSONPageBuilder {
     )
   }
 
+  /// Build a display-name lookup from all enum displayNames in the registry.
+  private static func displayLookup(
+    _ components: ComponentRegistry
+  ) -> (String) -> String? {
+    var map: [String: String] = [:]
+    for def in components.enums.values {
+      for (caseName, display) in def.displayNames {
+        map[caseName] = display
+      }
+    }
+    return { map[$0] }
+  }
+
+  /// Set the display name on an ActionValue using the interner and components.
+  private static func withDisplay(
+    _ action: ActionValue,
+    interner: StringInterner,
+    lookup: @escaping (String) -> String?
+  ) -> ActionValue {
+    var result = action
+    result.display = action.displayName(
+      interner: interner, lookup: lookup
+    )
+    return result
+  }
+
   /// Expand a parameterized action into all combinations of enum/int values.
   private static func expandParameters(
     actionName: String,
@@ -212,7 +242,9 @@ enum JSONPageBuilder {
         paramOptions.append((param.name, options))
       } else {
         // Unknown type without range — cannot expand
-        return [ActionValue(actionName)]
+        var fallback = ActionValue(actionName)
+        fallback.display = fallback.displayName()
+        return [fallback]
       }
     }
     // Compute cartesian product
@@ -228,7 +260,13 @@ enum JSONPageBuilder {
       }
       combos = next
     }
-    return combos.map { ActionValue(actionName, $0) }
+    let lookup = displayLookup(components)
+    return combos.map {
+      withDisplay(
+        ActionValue(actionName, $0),
+        interner: interner, lookup: lookup
+      )
+    }
   }
 
   // MARK: - Reduce map compilation
@@ -277,7 +315,8 @@ enum JSONPageBuilder {
     }
     let name = dict["forEachPage"]?.stringValue ?? ""
     let transitionName = dict["transition"]?.stringValue ?? ""
-    let transition = ActionValue(transitionName)
+    var transition = ActionValue(transitionName)
+    transition.display = transition.displayName()
 
     let compiledCondition: JSONExpressionCompiler.Expr? = dict["when"].map {
       compiler.expr($0)
@@ -289,6 +328,8 @@ enum JSONPageBuilder {
       dict["reduce"], compiler: compiler
     )
     let capturedActionSchema = actionSchema
+    let feLookup = displayLookup(components)
+    let feInterner = compiler.interner
 
     return ForEachPage(
       name: name,
@@ -307,7 +348,10 @@ enum JSONPageBuilder {
         compiledReducers.keys.map { actionName in
           let paramName = capturedActionSchema.action(actionName)?
             .parameters.first?.name ?? "item"
-          return ActionValue(actionName, [paramName: .symbol(item)])
+          return withDisplay(
+            ActionValue(actionName, [paramName: .symbol(item)]),
+            interner: feInterner, lookup: feLookup
+          )
         }
       },
       itemFrom: { action in

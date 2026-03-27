@@ -35,6 +35,10 @@ struct FieldDefinition: Equatable, Sendable {
 struct StateSchema: Sendable {
   private(set) var fields: [String: FieldDefinition] = [:]
 
+  /// Field names marked as internal bookkeeping in the JSONC "hidden" array.
+  /// These are suppressed in text UI output.
+  let hidden: Set<String>
+
   var allFieldNames: [String] { Array(fields.keys) }
 
   func field(_ name: String) -> FieldDefinition? {
@@ -42,10 +46,11 @@ struct StateSchema: Sendable {
   }
 
   static func empty() -> StateSchema {
-    StateSchema(fields: [:])
+    StateSchema(fields: [:], hidden: [])
   }
 
-  init(fields: [String: FieldDefinition]) {
+  init(fields: [String: FieldDefinition], hidden: Set<String> = []) {
     self.fields = fields
+    self.hidden = hidden
   }
 }

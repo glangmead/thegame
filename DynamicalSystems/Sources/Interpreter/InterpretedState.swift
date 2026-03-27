@@ -629,26 +629,79 @@ extension InterpretedState: GameState {
 // MARK: - TextTableAble (required by GameRunner)
 
 extension InterpretedState: TextTableAble {
+
   func printTable<Target>(
     to output: inout Target
   ) where Target: TextOutputStream {
-    output.write("phase: \(phase)  ended: \(ended)  victory: \(victory)\n")
-    for (name, value) in counters.sorted(by: { $0.key < $1.key }) {
+    // Header
+    if ended {
+      output.write(victory ? "=== VICTORY ===\n" : "=== DEFEAT ===\n")
+    }
+    output.write("Phase: \(phase)")
+    if let card = optionals["currentCard"] ?? nil, !card.isNil,
+       case .structValue(_, let fields) = card {
+      let title = fields["title"]?.displayString(interner: interner) ?? "?"
+      let num = fields["number"]?.asInt ?? 0
+      output.write("  Card #\(num): \(title)\n")
+      // Advances and resources
+      let advances = fields["advances"]?.asList?
+        .map { $0.displayString(interner: interner) } ?? []
+      let actions = fields["actions"]?.asInt ?? 0
+      let heroics = fields["heroics"]?.asInt ?? 0
+      let time = fields["time"]?.asInt ?? 0
+      let bb = fields["bloodyBattle"]?
+        .displayString(interner: interner) ?? "none"
+      var line2 = "  Advance: \(advances.joined(separator: ", "))"
+      line2 += "  Actions: \(actions)  Heroics: \(heroics)"
+      if time > 0 { line2 += "  Time: +\(time)" }
+      if bb != "none" { line2 += "  Bloody Battle: \(bb)" }
+      output.write("\(line2)\n")
+      // DRMs (only show non-zero)
+      var drms: [String] = []
+      for (key, val) in fields.sorted(by: { $0.key < $1.key }) {
+        guard key.hasSuffix("DRM"), let n = val.asInt, n != 0 else {
+          continue
+        }
+        let label = String(key.dropLast(3))
+        drms.append("\(label) \(n > 0 ? "+" : "")\(n)")
+      }
+      if !drms.isEmpty {
+        output.write("  DRMs: \(drms.joined(separator: ", "))\n")
+      }
+    }
+    output.write("\n")
+
+    // Board state: dicts (armies, heroes, defenders, spells, upgrades)
+    for (name, dict) in dicts.sorted(by: { $0.key < $1.key })
+    where !dict.isEmpty && !schema.hidden.contains(name) {
+      let entries = dict.map {
+        "\($0.key): \($0.value.displayString(interner: interner))"
+      }.sorted().joined(separator: ", ")
+      output.write("  \(name): \(entries)\n")
+    }
+
+    // Sets (wounded, dead, breaches, barricades)
+    for (name, set) in sets.sorted(by: { $0.key < $1.key })
+    where !set.isEmpty && !schema.hidden.contains(name) {
+      output.write("  \(name): \(set.sorted().joined(separator: ", "))\n")
+    }
+
+    // Visible counters
+    for (name, value) in counters.sorted(by: { $0.key < $1.key })
+    where !schema.hidden.contains(name) && value != 0 {
       output.write("  \(name): \(value)\n")
     }
-    for (name, value) in flags.sorted(by: { $0.key < $1.key }) {
-      output.write("  \(name): \(value)\n")
-    }
-    for (name, value) in fields.sorted(by: { $0.key < $1.key }) {
+
+    // Visible fields (morale, etc) — skip nil and default values
+    for (name, value) in fields.sorted(by: { $0.key < $1.key })
+    where !schema.hidden.contains(name) && !value.isNil {
       output.write("  \(name): \(value.displayString(interner: interner))\n")
     }
-    for (name, dict) in dicts.sorted(by: { $0.key < $1.key }) {
-      let entries = dict.map { "\($0.key):\($0.value.displayString(interner: interner))" }
-        .sorted().joined(separator: ", ")
-      output.write("  \(name): {\(entries)}\n")
-    }
-    for (name, set) in sets.sorted(by: { $0.key < $1.key }) {
-      output.write("  \(name): {\(set.sorted().joined(separator: ", "))}\n")
+
+    // Visible flags (only show true ones that matter to the player)
+    for (name, value) in flags.sorted(by: { $0.key < $1.key })
+    where !schema.hidden.contains(name) && value {
+      output.write("  \(name): true\n")
     }
   }
 }
