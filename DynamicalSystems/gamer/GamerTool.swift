@@ -22,6 +22,7 @@ enum Games: String, Codable, ExpressibleByArgument {
 @main
 struct GamerTool: AsyncParsableCommand {
   @Option(help: "Number of trials to run") private var numTrials: Int = 0
+  @Option(help: "Number of threads to run trials on (0 for automatic use of all cores)") private var numThreads: Int = 1
   @Option(help: "Number of MCTS search iterations to run for each action") private var numMCTSIters: Int = 1
   @Option(help: "Number of MCTS rollouts to run for each iteration") private var numRollouts: Int = 1
   @Option(help: "Whether to print out the UI") private var interactive: Bool = true
@@ -40,6 +41,7 @@ struct GamerTool: AsyncParsableCommand {
         var gameRunner = GameRunner(
           reducer: CantStopPages.game(),
           numTrials: numTrials,
+          numThreads: numThreads,
           numMCTSIters: numMCTSIters,
           numRollouts: numRollouts,
           interactive: interactive,
@@ -53,6 +55,7 @@ struct GamerTool: AsyncParsableCommand {
         var gameRunner = GameRunner(
           reducer: BCPages.game(),
           numTrials: numTrials,
+          numThreads: numThreads,
           numMCTSIters: numMCTSIters,
           numRollouts: numRollouts,
           interactive: interactive,
@@ -68,6 +71,7 @@ struct GamerTool: AsyncParsableCommand {
         var gameRunner = GameRunner(
           reducer: dotGame,
           numTrials: numTrials,
+          numThreads: numThreads,
           numMCTSIters: numMCTSIters,
           numRollouts: numRollouts,
           interactive: interactive,
@@ -83,6 +87,7 @@ struct GamerTool: AsyncParsableCommand {
         var gameRunner = GameRunner(
           reducer: MCPages.game(),
           numTrials: numTrials,
+          numThreads: numThreads,
           numMCTSIters: numMCTSIters,
           numRollouts: numRollouts,
           interactive: interactive,
@@ -96,6 +101,7 @@ struct GamerTool: AsyncParsableCommand {
         var gameRunner = GameRunner(
           reducer: LoD.composedGame(windsOfMagicArcane: 3),
           numTrials: numTrials,
+          numThreads: numThreads,
           numMCTSIters: numMCTSIters,
           numRollouts: numRollouts,
           interactive: interactive,
@@ -111,6 +117,7 @@ struct GamerTool: AsyncParsableCommand {
         var gameRunner = GameRunner(
           reducer: dotGame,
           numTrials: numTrials,
+          numThreads: numThreads,
           numMCTSIters: numMCTSIters,
           numRollouts: numRollouts,
           interactive: interactive,
@@ -130,6 +137,7 @@ struct GamerTool: AsyncParsableCommand {
               .south: .fastAI, .west: .fastAI
             ])),
           numTrials: numTrials,
+          numThreads: numThreads,
           numMCTSIters: numMCTSIters,
           numRollouts: numRollouts,
           interactive: interactive,
@@ -154,6 +162,7 @@ struct GameRunner<
   typealias Action = Reducer.Action
 
   private var numTrials: Int = 0
+  private var numThreads: Int = 1
   private var numMCTSIters: Int = 1
   private var numRollouts: Int = 1
   private var interactive: Bool = true
@@ -171,6 +180,7 @@ struct GameRunner<
   init(
     reducer: Reducer,
     numTrials: Int,
+    numThreads: Int,
     numMCTSIters: Int,
     numRollouts: Int,
     interactive: Bool,
@@ -183,6 +193,7 @@ struct GameRunner<
   ) {
     self.reducer = reducer
     self.numTrials = numTrials
+    self.numThreads = numThreads
     self.numMCTSIters = numMCTSIters
     self.numRollouts = numRollouts
     self.interactive = interactive
@@ -214,7 +225,7 @@ struct GameRunner<
     let traceDir = self.traceDir
     let gameName = self.gameName
 
-    let cores = ProcessInfo.processInfo.activeProcessorCount
+    let cores = numThreads > 0 ? numThreads : ProcessInfo.processInfo.activeProcessorCount
     print("Running \(trialCount) trials across \(cores) cores "
       + "(\(iters) MCTS iters)...")
     fflush(stdout)
