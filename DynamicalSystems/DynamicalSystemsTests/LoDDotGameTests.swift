@@ -77,4 +77,32 @@ struct LoDDotGameTests {
     #expect(turns > 5, "Game too short: only \(turns) turns")
     #expect(turns <= 500, "Game did not terminate in 500 turns")
   }
+
+  @Test func typedConditionsProduceSameResults() throws {
+    let source = try Self.loadGameSource("Legions of Darkness")
+    let game = try GameBuilder.build(fromJSONC: source)
+    var state = game.newState()
+    var steps = 0
+    for _ in 0..<80 {
+      let actions = game.allowedActions(state: state)
+      if actions.isEmpty { break }
+      _ = game.reduce(into: &state, action: actions[0])
+      steps += 1
+    }
+    #expect(steps > 20, "Should play at least 20 steps")
+  }
+
+  @Test func typedConditionsMCTS() throws {
+    let source = try Self.loadGameSource("Legions of Darkness")
+    let game = try GameBuilder.build(fromJSONC: source)
+    var state = game.newState()
+    let initActions = game.allowedActions(state: state)
+    _ = game.reduce(into: &state, action: initActions[0])
+    let cardActions = game.allowedActions(state: state)
+    let drawAction = cardActions.first { $0.name == "drawCard" }!
+    _ = game.reduce(into: &state, action: drawAction)
+    let mcts = OpenLoopMCTS(state: state, reducer: game)
+    let rec = try mcts.recommendation(iters: 20)
+    #expect(!rec.isEmpty)
+  }
 }

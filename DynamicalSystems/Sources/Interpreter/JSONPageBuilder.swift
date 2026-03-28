@@ -148,8 +148,15 @@ enum JSONPageBuilder {
     guard case .object(let dict) = json else {
       throw DSLError.malformed("rule must be an object")
     }
-    let compiledCondition: JSONExpressionCompiler.Expr? = dict["when"].map {
-      compiler.expr($0)
+    let typedCondition: JSONExpressionCompiler.BoolCondition?
+    let compiledCondition: JSONExpressionCompiler.Expr?
+    if let whenExpr = dict["when"] {
+      typedCondition = compiler.tryCompileCondition(whenExpr)
+      compiledCondition = typedCondition == nil
+        ? compiler.expr(whenExpr) : nil
+    } else {
+      typedCondition = nil
+      compiledCondition = nil
     }
     let lookup = displayLookup(components)
     let precomputedActions: [ActionValue] =
@@ -175,6 +182,7 @@ enum JSONPageBuilder {
 
     return GameRule(
       condition: { state in
+        if let typed = typedCondition { return typed(state) }
         guard let check = compiledCondition else { return true }
         let env = ExpressionCompiler.Env(state: state)
         return (try? check(env))?.asBool ?? false
@@ -318,8 +326,15 @@ enum JSONPageBuilder {
     var transition = ActionValue(transitionName)
     transition.display = transition.displayName()
 
-    let compiledCondition: JSONExpressionCompiler.Expr? = dict["when"].map {
-      compiler.expr($0)
+    let typedFECondition: JSONExpressionCompiler.BoolCondition?
+    let compiledCondition: JSONExpressionCompiler.Expr?
+    if let whenExpr = dict["when"] {
+      typedFECondition = compiler.tryCompileCondition(whenExpr)
+      compiledCondition = typedFECondition == nil
+        ? compiler.expr(whenExpr) : nil
+    } else {
+      typedFECondition = nil
+      compiledCondition = nil
     }
     let compiledItems: JSONExpressionCompiler.Expr? = dict["items"].map {
       compiler.expr($0)
@@ -334,6 +349,7 @@ enum JSONPageBuilder {
     return ForEachPage(
       name: name,
       isActive: { state in
+        if let typed = typedFECondition { return typed(state) }
         guard let check = compiledCondition else { return true }
         let env = ExpressionCompiler.Env(state: state)
         return (try? check(env))?.asBool ?? false
@@ -393,8 +409,15 @@ enum JSONPageBuilder {
       throw DSLError.malformed("reaction must be an object")
     }
     let name = dict["name"]?.stringValue ?? ""
-    let compiledCondition: JSONExpressionCompiler.Expr? = dict["when"].map {
-      compiler.expr($0)
+    let typedReactionCond: JSONExpressionCompiler.BoolCondition?
+    let compiledCondition: JSONExpressionCompiler.Expr?
+    if let whenExpr = dict["when"] {
+      typedReactionCond = compiler.tryCompileCondition(whenExpr)
+      compiledCondition = typedReactionCond == nil
+        ? compiler.expr(whenExpr) : nil
+    } else {
+      typedReactionCond = nil
+      compiledCondition = nil
     }
     let compiledApply: JSONExpressionCompiler.Stmt? = dict["apply"].map {
       compiler.stmt($0)
@@ -403,6 +426,7 @@ enum JSONPageBuilder {
     return AutoRule(
       name: name,
       when: { state in
+        if let typed = typedReactionCond { return typed(state) }
         guard let check = compiledCondition else { return false }
         let env = ExpressionCompiler.Env(state: state)
         return (try? check(env))?.asBool ?? false

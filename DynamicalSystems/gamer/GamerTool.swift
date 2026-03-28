@@ -63,7 +63,8 @@ struct GamerTool: AsyncParsableCommand {
         )
         await gameRunner.run()
       case .battleCardDotGame:
-        let dotGame = try loadDotGame("BattleCard")
+        let source = try loadDotGameSource("BattleCard")
+        let dotGame = try GameBuilder.build(fromJSONC: source)
         var gameRunner = GameRunner(
           reducer: dotGame,
           numTrials: numTrials,
@@ -73,7 +74,9 @@ struct GamerTool: AsyncParsableCommand {
           logFile: logFile,
           showAIHints: showAIHints,
           traceDir: trace,
-          gameName: game.rawValue
+          gameName: game.rawValue,
+          // swiftlint:disable:next force_try
+          reducerFactory: { try! GameBuilder.build(fromJSONC: source) }
         )
         await gameRunner.run()
       case .BCMC:
@@ -103,7 +106,8 @@ struct GamerTool: AsyncParsableCommand {
         )
         await gameRunner.run()
       case .legionsOfDarknessJSONC:
-        let dotGame = try loadDotGame("Legions of Darkness")
+        let source = try loadDotGameSource("Legions of Darkness")
+        let dotGame = try GameBuilder.build(fromJSONC: source)
         var gameRunner = GameRunner(
           reducer: dotGame,
           numTrials: numTrials,
@@ -113,7 +117,9 @@ struct GamerTool: AsyncParsableCommand {
           logFile: logFile,
           showAIHints: showAIHints,
           traceDir: trace,
-          gameName: game.rawValue
+          gameName: game.rawValue,
+          // swiftlint:disable:next force_try
+          reducerFactory: { try! GameBuilder.build(fromJSONC: source) }
         )
         await gameRunner.run()
       case .hearts:
@@ -156,6 +162,9 @@ struct GameRunner<
   private var traceDir: String = ""
   private var gameName: String = ""
   private var reducer: Reducer
+  /// When set, each parallel trial builds its own reducer to avoid
+  /// cross-thread ARC contention on shared closure contexts.
+  private var reducerFactory: (@Sendable () -> Reducer)?
 
   var colwidths: [Int]
 
@@ -169,7 +178,8 @@ struct GameRunner<
     showAIHints: Bool,
     traceDir: String = "",
     gameName: String = "",
-    colwidths: [Int] = [10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+    colwidths: [Int] = [10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    reducerFactory: (@Sendable () -> Reducer)? = nil
   ) {
     self.reducer = reducer
     self.numTrials = numTrials
@@ -181,6 +191,7 @@ struct GameRunner<
     self.traceDir = traceDir
     self.gameName = gameName
     self.colwidths = colwidths
+    self.reducerFactory = reducerFactory
   }
 
   mutating func run() async {
@@ -198,7 +209,8 @@ struct GameRunner<
     let trialCount = numTrials
     let iters = numMCTSIters
     let rollouts = numRollouts
-    let reducer = self.reducer
+    let sharedReducer = self.reducer
+    let factory = self.reducerFactory
     let traceDir = self.traceDir
     let gameName = self.gameName
 
@@ -220,7 +232,10 @@ struct GameRunner<
         let idx = trialIndex
         trialIndex += 1
         group.addTask {
-          playOneTrial(
+          // Per-trial reducer avoids cross-thread ARC contention
+          // on shared closure contexts.
+          let reducer = factory?() ?? sharedReducer
+          return runTrialWithOwnRNG(
             reducer: reducer, player: player, iters: iters,
             rollouts: rollouts, traceDir: traceDir,
             gameName: gameName, trialIndex: idx, mctsIters: iters
@@ -233,7 +248,8 @@ struct GameRunner<
           let idx = trialIndex
           trialIndex += 1
           group.addTask {
-            playOneTrial(
+            let reducer = factory?() ?? sharedReducer
+            return runTrialWithOwnRNG(
               reducer: reducer, player: player, iters: iters,
               rollouts: rollouts, traceDir: traceDir,
               gameName: gameName, trialIndex: idx, mctsIters: iters
@@ -414,6 +430,30 @@ private func printColoredDiff(_ line: String) {
   }
 }
 
+/// Wrapper that gives each trial its own RNG to avoid data races
+/// on the shared RNGBox across concurrent tasks.
+private func runTrialWithOwnRNG<Reducer: PlayableGame & Sendable>(
+  reducer: Reducer,
+  player: Reducer.State.Player,
+  iters: Int,
+  rollouts: Int,
+  traceDir: String = "",
+  gameName: String = "",
+  trialIndex: Int = 0,
+  mctsIters: Int = 1
+) -> (won: Bool, lost: Bool, table: String)
+where Reducer.State: GameState & TextTableAble & Sendable & CustomStringConvertible,
+      Reducer.Action: Hashable & Equatable & CustomStringConvertible {
+  let trialBox = RNGBox()
+  return GameRNG.$box.withValue(trialBox) {
+    playOneTrial(
+      reducer: reducer, player: player, iters: iters,
+      rollouts: rollouts, traceDir: traceDir,
+      gameName: gameName, trialIndex: trialIndex, mctsIters: mctsIters
+    )
+  }
+}
+
 // swiftlint:disable function_body_length large_tuple
 /// Play one complete game, returning win/loss result.
 /// Free function so it can be called from a `TaskGroup.addTask` closure.
@@ -552,12 +592,17 @@ where Reducer.State: GameState & TextTableAble & Sendable & CustomStringConverti
 }
 // swiftlint:enable function_body_length large_tuple
 
-/// Load a .game.jsonc file from the Resources directory, located relative to this source file.
-private func loadDotGame(_ name: String) throws -> ComposedGame<InterpretedState> {
+/// Load a .game.jsonc source string from the Resources directory.
+private func loadDotGameSource(_ name: String) throws -> String {
   let sourceDir = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent() // gamer/
     .deletingLastPathComponent() // DynamicalSystems/
   let gameURL = sourceDir.appendingPathComponent("Resources/\(name).game.jsonc")
-  let source = try String(contentsOf: gameURL, encoding: .utf8)
+  return try String(contentsOf: gameURL, encoding: .utf8)
+}
+
+/// Load a .game.jsonc file from the Resources directory, located relative to this source file.
+private func loadDotGame(_ name: String) throws -> ComposedGame<InterpretedState> {
+  let source = try loadDotGameSource(name)
   return try GameBuilder.build(fromJSONC: source)
 }
