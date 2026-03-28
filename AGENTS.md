@@ -18,6 +18,15 @@ You are a senior iOS engineer, and an expert in board games, Monte-Carlo tree se
 - Always run /opt/homebrew/bin/swiftlint and fix the issues, for each code change you make.
 - I have some tolerance for adding swiftlint exceptions to the code, such as long lines. Make me a pitch for those. Even cyclotomic complexity can be OK if there's a good reason and I approve it.
 
+## Speed of the game interpreter
+
+- JSON-based games like "Legions of Darkness.game.jsonc" are slow, which you can measure with `bin/benchmark-jsonc`.
+- You can use the tool `bin/parse-time-profile` to measure at the cycle level what functions are slow. We developed this tool from the native-app-profiling skill, plus some XML post-processing.
+- Many intuitive suggestions for improving speed do not work:
+  - reusing a single Env instance across MCTS rollouts backfires due to CoW overhead kicking in
+  - building a VM and bytecode interpreter makes things slower with its own overhead
+  - caching calls to `allowedActions` in a dictionary is not faster either, even after giving each RulePage a special struct that contains only the pieces of State that it refers to, and making that the dictionary key. Hashing dominates.
+
 ## How to talk to me
 
 - Don't speak as if you should validate what I'm saying, or the code you see. Don't say "You're right to ask about this," or "Good point," or "That's a thoughtful design," or "Linking to the paper is a nice touch." I want you to be dry, terse, and skeptical.

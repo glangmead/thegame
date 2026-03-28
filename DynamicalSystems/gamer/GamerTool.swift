@@ -333,18 +333,21 @@ struct GameRunner<
       }
     )
     if interactive {
-      for (index, action) in actions.enumerated() {
-        let hint = (showAIHints && (action == bestAction)) ? "🤖 " : "  "
-        let val: String
-        if showAIHints {
+      if showAIHints {
+        for (index, action) in actions.enumerated() {
+          let hint = (action == bestAction) ? "🤖 " : "  "
           let pct = ratio(results[action]!).formatted(
             .percent.precision(.significantDigits(0...2)))
           let cnt = results[action]!.1.formatted()
-          val = "[  \(pct) win rate (\(cnt) trials)]"
-        } else {
-          val = ""
+          print(
+            "\(index+1). \(hint)\(action.description)"
+            + " [  \(pct) win rate (\(cnt) trials)]"
+          )
         }
-        print("\(index+1). \(hint)\(action.description) \(val)")
+      } else {
+        printColumns(actions.enumerated().map { i, a in
+          "\(i + 1). \(a.description)"
+        })
       }
     }
 
@@ -368,6 +371,23 @@ struct GameRunner<
       search.printTree(to: &logStream)
     }
     return results
+  }
+}
+
+/// Print items in multiple columns sized to fit a terminal.
+private func printColumns(_ items: [String], termWidth: Int = 80) {
+  guard !items.isEmpty else { return }
+  let maxLen = items.map(\.count).max()! + 2 // 2 char gap
+  let cols = max(1, termWidth / maxLen)
+  let rows = (items.count + cols - 1) / cols
+  for row in 0..<rows {
+    var line = ""
+    for col in 0..<cols {
+      let idx = col * rows + row
+      guard idx < items.count else { continue }
+      line += items[idx].padding(toLength: maxLen, withPad: " ", startingAt: 0)
+    }
+    print(line)
   }
 }
 
